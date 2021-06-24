@@ -1,0 +1,17 @@
+lr: 1e-4
+activation: tanh
+layers: [2, 20, 20, 20, 1]
+epochs: 1000
+batch_size: 256
+regularizer: 'l1'
+reg_const: 0.1
+num_data: 10000
+corners: true
+plots: true
+gradient_loss: true
+dataset: [.2, .7, .3]
+
+
+lr_scheduler: 'exp-decay'
+data: 10000
+ext-data: .1

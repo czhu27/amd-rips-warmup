@@ -8,6 +8,7 @@ import tensorflow as tf
 from tensorflow import keras
 from keras import backend as K
 from tensorflow.python.ops.gen_math_ops import lgamma
+from tensorflow.python.types.core import Value
 
 # ------------------------------------------------------------------------------
 # Custom model based on Keras Model.
@@ -89,14 +90,16 @@ class NN(keras.models.Model):
 				
 				# Forward run
 				f_pred = self.call(X_f)
-				# f_predx = tf.gradients(f_pred, X_f)[0]
-				# f_predxx = tf.gradients(f_predx, X_f)[0]
-				# f_predxxx = tf.gradients(f_predxx, X_f)[0]
-				# grad = tf.math.reduce_sum(tf.math.abs(f_predxxx))
 
 				# Compute L_f: \sum_i |f_i - f_i*|^2	
 				L_f = self.loss_function_f(f, f_pred)
-				L_f += sum(self.losses)
+				
+				if self.gradient_loss:
+					f_predx = tf.gradients(f_pred, X_f)[0]
+					f_predxx = tf.gradients(f_predx, X_f)[0]
+					f_predxxx = tf.gradients(f_predxx, X_f)[0]
+					grad = tf.math.reduce_sum(tf.math.abs(f_predxxx))
+					L_f += sum(self.losses)
 				#L_f += grad
 
 				tf.gradients(f_pred, X_f)
@@ -136,10 +139,20 @@ class NN(keras.models.Model):
 # layers: array of layer widths, including input (0) and output (last)
 # activation: activation function (string: 'tanh', 'relu', etc.)
 # ------------------------------------------------------------------------------
-def create_nn(layer_widths, activation):
-	num_hidden_layers = len(layer_widths) - 2
+def get_regularizer(configs):
+	if configs.regularizer == 'none':
+		return None
+	elif configs.regularizer == "l1":
+		return tf.keras.regularizers.L1(l1=configs.reg_const)
+	elif configs.regularizer == "l2":
+		return tf.keras.regularizers.L2(l2=configs.reg_const)
+	elif configs.regularizer == "l1l2":
+		return tf.keras.regularizers.L1L2(l1=configs.reg_const, l2=configs.reg_const)
+	else:
+		raise ValueError("Unknown regularizer")
 
-	lam = 0.1
+def create_nn(layer_widths, configs):
+	num_hidden_layers = len(layer_widths) - 2
 	
 	# Weight initializer
 	initializer = keras.initializers.GlorotUniform()
@@ -154,9 +167,9 @@ def create_nn(layer_widths, activation):
 		width = layer_widths[i + 1]
 		name = 'h' + str(i)
 		layer = keras.layers.Dense(width, 
-							 	   activation=activation, name=name,
+							 	   activation=configs.activation, name=name,
 							 	   kernel_initializer=initializer,
-									#kernel_regularizer=tf.keras.regularizers.L1(l1=lam),
+									kernel_regularizer=get_regularizer(configs),
 									#kernel_regularizer=tf.keras.regularizers.L1L2(l1=lam, l2=lam),
 									)(layer)
 
@@ -165,12 +178,13 @@ def create_nn(layer_widths, activation):
 	output_layer = keras.layers.Dense(width, 
 									  name = 'output',
 									  kernel_initializer = initializer,
-									  #kernel_regularizer=tf.keras.regularizers.L1(l1=lam),
+									  kernel_regularizer=get_regularizer(configs),
 									  #kernel_regularizer=tf.keras.regularizers.L1L2(l1=lam, l2=lam),
 									  )(layer)
 
 	# Model
 	model = NN(inputs=input_layer, outputs=output_layer)
+	model.gradient_loss = configs.gradient_loss
 	return model
 
 # def create_nn	

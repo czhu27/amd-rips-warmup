@@ -1,6 +1,0 @@
-lr: 0.01
-lr_scheduler: 'exp-decay'
-epochs: 1000
-border: true
-data: 10000
-ext-data: .1

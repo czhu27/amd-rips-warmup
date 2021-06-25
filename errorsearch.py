@@ -2,9 +2,9 @@ import os
 import sys
 import yaml
 
-# Usage: python3 errorsearch.py extErrorBound extErrorBound
+# Usage: python3 errorsearch.py extErrorBound intErrorBound
 # extErrorBound = Extrapolation error upper bound
-# extErrorBound = Interpolation error upper bound
+# intErrorBound = Interpolation error upper bound
 
 def find(name, path):
     res = []

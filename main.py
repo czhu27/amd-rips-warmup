@@ -164,7 +164,7 @@ def main(configs: Configs):
 	model.set_batch_size(opt_batch_size)
 
 	optimizer = optimizers.Adam(learning_rate = opt_step)
-	model.compile(optimizer = optimizer,) #run_eagerly=True)		# DEBUG
+	model.compile(optimizer = optimizer, run_eagerly=configs.debug)		# DEBUG
 	tic = time.time()
 
 	# Define Tensorboard Callbacks
@@ -205,7 +205,9 @@ def main(configs: Configs):
 			callbacks=callbacks)
 	toc = time.time()
 	print("Training time: {:.2F} s\n".format(toc - tic))
-	#model.save("model.h5")
+
+	if configs.detailed_saves:
+		model.save(output_dir + "/model")
 
 	# ------------------------------------------------------------------------------
 	# Assess accuracy with optimized model and compare with non-optimized model
@@ -223,15 +225,18 @@ def main(configs: Configs):
 
 	# Make grid to display true function and predicted
 	error1 = compute_error(model, f, -1.0, 1.0)
-	buf = plot_gridded_functions(model, f, -1.0, 1.0, "100", folder=figs_folder);
 	print("Error [-1,1]x[-1,1]: {:.6E}".format(error1))
 	error2 = compute_error(model, f, -2.0, 2.0)
-	buf = plot_gridded_functions(model, f, -2.0, 2.0, "200", folder=figs_folder);
 	print("Error [-2,2]x[-2,2]: {:.6E}".format(error2))
+
+	if configs.detailed_save:
+		buf = plot_gridded_functions(model, f, -1.0, 1.0, "100", folder=figs_folder)
+		buf = plot_gridded_functions(model, f, -2.0, 2.0, "200", folder=figs_folder)
 
 	os.makedirs(errors_dir, exist_ok=True)
 	with open(errors_dir + '/errors.yaml', 'w') as outfile:
-		yaml.dump({'error_int': "{:.6E}".format(error1), 'error_ext': "{:.6E}".format(error2)}, outfile, default_flow_style=False)
+		e1, e2 = float("{:.6E}".format(error1)), float("{:.6E}".format(error2))
+		yaml.dump({'error_int': e1, 'error_ext': e2}, outfile, default_flow_style=False)
 
 if __name__ == "__main__":
 	# Load dict from yaml file

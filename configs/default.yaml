@@ -11,6 +11,8 @@ f_a: 1.0
 f_b: 1.0
 regularizer: none
 reg_const: 0.1
+debug: false
+detailed_save: true
 
 # Not Implemented yet
 corners: false

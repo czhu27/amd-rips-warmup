@@ -10,6 +10,15 @@ from keras import backend as K
 from tensorflow.python.ops.gen_math_ops import lgamma
 from tensorflow.python.types.core import Value
 
+def nth_gradient(y, x, n, tape):
+	'''
+	Compute the nth order gradient of y wrt x (using tape)
+	'''
+	grad = y
+	for i in range(n):
+		grad = tape.gradient(grad, x)
+	return grad
+
 # ------------------------------------------------------------------------------
 # Custom model based on Keras Model.
 # ------------------------------------------------------------------------------
@@ -86,27 +95,37 @@ class NN(keras.models.Model):
 			X_f, f = batch
 			
 			# For gradient of loss w.r.t. trainable variables	
-			with tf.GradientTape() as tape:
+			with tf.GradientTape(persistent=True) as tape:
+
+				# Allow gradients wrt X_f
+				tape.watch(X_f)
 				
 				# Forward run
+				xy = tf.unstack(X_f, axis=1)
+				x,y = xy
+				new_X_f = tf.stack(xy, axis=1)
+				X_f = new_X_f
 				f_pred = self.call(X_f)
 
-				# Compute L_f: \sum_i |f_i - f_i*|^2	
+				# Compute L_f: \sum_i |f_i - f_i*|^2
 				L_f = self.loss_function_f(f, f_pred)
-				
-				if self.gradient_loss:
-					f_predx = tf.gradients(f_pred, X_f)[0]
-					f_predxx = tf.gradients(f_predx, X_f)[0]
-					f_predxxx = tf.gradients(f_predxx, X_f)[0]
-					grad = tf.math.reduce_sum(tf.math.abs(f_predxxx))
-					L_f += sum(self.losses)
-				#L_f += grad
 
-				tf.gradients(f_pred, X_f)
-				# f_pred_x = tf.gradients(f_pred, X_f)[0]
-				# f_pred_xx = tf.gradients(f_pred_x, X_f)[0]
-				# f_pred_xxx = tf.gradients(f_pred_xx, X_f)[0]
-				# L_f = L_f + f_pred_xxx
+				if self.gradient_loss:
+					f_predxx = nth_gradient(f_pred, x, 2, tape)
+					f_predyy = nth_gradient(f_pred, y, 2, tape)
+
+				if self.gradient_loss:
+					f_predxxy = tape.gradient(f_predxx, y)
+					f_predyyx = tape.gradient(f_predyy, x)
+					f_predxxx = tape.gradient(f_predxx, x)
+					f_predyyy = tape.gradient(f_predyy, y)
+
+					grads = tf.concat([f_predxxx, f_predxxy, f_predyyx, f_predyyy], axis=0)
+					grad_loss = tf.math.reduce_sum(tf.math.abs(grads))
+					L_f += grad_loss
+						
+					# Add regularization loss	
+					L_f += sum(self.losses)
 			
 			
 			# Compute gradient of total loss w.r.t. trainable variables

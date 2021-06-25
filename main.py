@@ -98,6 +98,7 @@ def main(configs: Configs):
 	log_dir = output_dir + "/logs" 
 	scalar_dir = log_dir + "/scalars"
 	figs_folder = output_dir + "/figs"
+	errors_dir = output_dir + "/error"
 	os.makedirs(figs_folder, exist_ok=True)
 	os.makedirs(output_dir, exist_ok=True)
 
@@ -227,6 +228,10 @@ def main(configs: Configs):
 	error2 = compute_error(model, f, -2.0, 2.0)
 	buf = plot_gridded_functions(model, f, -2.0, 2.0, "200", folder=figs_folder);
 	print("Error [-2,2]x[-2,2]: {:.6E}".format(error2))
+
+	os.makedirs(errors_dir, exist_ok=True)
+	with open(errors_dir + '/errors.yaml', 'w') as outfile:
+		yaml.dump({'error_int': "{:.6E}".format(error1), 'error_ext': "{:.6E}".format(error2)}, outfile, default_flow_style=False)
 
 if __name__ == "__main__":
 	# Load dict from yaml file

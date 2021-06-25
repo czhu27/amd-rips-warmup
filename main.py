@@ -183,9 +183,9 @@ def main(configs):
 			self.test_every = 100
 			if epoch % self.test_every == self.test_every - 10:
 				# Make grid to display true function and predicted
-				error1 = compute_error(model, f_true, -1.0, 1.0)
+				error1 = compute_error(model, f, -1.0, 1.0)
 				tf.summary.scalar('Error/interpolation', data=error1, step=epoch)
-				error2 = compute_error(model, f_true, -2.0, 2.0)
+				error2 = compute_error(model, f, -2.0, 2.0)
 				tf.summary.scalar('Error/extrapolation', data=error2, step=epoch)
 
 	tensorboard_callback = keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)

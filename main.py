@@ -19,13 +19,11 @@ from tensorflow.keras import optimizers
 from helpers import Configs
 from nn import NN, create_nn
 
-def parabola(x, y):
+def parabola(x, y, f_a=1.0, f_b=1.0):
 	'''
 	Your friendly neighborhood parabola.
 	'''
 	# Function coefficients (f = f_a*x^2 + f_b*y^2)
-	f_a = 1.0
-	f_b = 1.0
 	return f_a * x**2 + f_b * y**2	# f_a*x^2 + f_b*y^2
 
 
@@ -93,14 +91,17 @@ def plot_gridded_functions(model, f, lb, ub, tag, folder="figs"):
 	return buf
 
 
-def main(configs):
+def main(configs: Configs):
 	# Setup folder structure vars
-	exp_id = "no_exp_id"
-	exp_folder = "output/" + exp_id + "/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-	log_dir = exp_folder + "/logs" 
+	output_dir = configs.output_dir + "/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+	log_dir = output_dir + "/logs" 
 	scalar_dir = log_dir + "/scalars"
-	figs_folder = exp_folder + "/figs"
+	figs_folder = output_dir + "/figs"
 	os.makedirs(figs_folder, exist_ok=True)
+	os.makedirs(output_dir, exist_ok=True)
+
+	# Save configs
+	yaml.safe_dump(configs.__dict__, open(output_dir + "/configs.yaml", "w"))
 
 	# Setup Tensorboard
 	file_writer = tf.summary.create_file_writer(scalar_dir + "/metrics")
@@ -128,7 +129,7 @@ def main(configs):
 
 
 	# Set target function
-	f = parabola
+	f = lambda x,y : parabola(x,y, configs.f_a, configs.f_b)
 
 	f_true = f(X_f[:, 0:1], X_f[:, 1:2])
 	#f_true = f_a*X_f[:, 0:1] ** 2 + f_b*X_f[:, 1:2] ** 2	# f_a*x^2 + f_b*y^2

@@ -93,7 +93,8 @@ def plot_gridded_functions(model, f, lb, ub, tag, folder="figs"):
 
 def main(configs: Configs):
 	# Setup folder structure vars
-	output_dir = configs.output_dir + "/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+	run_name = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+	output_dir = configs.output_dir + "/" + run_name
 	log_dir = output_dir + "/logs" 
 	scalar_dir = log_dir + "/scalars"
 	figs_folder = output_dir + "/figs"
@@ -229,7 +230,13 @@ def main(configs: Configs):
 
 if __name__ == "__main__":
 	# Load dict from yaml file
-	configs = yaml.safe_load(open('configs/default.yaml'))
+	default_configs = yaml.safe_load(open('configs/default.yaml'))
+	changes_configs = yaml.safe_load(open('configs/changes.yaml'))
+	
+	# Merge the two configs
+	configs = default_configs.copy()
+	configs.update(changes_configs)
+
 	# Convert dict to object
 	configs = Configs(**configs)
 	# Run with configs

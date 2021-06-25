@@ -206,7 +206,7 @@ def main(configs: Configs):
 	toc = time.time()
 	print("Training time: {:.2F} s\n".format(toc - tic))
 
-	if configs.detailed_saves:
+	if configs.detailed_save:
 		model.save(output_dir + "/model")
 
 	# ------------------------------------------------------------------------------

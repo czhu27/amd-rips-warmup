@@ -144,7 +144,7 @@ def main(configs: Configs):
 	log_dir = output_dir + "/logs" 
 	scalar_dir = log_dir + "/scalars"
 	figs_folder = output_dir + "/figs"
-	errors_dir = output_dir + "/error"
+	results_dir = output_dir + "/results"
 	os.makedirs(figs_folder, exist_ok=True)
 	os.makedirs(output_dir, exist_ok=True)
 
@@ -289,10 +289,11 @@ def main(configs: Configs):
 		buf = plot_gridded_functions(model, f, -1.0, 1.0, "100", folder=figs_folder)
 		buf = plot_gridded_functions(model, f, -2.0, 2.0, "200", folder=figs_folder)
 
-	os.makedirs(errors_dir, exist_ok=True)
-	with open(errors_dir + '/errors.yaml', 'w') as outfile:
+	os.makedirs(results_dir, exist_ok=True)
+	with open(results_dir + '/results.yaml', 'w') as outfile:
 		e1, e2 = float("{:.6E}".format(error1)), float("{:.6E}".format(error2))
-		yaml.dump({'error_int': e1, 'error_ext': e2}, outfile, default_flow_style=False)
+		trainTime = "{:.2F} s".format(toc - tic)
+		yaml.dump({'error_int': e1, 'error_ext': e2, 'training_time': trainTime}, outfile, default_flow_style=False)
 
 if __name__ == "__main__":
 	# Load dict from yaml file

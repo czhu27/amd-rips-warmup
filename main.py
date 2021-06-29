@@ -26,6 +26,52 @@ def parabola(x, y, f_a=1.0, f_b=1.0):
 	# Function coefficients (f = f_a*x^2 + f_b*y^2)
 	return f_a * x**2 + f_b * y**2	# f_a*x^2 + f_b*y^2
 
+def dataCreation(N_f, params, corners):
+	N_f_int = int(N_f * params[0])
+	N_f_ext = int(N_f * params[1])
+	N_f_border = int(N_f * (1 - params[0] - params[1]))
+	N_f_intl = int(N_f_int * params[2])
+	N_f_extl = int(N_f_ext * params[3])
+	N_f_intul = int(N_f_int * (1 - params[2]))
+	N_f_extul = int(N_f_ext * (1 - params[3]))
+	X_f_int = np.zeros((N_f_int,2))
+	X_f_ext = np.zeros((N_f_ext,2))
+	X_f_border = np.zeros((N_f_border,2))
+	#Interior Points on [-1,1]
+	X_f_int[:,0] = np.random.uniform(-1, 1, N_f_int)
+	X_f_int[:,1] = np.random.uniform(-1, 1, N_f_int)
+	#Exterior Points [-2,-1]U[1,2]
+	X_f_ext[:,0] = np.random.uniform(0, 2, N_f_ext)
+	X_f_ext[:,1] = np.random.uniform(0, 2, N_f_ext)
+	X_f_ext += np.where(X_f_ext < 1, -2, 0)
+	#Border Points on box with (|x|,|y|) = (1,1)
+	X_f_borderleft = np.array((-1*np.ones((N_f_border//4)), np.random.rand(N_f_border//4))).T
+	X_f_borderright = np.array((np.ones((N_f_border//4)), np.random.rand(N_f_border//4))).T
+	X_f_borderup = np.array((np.random.rand(N_f_border//4), np.ones((N_f_border//4)))).T
+	X_f_borderdown = np.array((np.random.rand(N_f_border//4), -1*np.ones((N_f_border//4)))).T
+	X_f_bordermore = np.array((np.random.rand(N_f_border%4), -1*np.ones((N_f_border%4)))).T
+	X_f_border[:,0] = np.concatenate((X_f_borderleft[:,0], X_f_borderright[:,0],
+                            X_f_borderup[:,0], X_f_borderdown[:,0], X_f_bordermore[:,0]))
+	X_f_border[:,1] = np.concatenate((X_f_borderleft[:,1], X_f_borderright[:,1],
+                            X_f_borderup[:,1], X_f_borderdown[:,1],X_f_bordermore[:,1]))
+
+	#Labeling Data
+	X_f_l = np.zeros((N_f_intl + N_f_border + N_f_extl,2))
+	X_f_ul = np.zeros((N_f_intul + N_f_extul,2))
+	X_f_l[0:N_f_intl] = X_f_int[0:N_f_intl]
+	X_f_l[N_f_intl:N_f_intl + N_f_border] = X_f_border[:,:]
+	X_f_l[N_f_intl + N_f_border:] = X_f_ext[0:N_f_extl,:]
+	X_f_ul[0:N_f_intul] = X_f_int[N_f_intl:]
+	X_f_ul[N_f_intul:] = X_f_ext[N_f_extl:]
+
+	#Add corners
+	if corners:
+		X_f_l[0, 0] = -2.0; X_f_l[0, 1] = -2.0
+		X_f_l[1, 0] =  2.0; X_f_l[1, 1] = -2.0
+		X_f_l[2, 0] =  2.0; X_f_l[2, 1] =  2.0
+		X_f_l[3, 0] = -2.0; X_f_l[3, 1] =  2.0
+
+	return X_f_l, X_f_ul
 
 def compute_error(model, f, lb, ub):
 	'''
@@ -120,24 +166,25 @@ def main(configs: Configs):
 	# Data preparation
 	# ------------------------------------------------------------------------------
 	# Data for training NN based on L_f loss function
-	N_f = configs.num_data
-	X_f = np.zeros((N_f, 2), dtype = np.float32)
-	X_f[:, 0] = 2*np.random.rand(N_f) - 1
-	X_f[:, 1] = 2*np.random.rand(N_f) - 1
-	#X_f[0, 0] = -2.0; X_f[0, 1] = -2.0
-	#X_f[1, 0] =  2.0; X_f[1, 1] = -2.0
-	#X_f[2, 0] =  2.0; X_f[2, 1] =  2.0
-	#X_f[3, 0] = -2.0; X_f[3, 1] =  2.0
+	X_f_l, X_f_ul = dataCreation(configs.num_data, configs.dataset, configs.corners)
+	# N_f = configs.num_data
+	# X_f_l = np.zeros((N_f, 2), dtype = np.float32)
+	# X_f_l[:, 0] = 2*np.random.rand(N_f) - 1
+	# X_f_l[:, 1] = 2*np.random.rand(N_f) - 1
+	#X_f_l[0, 0] = -2.0; X_f_l[0, 1] = -2.0
+	#X_f_l[1, 0] =  2.0; X_f_l[1, 1] = -2.0
+	#X_f_l[2, 0] =  2.0; X_f_l[2, 1] =  2.0
+	#X_f_l[3, 0] = -2.0; X_f_l[3, 1] =  2.0
 
 
 	# Set target function
 	f = lambda x,y : parabola(x,y, configs.f_a, configs.f_b)
 
-	f_true = f(X_f[:, 0:1], X_f[:, 1:2])
-	#f_true = f_a*X_f[:, 0:1] ** 2 + f_b*X_f[:, 1:2] ** 2	# f_a*x^2 + f_b*y^2
+	f_true = f(X_f_l[:, 0:1], X_f_l[:, 1:2])
+	#f_true = f_a*X_f_l[:, 0:1] ** 2 + f_b*X_f_l[:, 1:2] ** 2	# f_a*x^2 + f_b*y^2
 
 	# Create TensorFlow dataset for passing to 'fit' function (below)
-	dataset = tf.data.Dataset.from_tensors((X_f, f_true))
+	dataset = tf.data.Dataset.from_tensors((X_f_l, f_true))
 
 	# ------------------------------------------------------------------------------
 	# Create neural network (physics-inspired)
@@ -149,7 +196,7 @@ def main(configs: Configs):
 	# ------------------------------------------------------------------------------
 	# Assess accuracy with non-optimized model
 	# ------------------------------------------------------------------------------
-	f_pred_0 = model.predict(X_f)
+	f_pred_0 = model.predict(X_f_l)
 	error_0 = np.sqrt(np.mean(np.square(f_pred_0 - f_true)))
 
 	# ------------------------------------------------------------------------------
@@ -212,7 +259,7 @@ def main(configs: Configs):
 	# ------------------------------------------------------------------------------
 	# Assess accuracy with optimized model and compare with non-optimized model
 	# ------------------------------------------------------------------------------
-	f_pred_1 = model.predict(X_f)
+	f_pred_1 = model.predict(X_f_l)
 	error_1 = np.sqrt(np.mean(np.square(f_pred_1 - f_true)))
 
 	print("Train set error (before opt): {:.15E}".format(error_0))

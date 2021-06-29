@@ -1,6 +1,6 @@
 output_dir: output/no_exp_id
 lr: 1.0e-4
-activation: tanh
+activation: elu
 layers: [2, 20, 20, 20, 1]
 epochs: 1000
 batch_size: 256
@@ -13,9 +13,9 @@ regularizer: none
 reg_const: 0.1
 debug: false
 detailed_save: true
+corners: false
+dataset: [.4, .5, .5, .5] #[interior%, exterior%, labeled_int%, labeled_ext%]
 
 # Not Implemented yet
-corners: false
-dataset: [.2, .5, .3]
 lr_scheduler: exp-decay
 ext-data: .1

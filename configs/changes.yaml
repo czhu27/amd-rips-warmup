@@ -1,4 +1,4 @@
-activation: tanh
+activation: elu
 gradient_loss: false
 debug: false
-epochs: 10
+epochs: 1000

@@ -202,9 +202,18 @@ def main(configs: Configs):
 	# ------------------------------------------------------------------------------
 	# Model compilation / training (optimization)
 	# ------------------------------------------------------------------------------
-	if not isinstance(configs.lr, float):
-		raise ValueError("configs.lr must be a float (missing a decimal point?)")
-	opt_step = configs.lr		# gradient descent step
+	if configs.lr_scheduler:
+		opt_step = tf.keras.optimizers.schedules.PolynomialDecay(
+		configs.lr_scheduler_params[0], configs.lr_scheduler_params[2], 
+		end_learning_rate=configs.lr_scheduler_params[1], power=configs.lr_scheduler_params[3],
+		cycle=False, name=None) #Changing learning rate
+
+	else:
+		print(type(configs.lr))
+		if not isinstance(configs.lr, float):
+			raise ValueError("configs.lr must be floats (missing a decimal point?)")
+		opt_step = configs.lr		# gradient descent step
+
 	opt_batch_size = configs.batch_size	# batch size
 	opt_num_its = configs.epochs		# number of iterations
 

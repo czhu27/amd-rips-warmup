@@ -15,7 +15,5 @@ debug: false
 detailed_save: true
 corners: false
 dataset: [.4, .5, .5, .5] #[interior%, exterior%, labeled_int%, labeled_ext%]
-
-# Not Implemented yet
-lr_scheduler: exp-decay
-ext-data: .1
+lr_scheduler: false
+lr_scheduler_params: [1.0e-3, 1.0e-6, 2500, 1.0]

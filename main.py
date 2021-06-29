@@ -34,9 +34,9 @@ def dataCreation(N_f, params, corners):
 	N_f_extl = int(N_f_ext * params[3])
 	N_f_intul = int(N_f_int * (1 - params[2]))
 	N_f_extul = int(N_f_ext * (1 - params[3]))
-	X_f_int = np.zeros((N_f_int,2))
-	X_f_ext = np.zeros((N_f_ext,2))
-	X_f_border = np.zeros((N_f_border,2))
+	X_f_int = np.zeros((N_f_int,2), dtype = np.float32)
+	X_f_ext = np.zeros((N_f_ext,2), dtype = np.float32)
+	X_f_border = np.zeros((N_f_border,2), dtype = np.float32)
 	#Interior Points on [-1,1]
 	X_f_int[:,0] = np.random.uniform(-1, 1, N_f_int)
 	X_f_int[:,1] = np.random.uniform(-1, 1, N_f_int)
@@ -56,8 +56,8 @@ def dataCreation(N_f, params, corners):
                             X_f_borderup[:,1], X_f_borderdown[:,1],X_f_bordermore[:,1]))
 
 	#Labeling Data
-	X_f_l = np.zeros((N_f_intl + N_f_border + N_f_extl,2))
-	X_f_ul = np.zeros((N_f_intul + N_f_extul,2))
+	X_f_l = np.zeros((N_f_intl + N_f_border + N_f_extl,2), dtype = np.float32)
+	X_f_ul = np.zeros((N_f_intul + N_f_extul,2), dtype = np.float32)
 	X_f_l[0:N_f_intl] = X_f_int[0:N_f_intl]
 	X_f_l[N_f_intl:N_f_intl + N_f_border] = X_f_border[:,:]
 	X_f_l[N_f_intl + N_f_border:] = X_f_ext[0:N_f_extl,:]

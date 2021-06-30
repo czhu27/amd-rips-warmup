@@ -14,6 +14,6 @@ reg_const: 0.1
 debug: false
 detailed_save: true
 corners: false
-dataset: [.4, .5, .5, .5] #[interior%, exterior%, labeled_int%, labeled_ext%]
+dataset: [1.0, 0.0, 1.0, 1.0] #[interior%, exterior%, labeled_int%, labeled_ext%]
 lr_scheduler: false
-lr_scheduler_params: [1.0e-3, 1.0e-6, 2500, 1.0]
+lr_scheduler_params: [1.0e-3, 1.0e-6, 2500, 1.0] #[initial, final, decay_steps, power]

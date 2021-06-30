@@ -284,15 +284,18 @@ def main(configs: Configs):
 	print("Error [-1,1]x[-1,1]: {:.6E}".format(error1))
 	error2 = compute_error(model, f, -2.0, 2.0)
 	print("Error [-2,2]x[-2,2]: {:.6E}".format(error2))
+	error3 = compute_error(model, f, -3.0, 3.0)
+	print("Error [-3,3]x[-3,3]: {:.6E}".format(error3))
 
 	if configs.detailed_save:
 		buf = plot_gridded_functions(model, f, -1.0, 1.0, "100", folder=figs_folder)
 		buf = plot_gridded_functions(model, f, -2.0, 2.0, "200", folder=figs_folder)
+		buf = plot_gridded_functions(model, f, -3.0, 3.0, "300", folder=figs_folder)
 
 	os.makedirs(errors_dir, exist_ok=True)
 	with open(errors_dir + '/errors.yaml', 'w') as outfile:
-		e1, e2 = float("{:.6E}".format(error1)), float("{:.6E}".format(error2))
-		yaml.dump({'error_int': e1, 'error_ext': e2}, outfile, default_flow_style=False)
+		e1, e2, e3 = float("{:.6E}".format(error1)), float("{:.6E}".format(error2)), float("{:.6E}".format(error3))
+		yaml.dump({'error1': e1, 'error2': e2, 'error3': e3}, outfile, default_flow_style=False)
 
 if __name__ == "__main__":
 	# Load dict from yaml file

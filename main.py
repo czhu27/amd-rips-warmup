@@ -298,8 +298,8 @@ def main(configs: Configs):
 
 	os.makedirs(results_dir, exist_ok=True)
 	with open(results_dir + '/results.yaml', 'w') as outfile:
-		e1, e2, e3, l1 = float("{:.6E}".format(error1)), float("{:.6E}".format(error2)), 
-					float("{:.6E}".format(error3)), float("{:.6E}".format(loss_value))
+		e1, e2, e3, l1 = (float("{:.6E}".format(error1)), float("{:.6E}".format(error2)), 
+			float("{:.6E}".format(error3)), float("{:.6E}".format(loss_value)))
 		trainTime = "{:.2F} s".format(toc - tic)
 		yaml.dump({'error1': e1, 'error2': e2, 'error3': e3, 'loss_value': l1,
 		'training_time': trainTime}, outfile, default_flow_style=False)

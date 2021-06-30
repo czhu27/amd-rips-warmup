@@ -270,10 +270,12 @@ def main(configs: Configs):
 	# ------------------------------------------------------------------------------
 	f_pred_1 = model.predict(X_f_l)
 	error_1 = np.sqrt(np.mean(np.square(f_pred_1 - f_true)))
+	loss_value = model.loss_function_f(f_pred_1, f_true)/X_f_l.shape[0]
 
 	print("Train set error (before opt): {:.15E}".format(error_0))
 	print("Train set error (after opt) : {:.15E}".format(error_1))
 	print("Ratio of errors             : {:.1F}".format(error_0/error_1))
+	print("Loss function value         : {:.15E}".format(loss_value))
 
 	# ------------------------------------------------------------------------------
 	# Stress set - Assess extrapolation capabilities
@@ -294,9 +296,11 @@ def main(configs: Configs):
 
 	os.makedirs(results_dir, exist_ok=True)
 	with open(results_dir + '/results.yaml', 'w') as outfile:
-		e1, e2, e3 = float("{:.6E}".format(error1)), float("{:.6E}".format(error2)), float("{:.6E}".format(error3))
+		e1, e2, e3, l1 = float("{:.6E}".format(error1)), float("{:.6E}".format(error2)), 
+					float("{:.6E}".format(error3)), float("{:.6E}".format(loss_value))
 		trainTime = "{:.2F} s".format(toc - tic)
-		yaml.dump({'error1': e1, 'error2': e2, 'error3': e3, 'training_time': trainTime}, outfile, default_flow_style=False)
+		yaml.dump({'error1': e1, 'error2': e2, 'error3': e3, 'loss_value': l1,
+		'training_time': trainTime}, outfile, default_flow_style=False)
 
 if __name__ == "__main__":
 	# Load dict from yaml file

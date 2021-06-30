@@ -19,6 +19,21 @@ def nth_gradient(y, x, n, tape):
 		grad = tape.gradient(grad, x)
 	return grad
 
+def gradient_condition(f, x, y, tape):
+	'''
+	Parabola gradient condition
+	'''
+	fxx = nth_gradient(f, x, 2, tape)
+	fyy = nth_gradient(f, y, 2, tape)
+	fxxy = tape.gradient(fxx, y)
+	fyyx = tape.gradient(fyy, x)
+	fxxx = tape.gradient(fxx, x)
+	fyyy = tape.gradient(fyy, y)
+
+	grads = tf.concat([fxxx, fxxy, fyyx, fyyy], axis=0)
+	grad_loss = tf.math.reduce_sum(tf.math.abs(grads))
+	return grad_loss
+
 # ------------------------------------------------------------------------------
 # Custom model based on Keras Model.
 # ------------------------------------------------------------------------------
@@ -41,7 +56,7 @@ class NN(keras.models.Model):
 		# Batch size should by user using the 'set_batch_size' function
 		batch_size = self.batch_size
 		
-		X_f, f = dataset
+		X_f, f, l_bools = dataset
 		
 		# Number of batches
 		m_f = X_f.shape[0]
@@ -60,18 +75,20 @@ class NN(keras.models.Model):
 			indices = perm_idx_f[idx0:idx1]
 			X_f_b = tf.gather(X_f, indices, axis = 0)
 			f_b = tf.gather(f, indices, axis = 0)
+			l_bools_b = tf.gather(l_bools, indices, axis = 0)
 			
-			batch = (X_f_b, f_b)
+			batch = (X_f_b, f_b, l_bools_b)
 			batches.append(batch)
 		
-		if (num_batches*bs_f < m_f) or (num_batches*bs_df < m_df):
+		if (num_batches*bs_f < m_f): #or (num_batches*bs_df < m_df):
 			idx0 = bs_f*num_batches
 			idx1 = m_f
 			indices = perm_idx_f[idx0:idx1]
 			X_f_b = tf.gather(X_f, indices, axis = 0)
 			f_b = tf.gather(f, indices, axis = 0)
+			l_bools_b = tf.gather(l_bools, indices, axis = 0)
 
-			batch = (X_f_b, f_b)
+			batch = (X_f_b, f_b, l_bools_b)
 			batches.append(batch)
 		
 		return batches
@@ -92,7 +109,7 @@ class NN(keras.models.Model):
 		
 		# Loop over all mini-batches
 		for batch in mini_batches:
-			X_f, f = batch
+			X_f, f, is_labeled = batch
 			
 			# For gradient of loss w.r.t. trainable variables	
 			with tf.GradientTape(persistent=True) as tape:
@@ -108,24 +125,16 @@ class NN(keras.models.Model):
 				f_pred = self.call(X_f)
 
 				# Compute L_f: \sum_i |f_i - f_i*|^2
-				L_f = self.loss_function_f(f, f_pred)
+				L_f = 0
+				L_f = self.loss_function_f(f[is_labeled], f_pred[is_labeled])
 
 				if self.gradient_loss:
-					f_predxx = nth_gradient(f_pred, x, 2, tape)
-					f_predyy = nth_gradient(f_pred, y, 2, tape)
-
-				if self.gradient_loss:
-					f_predxxy = tape.gradient(f_predxx, y)
-					f_predyyx = tape.gradient(f_predyy, x)
-					f_predxxx = tape.gradient(f_predxx, x)
-					f_predyyy = tape.gradient(f_predyy, y)
-
-					grads = tf.concat([f_predxxx, f_predxxy, f_predyyx, f_predyyy], axis=0)
-					grad_loss = tf.math.reduce_sum(tf.math.abs(grads))
-					L_f += grad_loss
+					# Compute gradient condition (deviation from diff. eq.)
+					grad_loss = gradient_condition(f_pred, x, y, tape)
+					L_f += self.condition_weight * grad_loss #+ grad_loss_ext
 						
-					# Add regularization loss	
-					L_f += sum(self.losses)
+				# Add regularization loss	
+				L_f += sum(self.losses)
 			
 			
 			# Compute gradient of total loss w.r.t. trainable variables
@@ -204,6 +213,8 @@ def create_nn(layer_widths, configs):
 	# Model
 	model = NN(inputs=input_layer, outputs=output_layer)
 	model.gradient_loss = configs.gradient_loss
+
+	model.condition_weight = configs.grad_reg_const
 	return model
 
 # def create_nn	

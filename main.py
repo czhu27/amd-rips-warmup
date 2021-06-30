@@ -183,10 +183,21 @@ def main(configs: Configs):
 	f = lambda x,y : parabola(x,y, configs.f_a, configs.f_b)
 
 	f_true = f(X_f_l[:, 0:1], X_f_l[:, 1:2])
-	#f_true = f_a*X_f_l[:, 0:1] ** 2 + f_b*X_f_l[:, 1:2] ** 2	# f_a*x^2 + f_b*y^2
+	f_ul = tf.zeros((X_f_ul.shape[0], 1))
+
+	is_labeled_l = tf.fill(f_true.shape, True)
+	is_labeled_ul = tf.fill(f_ul.shape, False)
+
+	X_f_all = tf.concat([X_f_l, X_f_ul], axis=0)
+	f_all = tf.concat([f_true, f_ul], axis=0)
+	is_labeled_all = tf.concat([is_labeled_l, is_labeled_ul], axis=0)
+	
 
 	# Create TensorFlow dataset for passing to 'fit' function (below)
-	dataset = tf.data.Dataset.from_tensors((X_f_l, f_true))
+	#dataset_l = tf.data.Dataset.from_tensors((X_f_l, f_true, )) #is_labeled_l))
+	#dataset_ul = tf.data.Dataset.from_tensors((X_f_ul, f_ul, )) #is_labeled_ul))
+	#dataset = dataset_l.concatenate(dataset_ul)
+	dataset = tf.data.Dataset.from_tensors((X_f_all, f_all, is_labeled_all))
 
 	# ------------------------------------------------------------------------------
 	# Create neural network (physics-inspired)

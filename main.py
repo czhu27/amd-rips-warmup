@@ -292,18 +292,11 @@ def main(configs: Configs):
 		buf = plot_gridded_functions(model, f, -2.0, 2.0, "200", folder=figs_folder)
 		buf = plot_gridded_functions(model, f, -3.0, 3.0, "300", folder=figs_folder)
 
-<<<<<<< HEAD
-	os.makedirs(errors_dir, exist_ok=True)
-	with open(errors_dir + '/errors.yaml', 'w') as outfile:
-		e1, e2, e3 = float("{:.6E}".format(error1)), float("{:.6E}".format(error2)), float("{:.6E}".format(error3))
-		yaml.dump({'error1': e1, 'error2': e2, 'error3': e3}, outfile, default_flow_style=False)
-=======
 	os.makedirs(results_dir, exist_ok=True)
 	with open(results_dir + '/results.yaml', 'w') as outfile:
-		e1, e2 = float("{:.6E}".format(error1)), float("{:.6E}".format(error2))
+		e1, e2, e3 = float("{:.6E}".format(error1)), float("{:.6E}".format(error2)), float("{:.6E}".format(error3))
 		trainTime = "{:.2F} s".format(toc - tic)
-		yaml.dump({'error_int': e1, 'error_ext': e2, 'training_time': trainTime}, outfile, default_flow_style=False)
->>>>>>> 8ed21e02bd105ff12fc489554a93db038223bbca
+		yaml.dump({'error1': e1, 'error2': e2, 'error3': e3, 'training_time': trainTime}, outfile, default_flow_style=False)
 
 if __name__ == "__main__":
 	# Load dict from yaml file

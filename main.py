@@ -42,9 +42,23 @@ def data_creation(N_f, params, corners):
 	X_f_int[:,0] = np.random.uniform(-1, 1, N_f_int)
 	X_f_int[:,1] = np.random.uniform(-1, 1, N_f_int)
 	#Exterior Points [-2,-1]U[1,2]
-	X_f_ext[:,0] = np.random.uniform(0, 2, N_f_ext)
-	X_f_ext[:,1] = np.random.uniform(0, 2, N_f_ext)
-	X_f_ext += np.where(X_f_ext < 1, -2, 0)
+	def bad_zone(v):
+		if -1 <= v[0] <= 1 and -1 <= v[1] <= 1:
+			return True
+		else:
+			return False
+
+	def generate_point():
+		v = np.zeros((2,))
+		while bad_zone(v):
+			v = np.random.uniform(-2,2,(2,))
+		v = v[None,:]
+		return v
+
+	for i in range(N_f_ext):
+		temp = generate_point()
+		X_f_ext[i,:] = temp
+		
 	#Border Points on box with (|x|,|y|) = (1,1)
 	X_f_borderleft = np.array((-1*np.ones((N_f_border//4)), np.random.rand(N_f_border//4))).T
 	X_f_borderright = np.array((np.ones((N_f_border//4)), np.random.rand(N_f_border//4))).T
@@ -171,14 +185,6 @@ def main(configs: Configs):
 	# ------------------------------------------------------------------------------
 	# Data for training NN based on L_f loss function
 	X_f_l, X_f_ul = data_creation(configs.num_data, configs.dataset, configs.corners)
-	# N_f = configs.num_data
-	# X_f_l = np.zeros((N_f, 2), dtype = np.float32)
-	# X_f_l[:, 0] = 2*np.random.rand(N_f) - 1
-	# X_f_l[:, 1] = 2*np.random.rand(N_f) - 1
-	#X_f_l[0, 0] = -2.0; X_f_l[0, 1] = -2.0
-	#X_f_l[1, 0] =  2.0; X_f_l[1, 1] = -2.0
-	#X_f_l[2, 0] =  2.0; X_f_l[2, 1] =  2.0
-	#X_f_l[3, 0] = -2.0; X_f_l[3, 1] =  2.0
 
 
 	# Set target function

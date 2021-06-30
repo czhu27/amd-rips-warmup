@@ -14,7 +14,7 @@ def find(name, path):
     return res
 
 # Find all errors.yaml files in output folder
-errorPaths = find("errors.yaml", "./output/no_exp_id/")
+errorPaths = find("results.yaml", "./output/no_exp_id/")
 goodruns = []
 for path in errorPaths:
     run = path.split("/")[3]

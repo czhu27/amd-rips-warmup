@@ -143,7 +143,9 @@ def main(configs: Configs):
 	run_name = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 	output_dir = configs.output_dir + "/" + run_name
 	log_dir = output_dir + "/logs" 
-	scalar_dir = log_dir + "/scalars"
+	# TODO: This is a hack. Understand tensorboard dirs better...
+	scalar_dir = log_dir + "/train" #+ "/scalars"
+	metrics_dir = scalar_dir #+ "/metrics"
 	figs_folder = output_dir + "/figs"
 	results_dir = output_dir + "/results"
 	os.makedirs(figs_folder, exist_ok=True)
@@ -154,7 +156,7 @@ def main(configs: Configs):
 	yaml.safe_dump(configs.__dict__, open(output_dir + "/configs.yaml", "w"))
 
 	# Setup Tensorboard
-	file_writer = tf.summary.create_file_writer(scalar_dir + "/metrics")
+	file_writer = tf.summary.create_file_writer(metrics_dir)
 	file_writer.set_as_default()
 
 	# ------------------------------------------------------------------------------

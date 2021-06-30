@@ -21,7 +21,7 @@ num_data: 10000
 f_a: 1.0
 f_b: 1.0
 corners: false
-dataset: [.9, .1, 1.0, 1.0] #[interior%, exterior%, labeled_int%, labeled_ext%]
+dataset: [.95, .05, 1.0, 1.0] #[interior%, exterior%, labeled_int%, labeled_ext%]
 
 ##################
 #  Regularizers  #

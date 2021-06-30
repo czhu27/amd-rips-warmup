@@ -6,6 +6,7 @@ import time
 import os
 import io
 import datetime
+import argparse
 
 import yaml
 import tensorflow as tf
@@ -26,7 +27,7 @@ def parabola(x, y, f_a=1.0, f_b=1.0):
 	# Function coefficients (f = f_a*x^2 + f_b*y^2)
 	return f_a * x**2 + f_b * y**2	# f_a*x^2 + f_b*y^2
 
-def dataCreation(N_f, params, corners):
+def data_creation(N_f, params, corners):
 	N_f_int = int(N_f * params[0])
 	N_f_ext = int(N_f * params[1])
 	N_f_border = int(N_f * (1 - params[0] - params[1]))
@@ -147,6 +148,7 @@ def main(configs: Configs):
 	results_dir = output_dir + "/results"
 	os.makedirs(figs_folder, exist_ok=True)
 	os.makedirs(output_dir, exist_ok=True)
+	print("Saving to output dir: ", output_dir)
 
 	# Save configs
 	yaml.safe_dump(configs.__dict__, open(output_dir + "/configs.yaml", "w"))
@@ -166,7 +168,7 @@ def main(configs: Configs):
 	# Data preparation
 	# ------------------------------------------------------------------------------
 	# Data for training NN based on L_f loss function
-	X_f_l, X_f_ul = dataCreation(configs.num_data, configs.dataset, configs.corners)
+	X_f_l, X_f_ul = data_creation(configs.num_data, configs.dataset, configs.corners)
 	# N_f = configs.num_data
 	# X_f_l = np.zeros((N_f, 2), dtype = np.float32)
 	# X_f_l[:, 0] = 2*np.random.rand(N_f) - 1
@@ -295,16 +297,67 @@ def main(configs: Configs):
 		trainTime = "{:.2F} s".format(toc - tic)
 		yaml.dump({'error_int': e1, 'error_ext': e2, 'training_time': trainTime}, outfile, default_flow_style=False)
 
-if __name__ == "__main__":
+def make_configs(changes_configs):
 	# Load dict from yaml file
 	default_configs = yaml.safe_load(open('configs/default.yaml'))
-	changes_configs = yaml.safe_load(open('configs/changes.yaml'))
-	
+
 	# Merge the two configs
 	configs = default_configs.copy()
 	configs.update(changes_configs)
 
 	# Convert dict to object
 	configs = Configs(**configs)
-	# Run with configs
+	
+	return configs
+
+def get_filename(path):
+	return os.path.basename(path).split(".")[0]
+
+def grid_search(search_file):
+	print("Running a grid search.")
+	print("YAML file: ", search_file)
+	search_configs = yaml.safe_load(open(search_file))
+	assert len(search_configs) == 1, "Only supports grid search in one argument"
+	key = list(search_configs.keys())[0]
+	values = search_configs[key]
+	all_configs = []
+	for i, value in enumerate(values):
+		changes_configs = {key: value}
+		configs = make_configs(changes_configs)
+
+		search_file_name = get_filename(search_file)
+		if isinstance(value, (list, tuple)):
+			value_name = '_'.join(str(i) for i in value)
+		else:
+			value_name = str(value)
+		configs.output_dir = "output/search/" + search_file_name + f"/{key}={value_name}"
+
+		all_configs.append(configs)
+		
+	for configs in all_configs:
+		main(configs)
+
+def single_run(changes_file):
+	print("Running a single run.")
+	print("YAML file: ", changes_file)
+	changes_configs = yaml.safe_load(open(changes_file))
+	configs = make_configs(changes_configs)
+
+	changes_file_name = get_filename(changes_file)
+	configs.output_dir = "output/single/" + changes_file_name
+
 	main(configs)
+	
+
+if __name__ == "__main__":
+	parser = argparse.ArgumentParser()
+	parser.add_argument("-g", "--grid-search", type=str, default=None)
+	parser.add_argument("-s", "--single-run", type=str, default="configs/changes.yaml")
+	args = parser.parse_args()
+
+	
+	if args.grid_search is not None:
+		grid_search(args.grid_search)
+	
+	else:
+		single_run(args.single_run)

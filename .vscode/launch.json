@@ -5,10 +5,19 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python: Current File",
+            "name": "main.py | Grid Search",
             "type": "python",
+            "args": ["-g", "configs/search/int_ext.yaml"],
             "request": "launch",
-            "program": "${file}",
+            "program": "main.py",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "main.py | Single Run",
+            "type": "python",
+            "args": ["-s", "configs/changes.yaml"],
+            "request": "launch",
+            "program": "main.py",
             "console": "integratedTerminal"
         }
     ]

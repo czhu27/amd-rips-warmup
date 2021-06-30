@@ -1,4 +1,0 @@
-activation: elu
-gradient_loss: false
-debug: false
-epochs: 1000

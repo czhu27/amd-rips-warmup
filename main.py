@@ -359,7 +359,7 @@ def single_run(changes_file):
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser()
 	parser.add_argument("-g", "--grid-search", type=str, default=None)
-	parser.add_argument("-s", "--single-run", type=str, default="configs/changes.yaml")
+	parser.add_argument("-s", "--single-run", type=str, default="configs/single/test.yaml")
 	args = parser.parse_args()
 
 	

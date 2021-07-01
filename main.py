@@ -20,6 +20,11 @@ from tensorflow.keras import optimizers
 from helpers import Configs
 from nn import NN, create_nn
 
+def plot_data(X_f, tag, save_dir):
+	plt.scatter(X_f[:,0], X_f[:,1], s=2)
+	plt.savefig(save_dir + "/data_" + tag)
+	plt.clf()
+
 def parabola(x, y, f_a=1.0, f_b=1.0):
 	'''
 	Your friendly neighborhood parabola.
@@ -186,7 +191,6 @@ def main(configs: Configs):
 	# Data for training NN based on L_f loss function
 	X_f_l, X_f_ul = data_creation(configs.num_data, configs.dataset, configs.corners)
 
-
 	# Set target function
 	f = lambda x,y : parabola(x,y, configs.f_a, configs.f_b)
 
@@ -199,6 +203,11 @@ def main(configs: Configs):
 	X_f_all = tf.concat([X_f_l, X_f_ul], axis=0)
 	f_all = tf.concat([f_true, f_ul], axis=0)
 	is_labeled_all = tf.concat([is_labeled_l, is_labeled_ul], axis=0)
+
+	if configs.detailed_save:
+		plot_data(X_f_l, "labeled", figs_folder)
+		plot_data(X_f_ul, "unlabeled", figs_folder)
+		plot_data(X_f_all, "all", figs_folder)
 	
 
 	# Create TensorFlow dataset for passing to 'fit' function (below)
@@ -225,9 +234,9 @@ def main(configs: Configs):
 	# ------------------------------------------------------------------------------
 	if configs.lr_scheduler:
 		opt_step = tf.keras.optimizers.schedules.PolynomialDecay(
-		configs.lr_scheduler_params[0], configs.lr_scheduler_params[2], 
-		end_learning_rate=configs.lr_scheduler_params[1], power=configs.lr_scheduler_params[3],
-		cycle=False, name=None) #Changing learning rate
+			configs.lr_scheduler_params[0], configs.lr_scheduler_params[2], 
+			end_learning_rate=configs.lr_scheduler_params[1], power=configs.lr_scheduler_params[3],
+			cycle=False, name=None) #Changing learning rate
 
 	else:
 		print(type(configs.lr))

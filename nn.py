@@ -10,31 +10,6 @@ from keras import backend as K
 from tensorflow.python.ops.gen_math_ops import lgamma
 from tensorflow.python.types.core import Value
 
-def nth_gradient(y, x, n, tape):
-	'''
-	Compute the nth order gradient of y wrt x (using tape)
-	'''
-	grad = y
-	for i in range(n):
-		grad = tape.gradient(grad, x)
-	return grad
-
-def gradient_condition(f, x, y, tape):
-	'''
-	Parabola gradient condition
-	'''
-	fxx = nth_gradient(f, x, 2, tape)
-	fyy = nth_gradient(f, y, 2, tape)
-	fxxy = tape.gradient(fxx, y)
-	fyyx = tape.gradient(fyy, x)
-	fxxx = tape.gradient(fxx, x)
-	fyyy = tape.gradient(fyy, y)
-
-	# L1 regularizer
-	grads = tf.concat([fxxx, fxxy, fyyx, fyyy], axis=0)
-	grad_loss = tf.math.reduce_mean(tf.math.abs(grads))
-	return grad_loss
-
 # ------------------------------------------------------------------------------
 # Custom model based on Keras Model.
 # ------------------------------------------------------------------------------

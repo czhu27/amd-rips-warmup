@@ -21,14 +21,14 @@ def plot_data(X_f, tag, save_dir):
 	plt.savefig(save_dir + "/data_" + tag)
 	plt.clf()
 
-def data_creation(N_f, params, corners):
-	N_f_int = int(N_f * params[0])
-	N_f_ext = int(N_f * params[1])
-	N_f_border = int(N_f * (1 - params[0] - params[1]))
-	N_f_intl = int(N_f_int * params[2])
-	N_f_extl = int(N_f_ext * params[3])
-	N_f_intul = int(N_f_int * (1 - params[2]))
-	N_f_extul = int(N_f_ext * (1 - params[3]))
+def data_creation(params, corners):
+	N_f_int = params[0]
+	N_f_ext = params[1]
+	N_f_border = params[2]
+	N_f_intl = int(N_f_int * params[3])
+	N_f_extl = int(N_f_ext * params[4])
+	N_f_intul = int(N_f_int * (1 - params[3]))
+	N_f_extul = int(N_f_ext * (1 - params[4]))
 	X_f_int = np.zeros((N_f_int,2), dtype = np.float32)
 	X_f_ext = np.zeros((N_f_ext,2), dtype = np.float32)
 	X_f_border = np.zeros((N_f_border,2), dtype = np.float32)
@@ -179,14 +179,18 @@ def main(configs: Configs):
 	# Data preparation
 	# ------------------------------------------------------------------------------
 	# Data for training NN based on L_f loss function
-	X_f_l, X_f_ul = data_creation(configs.num_data, configs.dataset, configs.corners)
+	X_f_l, X_f_ul = data_creation(configs.dataset, configs.corners)
 
 	# Set target function
-	f, grad_regularizer = get_target(configs.target, configs.gradient_loss, configs)
+	f, grad_reg = get_target(configs.target, configs.gradient_loss, configs)
 	# f = lambda x,y : parabola(x,y, configs.f_a, configs.f_b)
 
 	f_true = f(X_f_l[:, 0:1], X_f_l[:, 1:2])
 	f_ul = tf.zeros((X_f_ul.shape[0], 1))
+
+	if configs.noise > 0:
+		f_true += np.reshape(configs.noise*np.random.randn((len(f_true))),(len(f_true),1))
+		f_ul += np.reshape(configs.noise*np.random.randn((len(f_ul))),(len(f_ul),1))
 
 	is_labeled_l = tf.fill(f_true.shape, True)
 	is_labeled_ul = tf.fill(f_ul.shape, False)
@@ -210,6 +214,9 @@ def main(configs: Configs):
 	layers = configs.layers
 	model = create_nn(layers, configs)
 	model.summary()
+
+	# TODO: Hacky add. But hey, create_nn is hacky to begin with
+	model.gradient_regularizer = grad_reg
 
 	# ------------------------------------------------------------------------------
 	# Assess accuracy with non-optimized model

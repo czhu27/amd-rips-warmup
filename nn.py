@@ -105,8 +105,8 @@ class NN(keras.models.Model):
 
 				if self.gradient_loss:
 					# Compute gradient condition (deviation from diff. eq.)
-					grad_loss = gradient_condition(f_pred, x, y, tape)
-					L_f += self.condition_weight * grad_loss #+ grad_loss_ext
+					grad_loss_const = self.gradient_regularizer(f_pred, [x, y], tape)
+					L_f += self.condition_weight * grad_loss_const #+ grad_loss_ext
 						
 				# Add regularization loss	
 				L_f += sum(self.losses)
@@ -185,7 +185,10 @@ def create_nn(layer_widths, configs):
 
 	# Model
 	model = NN(inputs=input_layer, outputs=output_layer)
-	model.gradient_loss = configs.gradient_loss
+	if configs.gradient_loss == "none":
+		model.gradient_loss = False
+	else:
+		model.gradient_loss = True
 
 	model.condition_weight = configs.grad_reg_const
 	return model

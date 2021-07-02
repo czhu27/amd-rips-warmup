@@ -215,7 +215,7 @@ def main(configs: Configs):
 	model = create_nn(layers, configs)
 	model.summary()
 
-	# TODO: Hacky add. But hey, create_nn is hacky to begin with
+	# TODO: Hacky add...
 	model.gradient_regularizer = grad_reg
 
 	# ------------------------------------------------------------------------------

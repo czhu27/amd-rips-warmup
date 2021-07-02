@@ -25,8 +25,8 @@ def gradient_condition(f, x, y, tape):
 	'''
 	fxx = nth_gradient(f, x, 2, tape)
 	fyy = nth_gradient(f, y, 2, tape)
-	fxxy = tape.gradient(fxx, y)
-	fyyx = tape.gradient(fyy, x)
+	fxxy = 3 * tape.gradient(fxx, y)
+	fyyx = 3 * tape.gradient(fyy, x)
 	fxxx = tape.gradient(fxx, x)
 	fyyy = tape.gradient(fyy, y)
 

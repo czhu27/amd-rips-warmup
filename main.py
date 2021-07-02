@@ -1,6 +1,5 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm
 import time
 import os
@@ -11,14 +10,15 @@ import argparse
 import yaml
 import tensorflow as tf
 from tensorflow import keras
-from tensorflow.keras import layers
-from tensorflow.keras import activations
-from tensorflow.keras import initializers
-from tensorflow.keras import losses
 from tensorflow.keras import optimizers
 
 from helpers import Configs
-from nn import NN, create_nn
+from nn import create_nn
+
+def plot_data(X_f, tag, save_dir):
+	plt.scatter(X_f[:,0], X_f[:,1], s=2)
+	plt.savefig(save_dir + "/data_" + tag)
+	plt.clf()
 
 def parabola(x, y, f_a=1.0, f_b=1.0):
 	'''
@@ -156,8 +156,11 @@ def main(configs: Configs):
 	# Setup folder structure vars
 	run_name = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 	output_dir = configs.output_dir + "/" + run_name
+	# TB logs
 	log_dir = output_dir + "/logs" 
-	scalar_dir = log_dir + "/scalars"
+	# TODO: This is a hack. Understand tensorboard dirs better...
+	scalar_dir = log_dir + "/train" #+ "/scalars"
+	metrics_dir = scalar_dir #+ "/metrics"
 	figs_folder = output_dir + "/figs"
 	results_dir = output_dir + "/results"
 	os.makedirs(figs_folder, exist_ok=True)
@@ -168,7 +171,7 @@ def main(configs: Configs):
 	yaml.safe_dump(configs.__dict__, open(output_dir + "/configs.yaml", "w"))
 
 	# Setup Tensorboard
-	file_writer = tf.summary.create_file_writer(scalar_dir + "/metrics")
+	file_writer = tf.summary.create_file_writer(metrics_dir)
 	file_writer.set_as_default()
 
 	# ------------------------------------------------------------------------------
@@ -184,7 +187,6 @@ def main(configs: Configs):
 	# Data for training NN based on L_f loss function
 	X_f_l, X_f_ul = data_creation(configs.num_data, configs.dataset, configs.corners)
 
-
 	# Set target function
 	f = lambda x,y : parabola(x,y, configs.f_a, configs.f_b)
 
@@ -197,12 +199,14 @@ def main(configs: Configs):
 	X_f_all = tf.concat([X_f_l, X_f_ul], axis=0)
 	f_all = tf.concat([f_true, f_ul], axis=0)
 	is_labeled_all = tf.concat([is_labeled_l, is_labeled_ul], axis=0)
+
+	if configs.detailed_save:
+		plot_data(X_f_l, "labeled", figs_folder)
+		plot_data(X_f_ul, "unlabeled", figs_folder)
+		plot_data(X_f_all, "all", figs_folder)
 	
 
 	# Create TensorFlow dataset for passing to 'fit' function (below)
-	#dataset_l = tf.data.Dataset.from_tensors((X_f_l, f_true, )) #is_labeled_l))
-	#dataset_ul = tf.data.Dataset.from_tensors((X_f_ul, f_ul, )) #is_labeled_ul))
-	#dataset = dataset_l.concatenate(dataset_ul)
 	dataset = tf.data.Dataset.from_tensors((X_f_all, f_all, is_labeled_all))
 
 	# ------------------------------------------------------------------------------
@@ -223,10 +227,9 @@ def main(configs: Configs):
 	# ------------------------------------------------------------------------------
 	if configs.lr_scheduler:
 		opt_step = tf.keras.optimizers.schedules.PolynomialDecay(
-		configs.lr_scheduler_params[0], configs.lr_scheduler_params[2], 
-		end_learning_rate=configs.lr_scheduler_params[1], power=configs.lr_scheduler_params[3],
-		cycle=False, name=None) #Changing learning rate
-
+			configs.lr_scheduler_params[0], configs.lr_scheduler_params[2], 
+			end_learning_rate=configs.lr_scheduler_params[1], power=configs.lr_scheduler_params[3],
+			cycle=False, name=None) #Changing learning rate
 	else:
 		print(type(configs.lr))
 		if not isinstance(configs.lr, float):

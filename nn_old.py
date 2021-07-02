@@ -20,30 +20,30 @@ def nth_gradient(y, x, n, tape):
 	return grad
 
 def gradient_condition(f, x, y, tape):
-	'''
-	Parabola gradient condition
-	'''
 	fxx = nth_gradient(f, x, 2, tape)
 	fyy = nth_gradient(f, y, 2, tape)
-	fxxy = 3 * tape.gradient(fxx, y)
-	fyyx = 3 * tape.gradient(fyy, x)
+	fxxy = tape.gradient(fxx, y)
+	fyyx = tape.gradient(fyy, x)
 	fxxx = tape.gradient(fxx, x)
 	fyyy = tape.gradient(fyy, y)
 
-	# L1 regularizer
 	grads = tf.concat([fxxx, fxxy, fyyx, fyyy], axis=0)
-	grad_loss = tf.math.reduce_mean(tf.math.abs(grads))
+	grad_loss = tf.math.reduce_sum(tf.math.abs(grads))
 	return grad_loss
 
 # ------------------------------------------------------------------------------
 # Custom model based on Keras Model.
 # ------------------------------------------------------------------------------
+
+# TODO: Make attribute of NN
+loss_tracker = keras.metrics.Mean(name="loss")
+
 class NN(keras.models.Model):
 
 	# Custom loss for function value
 	def loss_function_f(self, f, f_pred):
 		sq_diff = tf.math.squared_difference(f, f_pred)
-		loss_value = tf.math.reduce_mean(sq_diff)
+		loss_value = tf.math.reduce_sum(sq_diff)
 		return loss_value			 
 	# def loss_function_f
 	
@@ -51,112 +51,74 @@ class NN(keras.models.Model):
 	# to specify the mini-batch size
 	def set_batch_size(self, batch_size):
 		self.batch_size = batch_size
-
-	# Create mini batches
-	def create_mini_batches(self, dataset):
-		# Batch size should by user using the 'set_batch_size' function
-		batch_size = self.batch_size
-		
-		X_f, f, l_bools = dataset
-		
-		# Number of batches
-		m_f = X_f.shape[0]
-		num_batches = math.floor(m_f/batch_size)
-
-		# Mini-batch sizes
-		bs_f = math.floor(m_f/num_batches)
-		
-		# Create mini-batches based on random selection
-		perm_idx_f = np.random.permutation(m_f)
-		batches = []
-
-		for i in range(num_batches):
-			idx0 = bs_f*i
-			idx1 = bs_f*(i + 1)
-			indices = perm_idx_f[idx0:idx1]
-			X_f_b = tf.gather(X_f, indices, axis = 0)
-			f_b = tf.gather(f, indices, axis = 0)
-			l_bools_b = tf.gather(l_bools, indices, axis = 0)
-			
-			batch = (X_f_b, f_b, l_bools_b)
-			batches.append(batch)
-		
-		if (num_batches*bs_f < m_f): #or (num_batches*bs_df < m_df):
-			idx0 = bs_f*num_batches
-			idx1 = m_f
-			indices = perm_idx_f[idx0:idx1]
-			X_f_b = tf.gather(X_f, indices, axis = 0)
-			f_b = tf.gather(f, indices, axis = 0)
-			l_bools_b = tf.gather(l_bools, indices, axis = 0)
-
-			batch = (X_f_b, f_b, l_bools_b)
-			batches.append(batch)
-		
-		return batches
-	# def create_mini_batches	
 	
 	# Redefine train_step used for optimizing the neural network parameters
 	# This function implements one epoch (one pass over entire dataset)
-	def train_step(self, dataset):
+	def train_step(self, batch):
 		
-		mini_batches = self.create_mini_batches(dataset)	
-		
-		# Keep track of total loss value for this epoch
-		loss_value_f = 0.0
-		
-		# Loop over all mini-batches
-		for batch in mini_batches:
-			X_f, f, is_labeled = batch
+		# Retrieve size of entire dataset
+		X_f, f, is_labeled = batch
+		batch_size = self.batch_size
 			
-			# For gradient of loss w.r.t. trainable variables	
-			with tf.GradientTape(persistent=True) as tape:
+		# For gradient of loss w.r.t. trainable variables	
+		with tf.GradientTape(persistent=True) as tape:
 
+			if self.gradient_loss:
 				# Allow gradients wrt X_f
 				tape.watch(X_f)
+			
+			# Forward run
+			# Allow for gradients w.r.t. individual columns (x,y)
+			xy = tf.unstack(X_f, axis=1)
+			x,y = xy
+			new_X_f = tf.stack(xy, axis=1)
+			X_f = new_X_f
+			f_pred = self.call(X_f)
+
+			L_f = 0
+			# Compute L_f: \sum_i |f_i - f_i*|^2
+			L_f += self.loss_function_f(f[is_labeled], f_pred[is_labeled])
+
+			if self.gradient_loss:
+				grad_loss = gradient_condition(f_pred, x, y, tape)
+				#grad_loss_ext = gradient_condition(f_pred_ext, x_ext, y_ext, tape)
 				
-				# Forward run
-				xy = tf.unstack(X_f, axis=1)
-				x,y = xy
-				new_X_f = tf.stack(xy, axis=1)
-				X_f = new_X_f
-
-				# Calc. model predicted y values
-				f_pred = self.call(X_f)
-
-				## Compute Loss
-				# Compute L_f: \sum_i |f_i - f_i*|^2
-				L_f = 0
-				L_f += self.loss_function_f(f[is_labeled], f_pred[is_labeled])
-
-				if self.gradient_loss:
-					# Compute gradient condition (deviation from diff. eq.)
-					grad_loss = gradient_condition(f_pred, x, y, tape)
-					L_f += self.condition_weight * grad_loss #+ grad_loss_ext
-						
-				# Add regularization loss	
-				L_f += sum(self.losses)
-			
-			
-			# Compute gradient of total loss w.r.t. trainable variables
-			trainable_vars = self.trainable_variables
-			# abs_list = [tf.math.abs(w) for w in trainable_vars]
-			# sum_list = [tf.reduce_sum(x) for x in abs_list]
-			# w_l1 = sum(sum_list)
-			# L_f += w_l1
-			gradients = tape.gradient(L_f, trainable_vars)
+				condition_weight = 1
+				L_f += condition_weight * grad_loss #+ grad_loss_ext
+					
+			# Add regularization loss	
+			L_f += sum(self.losses)
 		
-			# Update network parameters
-			self.optimizer.apply_gradients(zip(gradients, trainable_vars))
 		
-			# Increment total loss value by mini-batch-wise contribution
-			loss_value_f += L_f
-
-		# end for loop on mini batches
+		# Compute gradient of total loss w.r.t. trainable variables
+		trainable_vars = self.trainable_variables
+		# abs_list = [tf.math.abs(w) for w in trainable_vars]
+		# sum_list = [tf.reduce_sum(x) for x in abs_list]
+		# w_l1 = sum(sum_list)
+		# L_f += w_l1
+		gradients = tape.gradient(L_f, trainable_vars)
+	
+		# Update network parameters
+		self.optimizer.apply_gradients(zip(gradients, trainable_vars))
+	
+		# Compute our own metrics	
+		loss_value = L_f / batch_size
+		loss_tracker.update_state(loss_value)
 
 		# Update loss and return value
-		return {"loss": loss_value_f}
+		# print(loss_value)
+		return {"loss": loss_tracker.result()}
 		
 	# def train_step
+
+	@property
+	def metrics(self):
+		# We list our `Metric` objects here so that `reset_states()` can be
+		# called automatically at the start of each epoch
+		# or at the start of `evaluate()`.
+		# If you don't implement this property, you have to call
+		# `reset_states()` yourself at the time of your choosing.
+		return [loss_tracker]
 
 # class NN
 
@@ -211,8 +173,6 @@ def create_nn(layer_widths, configs):
 	# Model
 	model = NN(inputs=input_layer, outputs=output_layer)
 	model.gradient_loss = configs.gradient_loss
-
-	model.condition_weight = configs.grad_reg_const
 	return model
 
 # def create_nn	

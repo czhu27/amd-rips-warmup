@@ -21,14 +21,14 @@ num_data: 10000
 f_a: 1.0
 f_b: 1.0
 corners: false
-dataset: [.9, .1, 1.0, 1.0] #[interior%, exterior%, labeled_int%, labeled_ext%]
+dataset: [.95, .05, 1.0, 1.0] #[interior%, exterior%, labeled_int%, labeled_ext%]
 
 ##################
 #  Regularizers  #
 ##################
 regularizer: none
 reg_const: 0.1
-gradient_loss: false
+gradient_loss: false  # l1 (l2?)
 grad_reg_const: 1
 
 #############

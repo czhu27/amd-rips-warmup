@@ -19,10 +19,12 @@ def nth_gradient(y, x, n, tape):
 		grad = tape.gradient(grad, x)
 	return grad
 
-def gradient_condition(f, x, y, tape):
+def gradient_condition_zero(f, x, y, tape):
 	'''
 	Parabola gradient condition
 	'''
+	"Third order derivs = 0"
+
 	fxx = nth_gradient(f, x, 2, tape)
 	fyy = nth_gradient(f, y, 2, tape)
 	fxxy = tape.gradient(fxx, y)
@@ -33,6 +35,21 @@ def gradient_condition(f, x, y, tape):
 	# L1 regularizer
 	grads = tf.concat([fxxx, fxxy, fyyx, fyyy], axis=0)
 	grad_loss = tf.math.reduce_mean(tf.math.abs(grads))
+
+	return grad_loss
+
+def gradient_condition_const(f, x, y, tape):
+	"Variance of second order derivs = 0"
+
+	fx = nth_gradient(f,x,1,tape)
+	fy = nth_gradient(f,y,1,tape)
+	fxx = tape.gradient(fx, x)
+	fxy = tape.gradient(fx, y)
+	fyy = tape.gradient(fy, y)
+
+	grad_loss = (tf.math.reduce_variance(fxx) + tf.math.reduce_variance(fxy)
+				+ tf.math.reduce_variance(fyy))
+			
 	return grad_loss
 
 # ------------------------------------------------------------------------------
@@ -128,10 +145,15 @@ class NN(keras.models.Model):
 				L_f = 0
 				L_f += self.loss_function_f(f[is_labeled], f_pred[is_labeled])
 
-				if self.gradient_loss:
+				if self.gradient_loss == 'const':
 					# Compute gradient condition (deviation from diff. eq.)
-					grad_loss = gradient_condition(f_pred, x, y, tape)
-					L_f += self.condition_weight * grad_loss #+ grad_loss_ext
+					grad_loss_const = gradient_condition_const(f_pred, x, y, tape)
+					L_f += self.condition_weight * grad_loss_const #+ grad_loss_ext
+			
+				if self.gradient_loss == 'zero':
+					# Compute gradient condition (deviation from diff. eq.)
+					grad_loss_zero = gradient_condition_zero(f_pred, x, y, tape)
+					L_f += self.condition_weight * grad_loss_zero #+ grad_loss_ext
 						
 				# Add regularization loss	
 				L_f += sum(self.losses)

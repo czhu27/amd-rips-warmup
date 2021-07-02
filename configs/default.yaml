@@ -21,7 +21,7 @@ num_data: 10000
 f_a: 1.0
 f_b: 1.0
 corners: false
-dataset: [.95, .05, 1.0, 1.0] #[interior%, exterior%, labeled_int%, labeled_ext%]
+dataset: [.25, .75, 1.0, 0.0] #[interior%, exterior%, labeled_int%, labeled_ext%]
 
 ##################
 #  Regularizers  #
@@ -37,3 +37,5 @@ grad_reg_const: 1
 debug: false
 plots: true
 detailed_save: true
+
+dropout_rates: [0.0, 0.0, 0.0]

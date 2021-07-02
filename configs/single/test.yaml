@@ -1,7 +1,3 @@
-activation: tanh
 gradient_loss: true
-debug: false
-epochs: 15000
-num_data: 2500
-dataset: [1.0, 0.0, 1.0, 0.0] 
-lr: 1.0e-4
+epochs: 1000
+dropout_rates: [0.2, 0.0, 0.0]

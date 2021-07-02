@@ -30,6 +30,7 @@ def gradient_condition(f, x, y, tape):
 	fxxx = tape.gradient(fxx, x)
 	fyyy = tape.gradient(fyy, y)
 
+	# L1 regularizer
 	grads = tf.concat([fxxx, fxxy, fyyx, fyyy], axis=0)
 	grad_loss = tf.math.reduce_mean(tf.math.abs(grads))
 	return grad_loss
@@ -98,10 +99,6 @@ class NN(keras.models.Model):
 	# This function implements one epoch (one pass over entire dataset)
 	def train_step(self, dataset):
 		
-		# Retrieve size of entire dataset
-		X_f = dataset[0]
-		m_f = X_f.shape[0]
-		
 		mini_batches = self.create_mini_batches(dataset)	
 		
 		# Keep track of total loss value for this epoch
@@ -122,11 +119,14 @@ class NN(keras.models.Model):
 				x,y = xy
 				new_X_f = tf.stack(xy, axis=1)
 				X_f = new_X_f
+
+				# Calc. model predicted y values
 				f_pred = self.call(X_f)
 
+				## Compute Loss
 				# Compute L_f: \sum_i |f_i - f_i*|^2
 				L_f = 0
-				L_f = self.loss_function_f(f[is_labeled], f_pred[is_labeled])
+				L_f += self.loss_function_f(f[is_labeled], f_pred[is_labeled])
 
 				if self.gradient_loss:
 					# Compute gradient condition (deviation from diff. eq.)
@@ -152,8 +152,6 @@ class NN(keras.models.Model):
 			loss_value_f += L_f
 
 		# end for loop on mini batches
-		
-		#loss_value = loss_value_f/m_f
 
 		# Update loss and return value
 		return {"loss": loss_value_f}

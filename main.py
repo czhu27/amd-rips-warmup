@@ -1,6 +1,5 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm
 import time
 import os
@@ -11,14 +10,10 @@ import argparse
 import yaml
 import tensorflow as tf
 from tensorflow import keras
-from tensorflow.keras import layers
-from tensorflow.keras import activations
-from tensorflow.keras import initializers
-from tensorflow.keras import losses
 from tensorflow.keras import optimizers
 
 from helpers import Configs
-from nn import NN, create_nn
+from nn import create_nn
 
 def plot_data(X_f, tag, save_dir):
 	plt.scatter(X_f[:,0], X_f[:,1], s=2)
@@ -161,6 +156,7 @@ def main(configs: Configs):
 	# Setup folder structure vars
 	run_name = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 	output_dir = configs.output_dir + "/" + run_name
+	# TB logs
 	log_dir = output_dir + "/logs" 
 	# TODO: This is a hack. Understand tensorboard dirs better...
 	scalar_dir = log_dir + "/train" #+ "/scalars"
@@ -211,9 +207,6 @@ def main(configs: Configs):
 	
 
 	# Create TensorFlow dataset for passing to 'fit' function (below)
-	#dataset_l = tf.data.Dataset.from_tensors((X_f_l, f_true, )) #is_labeled_l))
-	#dataset_ul = tf.data.Dataset.from_tensors((X_f_ul, f_ul, )) #is_labeled_ul))
-	#dataset = dataset_l.concatenate(dataset_ul)
 	dataset = tf.data.Dataset.from_tensors((X_f_all, f_all, is_labeled_all))
 
 	# ------------------------------------------------------------------------------
@@ -237,7 +230,6 @@ def main(configs: Configs):
 			configs.lr_scheduler_params[0], configs.lr_scheduler_params[2], 
 			end_learning_rate=configs.lr_scheduler_params[1], power=configs.lr_scheduler_params[3],
 			cycle=False, name=None) #Changing learning rate
-
 	else:
 		print(type(configs.lr))
 		if not isinstance(configs.lr, float):

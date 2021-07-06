@@ -69,6 +69,59 @@ def parabola_regularizer_const(f, xyz, tape):
 # Cubic #
 #########
 
+def cubic(x, y, f_a=1.0, f_b=1.0):
+	'''
+	Your not so friendly neighborhood cubic.
+	'''
+	# Function coefficients (f = f_a*x^2 + f_b*y^2)
+	return f_a * x**3 + f_b * y**3	# f_a*x^2 + f_b*y^2
+        
+def cubic_regularizer_zero(f, xyz, tape):
+    '''
+    Parabola gradient condition.
+    Third order derivs = 0
+    '''
+
+    # Unpack the columns
+    x,y = xyz
+
+    fxx = nth_gradient(f, x, 2, tape)
+    fyy = nth_gradient(f, y, 2, tape)
+    fxxx = tape.gradient(fxx, x)
+    fxyy = tape.gradient(fyy, x)
+    fyyy = tape.gradient(fyy,y)
+    fxxxx = tape.gradient(fxxx,x)
+    fxxxy = tape.gradient(fxxx,y)
+    fxxyy = tape.gradient(fxyy,x)
+    fxyyy = tape.gradient(fxyy,y)
+    fyyyy = tape.gradient(fyyy,y)
+
+    # L1 regularizer
+    grads = tf.concat([fxxxx, fxxyy, fxxyy, fxyyy, fyyyy], axis=0)
+    grad_loss = tf.math.reduce_mean(tf.math.abs(grads))
+
+    return grad_loss
+
+def cubic_regularizer_const(f, xyz, tape):
+    '''
+    Variance of second order derivs = 0
+    '''
+
+    # Unpack the columns
+    x,y = xyz
+
+    fxx = nth_gradient(f, x, 2, tape)
+    fyy = nth_gradient(f, y, 2, tape)
+    fxxy = tape.gradient(fxx, y)
+    fxyy = tape.gradient(fyy, x)
+    fxxx = tape.gradient(fxx, x)
+    fyyy = tape.gradient(fyy, y)
+
+    grad_loss = (tf.math.reduce_variance(fxxx) + 3*tf.math.reduce_variance(fxxy)
+                + 3*tf.math.reduce_variance(fxyy) + tf.math.reduce_variance(fyyy))
+            
+    return grad_loss
+
 ##################################
 ##################################
 
@@ -83,6 +136,18 @@ def get_target(name: str, regularizer: str, configs):
             reg = None
         else:
             raise ValueError("Unknown regularizer for " + name)
+
+    elif name == 'cubic':
+        f = lambda x,y : cubic(x,y, configs.f_a, configs.f_b)
+        if regularizer == "zero":
+            reg = cubic_regularizer_zero
+        elif regularizer == "const":
+            reg = cubic_regularizer_const
+        elif regularizer == "none":
+            reg = None
+        else:
+            raise ValueError("Unknown regularizer for " + name)
+    
             
     else:
         raise ValueError("Unknown target function " + name)

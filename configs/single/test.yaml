@@ -1,5 +1,0 @@
-activation: tanh
-debug: false
-epochs: 100
-num_data: 2500
-lr: 1.0e-4

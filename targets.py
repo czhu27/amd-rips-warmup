@@ -77,6 +77,33 @@ def parabola_regularizer_first(f, xyz, tape):
     return 0.5*grad_loss
     
 
+##############
+# Oscillator #
+##############
+
+def waveish(x, y, k=3):
+	'''
+    Ye olde solution to the Laplace equation.
+	'''
+	# Function coefficients (f = f_a*x^2 + f_b*y^2)
+	return tf.math.sin(k*x) * tf.math.cosh(k*y)
+
+def waveish_regularizer_zero(f, xyz, tape):
+    '''
+    GL = fxx + fyy
+    '''
+
+    x, y = xyz
+
+    fxx = nth_gradient(f, x, 2, tape)
+    fyy = nth_gradient(f, y, 2, tape)
+
+    # L1 regularizer
+    grads = tf.concat([fxx, fyy], axis=0)
+    grad_loss = tf.math.reduce_mean(tf.math.abs(grads))
+
+    return grad_loss
+
 ##########
 # Cosine #
 ##########
@@ -143,30 +170,40 @@ def cubic_regularizer_const(f, xyz, tape):
 
 def get_target(name: str, regularizer: str, configs):
     if name == 'parabola':
-        f = lambda x,y : parabola(x,y, configs.f_a, configs.f_b)
-        if regularizer == "zero":
+        f_a, f_b = configs.target_coefficients
+        f = lambda x,y : parabola(x,y, f_a, f_b)
+        if regularizer in ["zero", "third"]:
             reg = parabola_regularizer_zero
-        elif regularizer == "const":
+        elif regularizer in ["const", "second"]:
             reg = parabola_regularizer_const
         elif regularizer == "none":
             reg = None
         elif regularizer == "first":
             reg = parabola_regularizer_first
         else:
-            raise ValueError("Unknown regularizer for " + name)
+            raise ValueError("Unknown regularizer for " + name + ", " + regularizer)
 
     elif name == 'cubic':
-        f = lambda x,y : cubic(x,y, configs.f_a, configs.f_b)
-        if regularizer == "zero":
+        f_a, f_b = configs.target_coefficients
+        f = lambda x,y : cubic(x,y, f_a, f_b)
+        if regularizer in ["zero", "fourth"]:
             reg = cubic_regularizer_zero
-        elif regularizer == "const":
+        elif regularizer in ["const", "third"]:
             reg = cubic_regularizer_const
         elif regularizer == "none":
             reg = None
         else:
-            raise ValueError("Unknown regularizer for " + name)
+            raise ValueError("Unknown regularizer for " + name + ", " + regularizer)
     
-            
+    elif name == "sin-cosh":
+        # Unpack coefficients
+        k, = configs.target_coefficients[0]
+        f = lambda x,y : waveish(x, y, k=k)
+        if regularizer in ["zero", "laplacian"]:
+            reg = waveish_regularizer_zero
+        else:
+            raise ValueError("Unknown regularizer for " + name + ", " + regularizer)
+    
     else:
         raise ValueError("Unknown target function " + name)
 

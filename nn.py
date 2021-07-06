@@ -162,6 +162,14 @@ def create_nn(layer_widths, configs):
 	input_layer = keras.Input(layer_widths[0], 
 							  name = 'input')
 
+	# Process dropout
+	if isinstance(configs.dropout_rates, list) and isinstance(configs.dropout_rates, tuple):
+		dropout_rates = configs.dropout_rates
+	elif isinstance(configs.dropout_rates, float):
+		dropout_rates = num_hidden_layers * [configs.dropout_rates]
+	else:
+		raise ValueError("Invalid dropout_rates in config")
+
 	# Create hidden layers
 	layer = input_layer
 	for i in range(num_hidden_layers):
@@ -174,13 +182,7 @@ def create_nn(layer_widths, configs):
 									kernel_regularizer=get_regularizer(configs),
 									#kernel_regularizer=tf.keras.regularizers.L1L2(l1=lam, l2=lam),
 									)(layer)
-		layer = keras.layers.Dropout(0.2)(layer)
-		
-		#if i == 1:
-		#	layer = keras.layers.Dropout(.2)
-		#	print("DROPOUT")
-	
-				
+		layer = keras.layers.Dropout(dropout_rates[i])(layer)
 
 	# Create output layer
 	width = layer_widths[len(layer_widths) - 1]

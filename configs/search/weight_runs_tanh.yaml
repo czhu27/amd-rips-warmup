@@ -1,0 +1,2 @@
+gradient_loss: [zero, none, const]
+activation: tanh

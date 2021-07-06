@@ -236,7 +236,8 @@ def main(configs: Configs):
 	f_all = tf.concat([f_true, f_ul], axis=0)
 	is_labeled_all = tf.concat([is_labeled_l, is_labeled_ul], axis=0)
 
-	if configs.detailed_save:
+	if "data-distribution" in configs.plots:
+		print("Saving data distribution plots")
 		plot_data(X_f_l, "labeled", figs_folder)
 		plot_data(X_f_ul, "unlabeled", figs_folder)
 		plot_data(X_f_all, "all", figs_folder)
@@ -311,7 +312,8 @@ def main(configs: Configs):
 	tensorboard_callback = keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
 	logging_callbacks = [TimeLogger(), StressTestLogger(), tensorboard_callback]
 
-	if configs.plots:
+	if "tensorboard" in configs.plots:
+		print("Using tensorboard callbacks")
 		callbacks = logging_callbacks
 	else:
 		callbacks = []
@@ -323,7 +325,8 @@ def main(configs: Configs):
 	toc = time.time()
 	print("Training time: {:.2F} s\n".format(toc - tic))
 
-	if configs.detailed_save:
+	if "model" in configs.saves:
+		print("Saving final model")
 		model.save(output_dir + "/model")
 
 	# ------------------------------------------------------------------------------
@@ -352,7 +355,8 @@ def main(configs: Configs):
 	error3 = extrap_error(model, f, -2.0, 2.0, -3.0, 3.0)
 	print("Error [-3,3]x[-3,3]: {:.6E}".format(error3))
 
-	if configs.detailed_save:
+	if "extrapolation" in configs.plots:
+		print("Saving extrapolation plots")
 		buf = plot_gridded_functions(model, f, -1.0, 1.0, "100", folder=figs_folder)
 		buf = plot_gridded_functions(model, f, -2.0, 2.0, "200", folder=figs_folder)
 		buf = plot_gridded_functions(model, f, -3.0, 3.0, "300", folder=figs_folder)

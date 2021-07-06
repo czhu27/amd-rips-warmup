@@ -21,7 +21,7 @@ f_a: 1.0
 f_b: 1.0
 target: parabola
 corners: false
-dataset: [10000, 0, 30000, 1.0, 0.0] #[interior, exterior, border, labeled_int%, labeled_ext%]
+dataset: [1000, 0, 3000, 1.0, 0.0] #[interior, exterior, border, labeled_int%, labeled_ext%]
 noise: 0.01
 
 ##################
@@ -37,5 +37,5 @@ grad_reg_const: 1
 #  Logging  #
 #############
 debug: false
-plots: true
-detailed_save: true
+plots: [extrapolation, data-distribution, tensorboard]
+saves: [model]

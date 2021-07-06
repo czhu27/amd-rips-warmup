@@ -6,6 +6,7 @@ import os
 import io
 import datetime
 import argparse
+from tensorflow.python.ops.gen_array_ops import size
 
 import yaml
 import tensorflow as tf
@@ -88,15 +89,22 @@ def data_creation(params, corners):
 
 	return X_f_l, X_f_ul
 
+
+'''
+Create a meshgrid on the square [lb, ub] with ((ub-lb)/step_size + 1)^2 points
+'''
+def create_meshgrid(lb, ub, step_size=0.01):
+	x0 = np.arange(lb, ub+step_size, step_size)
+	x1 = np.arange(lb, ub+step_size, step_size)
+	return np.meshgrid(x0, x1), x0.size
+
+'''
+Compute L2-error of model against f, on the square [lb, ub]
+'''
 def compute_error(model, f, lb, ub):
-	'''
-	Compute L2-error of model against f, on the square [lb, ub]
-	'''
-	n1d = 101
+	mesh, n1d = create_meshgrid(lb, ub)
+	x0_g, x1_g = mesh
 	npts = n1d*n1d
-	x0 = np.linspace(lb, ub, n1d)
-	x1 = np.linspace(lb, ub, n1d)
-	x0_g, x1_g = np.meshgrid(x0, x1)
 
 	f_true = f(x0_g, x1_g)
 
@@ -107,6 +115,35 @@ def compute_error(model, f, lb, ub):
 	
 	f_ml = np.reshape(ml_output, (n1d, n1d), order = 'C')
 	
+	error = np.sqrt(np.mean(np.square(f_ml - f_true)))
+	return error
+
+'''
+i_lb: lower inner bound, i_ub: upper inner bound
+o_lb: lower outer bound, o_ub: upper outer bound
+Compute L2-error of model against f, on the square [o_lb, o_ub], excluding the
+points in the square [i_lb, i_ub]
+'''
+def extrap_error(model, f, i_lb, i_ub, o_lb, o_ub, step_size=0.01):
+	mesh, n1d = create_meshgrid(o_lb, o_ub, step_size)
+	x, y = mesh
+	npts = n1d*n1d
+	less_points = int((i_ub-i_lb)/step_size)+1
+	npts = npts - less_points**2
+	
+	is_interior = ((x >= i_lb) & (x <= i_ub+step_size)) & ((y >= i_lb) & (y <= i_ub+step_size))
+	x_ext = x[~is_interior]
+	y_ext = y[~is_interior]
+
+	f_true = f(x_ext, y_ext)
+
+	ml_input = np.zeros((npts, 2))
+	ml_input[:,0] = x_ext.flatten()
+	ml_input[:,1] = y_ext.flatten()
+	ml_output = model.predict(ml_input)
+
+	f_ml = np.reshape(ml_output, (npts), order = 'C')
+
 	error = np.sqrt(np.mean(np.square(f_ml - f_true)))
 	return error
 
@@ -309,10 +346,12 @@ def main(configs: Configs):
 
 	# Make grid to display true function and predicted
 	error1 = compute_error(model, f, -1.0, 1.0)
-	print("Error [-1,1]x[-1,1]: {:.6E}".format(error1))
-	error2 = compute_error(model, f, -2.0, 2.0)
+	print("Error [-1,1]x[-1,1] OLD: {:.6E}".format(error1))
+	#error2 = compute_error(model, f, -2.0, 2.0)
+	error2 = extrap_error(model, f, -1.0, 1.0, -2.0, 2.0)
 	print("Error [-2,2]x[-2,2]: {:.6E}".format(error2))
-	error3 = compute_error(model, f, -3.0, 3.0)
+	#error3 = compute_error(model, f, -3.0, 3.0)
+	error3 = extrap_error(model, f, -2.0, 2.0, -3.0, 3.0)
 	print("Error [-3,3]x[-3,3]: {:.6E}".format(error3))
 
 	if configs.detailed_save:

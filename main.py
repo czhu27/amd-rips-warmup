@@ -6,6 +6,7 @@ import os
 import io
 import datetime
 import argparse
+import copy
 from tensorflow.python.ops.gen_array_ops import size
 
 import yaml
@@ -209,8 +210,8 @@ def main(configs: Configs):
 	# General setup
 	# ------------------------------------------------------------------------------
 	# Set seeds for reproducibility
-	np.random.seed(0)
-	tf.random.set_seed(0)
+	np.random.seed(configs.seed)
+	tf.random.set_seed(configs.seed)
 
 	# ------------------------------------------------------------------------------
 	# Data preparation
@@ -385,6 +386,16 @@ def make_configs(changes_configs):
 def get_filename(path):
 	return os.path.basename(path).split(".")[0]
 
+def run_runs(configs):
+	# For each run, update output directory and seed
+	for run_id in range(configs.runs):
+		run_configs = copy.deepcopy(configs)
+		run_configs.output_dir = configs.output_dir + "/" + f"run_{run_id}"
+		run_configs.seed = configs.seed + run_id
+
+		# RUN!
+		main(run_configs)
+
 def grid_search(search_file):
 	print("Running a grid search.")
 	print("YAML file: ", search_file)
@@ -407,10 +418,10 @@ def grid_search(search_file):
 		all_configs.append(configs)
 		
 	for configs in all_configs:
-		main(configs)
+		run_runs(configs)
 
-def single_run(changes_file):
-	print("Running a single run.")
+def single_configuration(changes_file):
+	print("Running a single configs file.")
 	print("YAML file: ", changes_file)
 	changes_configs = yaml.safe_load(open(changes_file))
 	configs = make_configs(changes_configs)
@@ -418,7 +429,7 @@ def single_run(changes_file):
 	changes_file_name = get_filename(changes_file)
 	configs.output_dir = "output/single/" + changes_file_name
 
-	main(configs)
+	run_runs(configs)
 	
 
 if __name__ == "__main__":
@@ -432,4 +443,4 @@ if __name__ == "__main__":
 		grid_search(args.grid_search)
 	
 	else:
-		single_run(args.single_run)
+		single_configuration(args.single_run)

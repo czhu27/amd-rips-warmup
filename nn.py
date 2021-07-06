@@ -10,48 +10,6 @@ from keras import backend as K
 from tensorflow.python.ops.gen_math_ops import lgamma
 from tensorflow.python.types.core import Value
 
-def nth_gradient(y, x, n, tape):
-	'''
-	Compute the nth order gradient of y wrt x (using tape)
-	'''
-	grad = y
-	for i in range(n):
-		grad = tape.gradient(grad, x)
-	return grad
-
-def gradient_condition_zero(f, x, y, tape):
-	'''
-	Parabola gradient condition
-	'''
-	"Third order derivs = 0"
-
-	fxx = nth_gradient(f, x, 2, tape)
-	fyy = nth_gradient(f, y, 2, tape)
-	fxxy = tape.gradient(fxx, y)
-	fyyx = tape.gradient(fyy, x)
-	fxxx = tape.gradient(fxx, x)
-	fyyy = tape.gradient(fyy, y)
-
-	# L1 regularizer
-	grads = tf.concat([fxxx, fxxy, fyyx, fyyy], axis=0)
-	grad_loss = tf.math.reduce_mean(tf.math.abs(grads))
-
-	return grad_loss
-
-def gradient_condition_const(f, x, y, tape):
-	"Variance of second order derivs = 0"
-
-	fx = nth_gradient(f,x,1,tape)
-	fy = nth_gradient(f,y,1,tape)
-	fxx = tape.gradient(fx, x)
-	fxy = tape.gradient(fx, y)
-	fyy = tape.gradient(fy, y)
-
-	grad_loss = (tf.math.reduce_variance(fxx) + tf.math.reduce_variance(fxy)
-				+ tf.math.reduce_variance(fyy))
-			
-	return grad_loss
-
 # ------------------------------------------------------------------------------
 # Custom model based on Keras Model.
 # ------------------------------------------------------------------------------
@@ -145,15 +103,10 @@ class NN(keras.models.Model):
 				L_f = 0
 				L_f += self.loss_function_f(f[is_labeled], f_pred[is_labeled])
 
-				if self.gradient_loss == 'const':
+				if self.gradient_loss:
 					# Compute gradient condition (deviation from diff. eq.)
-					grad_loss_const = gradient_condition_const(f_pred, x, y, tape)
+					grad_loss_const = self.gradient_regularizer(f_pred, [x, y], tape)
 					L_f += self.condition_weight * grad_loss_const #+ grad_loss_ext
-			
-				if self.gradient_loss == 'zero':
-					# Compute gradient condition (deviation from diff. eq.)
-					grad_loss_zero = gradient_condition_zero(f_pred, x, y, tape)
-					L_f += self.condition_weight * grad_loss_zero #+ grad_loss_ext
 						
 				# Add regularization loss	
 				L_f += sum(self.losses)
@@ -232,7 +185,10 @@ def create_nn(layer_widths, configs):
 
 	# Model
 	model = NN(inputs=input_layer, outputs=output_layer)
-	model.gradient_loss = configs.gradient_loss
+	if configs.gradient_loss == "none":
+		model.gradient_loss = False
+	else:
+		model.gradient_loss = True
 
 	model.condition_weight = configs.grad_reg_const
 	return model

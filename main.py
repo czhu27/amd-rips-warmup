@@ -15,18 +15,12 @@ from tensorflow.keras import optimizers
 
 from helpers import Configs
 from nn import create_nn
+from targets import get_target
 
 def plot_data(X_f, tag, save_dir):
 	plt.scatter(X_f[:,0], X_f[:,1], s=2)
 	plt.savefig(save_dir + "/data_" + tag)
 	plt.clf()
-
-def parabola(x, y, f_a=1.0, f_b=1.0):
-	'''
-	Your friendly neighborhood parabola.
-	'''
-	# Function coefficients (f = f_a*x^2 + f_b*y^2)
-	return f_a * x**2 + f_b * y**2	# f_a*x^2 + f_b*y^2
 
 def data_creation(params, corners):
 	N_f_int = params[0]
@@ -225,7 +219,8 @@ def main(configs: Configs):
 	X_f_l, X_f_ul = data_creation(configs.dataset, configs.corners)
 
 	# Set target function
-	f = lambda x,y : parabola(x,y, configs.f_a, configs.f_b)
+	f, grad_reg = get_target(configs.target, configs.gradient_loss, configs)
+	# f = lambda x,y : parabola(x,y, configs.f_a, configs.f_b)
 
 	f_true = f(X_f_l[:, 0:1], X_f_l[:, 1:2])
 	f_ul = tf.zeros((X_f_ul.shape[0], 1))
@@ -256,6 +251,9 @@ def main(configs: Configs):
 	layers = configs.layers
 	model = create_nn(layers, configs)
 	model.summary()
+
+	# TODO: Hacky add...
+	model.gradient_regularizer = grad_reg
 
 	# ------------------------------------------------------------------------------
 	# Assess accuracy with non-optimized model

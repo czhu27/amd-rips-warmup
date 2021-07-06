@@ -105,8 +105,8 @@ class NN(keras.models.Model):
 
 				if self.gradient_loss:
 					# Compute gradient condition (deviation from diff. eq.)
-					grad_loss_const = self.gradient_regularizer(f_pred, [x, y], tape)
-					L_f += self.condition_weight * grad_loss_const #+ grad_loss_ext
+					grad_loss = self.gradient_regularizer(f_pred, [x, y], tape)
+					L_f += self.condition_weight * grad_loss
 						
 				# Add regularization loss	
 				L_f += sum(self.losses)
@@ -165,14 +165,22 @@ def create_nn(layer_widths, configs):
 	# Create hidden layers
 	layer = input_layer
 	for i in range(num_hidden_layers):
+		print("Layer " + str(i))
 		width = layer_widths[i + 1]
 		name = 'h' + str(i)
-		layer = keras.layers.Dense(width, 
+		layer = keras.layers.Dense(width,
 							 	   activation=configs.activation, name=name,
 							 	   kernel_initializer=initializer,
 									kernel_regularizer=get_regularizer(configs),
 									#kernel_regularizer=tf.keras.regularizers.L1L2(l1=lam, l2=lam),
 									)(layer)
+		layer = keras.layers.Dropout(0.2)(layer)
+		
+		#if i == 1:
+		#	layer = keras.layers.Dropout(.2)
+		#	print("DROPOUT")
+	
+				
 
 	# Create output layer
 	width = layer_widths[len(layer_widths) - 1]
@@ -182,6 +190,8 @@ def create_nn(layer_widths, configs):
 									  kernel_regularizer=get_regularizer(configs),
 									  #kernel_regularizer=tf.keras.regularizers.L1L2(l1=lam, l2=lam),
 									  )(layer)
+
+	
 
 	# Model
 	model = NN(inputs=input_layer, outputs=output_layer)

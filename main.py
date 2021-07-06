@@ -6,6 +6,7 @@ import os
 import io
 import datetime
 import argparse
+import copy
 from tensorflow.python.ops.gen_array_ops import size
 
 import yaml
@@ -209,8 +210,8 @@ def main(configs: Configs):
 	# General setup
 	# ------------------------------------------------------------------------------
 	# Set seeds for reproducibility
-	np.random.seed(0)
-	tf.random.set_seed(0)
+	np.random.seed(configs.seed)
+	tf.random.set_seed(configs.seed)
 
 	# ------------------------------------------------------------------------------
 	# Data preparation
@@ -236,7 +237,8 @@ def main(configs: Configs):
 	f_all = tf.concat([f_true, f_ul], axis=0)
 	is_labeled_all = tf.concat([is_labeled_l, is_labeled_ul], axis=0)
 
-	if configs.detailed_save:
+	if "data-distribution" in configs.plots:
+		print("Saving data distribution plots")
 		plot_data(X_f_l, "labeled", figs_folder)
 		plot_data(X_f_ul, "unlabeled", figs_folder)
 		plot_data(X_f_all, "all", figs_folder)
@@ -311,7 +313,8 @@ def main(configs: Configs):
 	tensorboard_callback = keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
 	logging_callbacks = [TimeLogger(), StressTestLogger(), tensorboard_callback]
 
-	if configs.plots:
+	if "tensorboard" in configs.plots:
+		print("Using tensorboard callbacks")
 		callbacks = logging_callbacks
 	else:
 		callbacks = []
@@ -323,7 +326,8 @@ def main(configs: Configs):
 	toc = time.time()
 	print("Training time: {:.2F} s\n".format(toc - tic))
 
-	if configs.detailed_save:
+	if "model" in configs.saves:
+		print("Saving final model")
 		model.save(output_dir + "/model")
 
 	# ------------------------------------------------------------------------------
@@ -352,7 +356,8 @@ def main(configs: Configs):
 	error3 = extrap_error(model, f, -2.0, 2.0, -3.0, 3.0)
 	print("Error [-3,3]x[-3,3]: {:.6E}".format(error3))
 
-	if configs.detailed_save:
+	if "extrapolation" in configs.plots:
+		print("Saving extrapolation plots")
 		buf = plot_gridded_functions(model, f, -1.0, 1.0, "100", folder=figs_folder)
 		buf = plot_gridded_functions(model, f, -2.0, 2.0, "200", folder=figs_folder)
 		buf = plot_gridded_functions(model, f, -3.0, 3.0, "300", folder=figs_folder)
@@ -381,6 +386,16 @@ def make_configs(changes_configs):
 def get_filename(path):
 	return os.path.basename(path).split(".")[0]
 
+def run_runs(configs):
+	# For each run, update output directory and seed
+	for run_id in range(configs.runs):
+		run_configs = copy.deepcopy(configs)
+		run_configs.output_dir = configs.output_dir + "/" + f"run_{run_id}"
+		run_configs.seed = configs.seed + run_id
+
+		# RUN!
+		main(run_configs)
+
 def grid_search(search_file):
 	print("Running a grid search.")
 	print("YAML file: ", search_file)
@@ -403,10 +418,10 @@ def grid_search(search_file):
 		all_configs.append(configs)
 		
 	for configs in all_configs:
-		main(configs)
+		run_runs(configs)
 
-def single_run(changes_file):
-	print("Running a single run.")
+def single_configuration(changes_file):
+	print("Running a single configs file.")
 	print("YAML file: ", changes_file)
 	changes_configs = yaml.safe_load(open(changes_file))
 	configs = make_configs(changes_configs)
@@ -414,7 +429,7 @@ def single_run(changes_file):
 	changes_file_name = get_filename(changes_file)
 	configs.output_dir = "output/single/" + changes_file_name
 
-	main(configs)
+	run_runs(configs)
 	
 
 if __name__ == "__main__":
@@ -428,4 +443,4 @@ if __name__ == "__main__":
 		grid_search(args.grid_search)
 	
 	else:
-		single_run(args.single_run)
+		single_configuration(args.single_run)

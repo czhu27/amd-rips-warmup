@@ -61,6 +61,22 @@ def parabola_regularizer_const(f, xyz, tape):
             
     return grad_loss
 
+def parabola_regularizer_first(f, xyz, tape):
+    '''
+    Variance of first order derivs divided by vals = 0
+    '''
+
+    x,y = xyz
+
+    fx = nth_gradient(f,x,1,tape)
+    fy = nth_gradient(f,y,1,tape)
+
+    grad_loss = (tf.math.reduce_variance(tf.math.divide_no_nan(fx,x)) 
+                + tf.math.reduce_variance(tf.math.divide_no_nan(fy,y)))
+
+    return 0.5*grad_loss
+    
+
 ##########
 # Cosine #
 ##########
@@ -134,6 +150,8 @@ def get_target(name: str, regularizer: str, configs):
             reg = parabola_regularizer_const
         elif regularizer == "none":
             reg = None
+        elif regularizer == "first":
+            reg = parabola_regularizer_first
         else:
             raise ValueError("Unknown regularizer for " + name)
 

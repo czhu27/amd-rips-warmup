@@ -7,7 +7,7 @@ layers: [2, 20, 20, 20, 1]
 ##############
 #  Training  #
 ##############
-epochs: 1000
+epochs: 12000
 batch_size: 256
 lr: 1.0e-4
 lr_scheduler: false
@@ -22,7 +22,7 @@ f_b: 1.0
 target: parabola
 corners: false
 dataset: [2500, 0, 7500, 1.0, 0.0] #[interior, exterior, border, labeled_int%, labeled_ext%]
-noise: 0.01
+noise: 0.0
 
 ##################
 #  Regularizers  #
@@ -32,13 +32,13 @@ reg_const: 0.1
 # none, const, zero, first
 gradient_loss: zero
 #grad_reg_norm: l1 l2
-grad_reg_const: 1
+grad_reg_const: 0.1
 
 #############
 #  Logging  #
 #############
 debug: false
-plots: true
-detailed_save: true
 
 dropout_rates: [0.0, 0.0, 0.0]
+plots: [extrapolation, data-distribution, tensorboard]
+saves: [model]

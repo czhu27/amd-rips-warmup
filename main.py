@@ -6,6 +6,7 @@ import os
 import io
 import datetime
 import argparse
+from tensorflow.python.ops.gen_array_ops import size
 
 import yaml
 import tensorflow as tf
@@ -14,27 +15,21 @@ from tensorflow.keras import optimizers
 
 from helpers import Configs
 from nn import create_nn
+from targets import get_target
 
 def plot_data(X_f, tag, save_dir):
 	plt.scatter(X_f[:,0], X_f[:,1], s=2)
 	plt.savefig(save_dir + "/data_" + tag)
 	plt.clf()
 
-def parabola(x, y, f_a=1.0, f_b=1.0):
-	'''
-	Your friendly neighborhood parabola.
-	'''
-	# Function coefficients (f = f_a*x^2 + f_b*y^2)
-	return f_a * x**2 + f_b * y**2	# f_a*x^2 + f_b*y^2
-
-def data_creation(N_f, params, corners):
-	N_f_int = int(N_f * params[0])
-	N_f_ext = int(N_f * params[1])
-	N_f_border = int(N_f * (1 - params[0] - params[1]))
-	N_f_intl = int(N_f_int * params[2])
-	N_f_extl = int(N_f_ext * params[3])
-	N_f_intul = int(N_f_int * (1 - params[2]))
-	N_f_extul = int(N_f_ext * (1 - params[3]))
+def data_creation(params, corners):
+	N_f_int = params[0]
+	N_f_ext = params[1]
+	N_f_border = params[2]
+	N_f_intl = int(N_f_int * params[3])
+	N_f_extl = int(N_f_ext * params[4])
+	N_f_intul = int(N_f_int * (1 - params[3]))
+	N_f_extul = int(N_f_ext * (1 - params[4]))
 	X_f_int = np.zeros((N_f_int,2), dtype = np.float32)
 	X_f_ext = np.zeros((N_f_ext,2), dtype = np.float32)
 	X_f_border = np.zeros((N_f_border,2), dtype = np.float32)
@@ -88,15 +83,22 @@ def data_creation(N_f, params, corners):
 
 	return X_f_l, X_f_ul
 
+
+'''
+Create a meshgrid on the square [lb, ub] with ((ub-lb)/step_size + 1)^2 points
+'''
+def create_meshgrid(lb, ub, step_size=0.01):
+	x0 = np.arange(lb, ub+step_size, step_size)
+	x1 = np.arange(lb, ub+step_size, step_size)
+	return np.meshgrid(x0, x1), x0.size
+
+'''
+Compute L2-error of model against f, on the square [lb, ub]
+'''
 def compute_error(model, f, lb, ub):
-	'''
-	Compute L2-error of model against f, on the square [lb, ub]
-	'''
-	n1d = 101
+	mesh, n1d = create_meshgrid(lb, ub)
+	x0_g, x1_g = mesh
 	npts = n1d*n1d
-	x0 = np.linspace(lb, ub, n1d)
-	x1 = np.linspace(lb, ub, n1d)
-	x0_g, x1_g = np.meshgrid(x0, x1)
 
 	f_true = f(x0_g, x1_g)
 
@@ -107,6 +109,35 @@ def compute_error(model, f, lb, ub):
 	
 	f_ml = np.reshape(ml_output, (n1d, n1d), order = 'C')
 	
+	error = np.sqrt(np.mean(np.square(f_ml - f_true)))
+	return error
+
+'''
+i_lb: lower inner bound, i_ub: upper inner bound
+o_lb: lower outer bound, o_ub: upper outer bound
+Compute L2-error of model against f, on the square [o_lb, o_ub], excluding the
+points in the square [i_lb, i_ub]
+'''
+def extrap_error(model, f, i_lb, i_ub, o_lb, o_ub, step_size=0.01):
+	mesh, n1d = create_meshgrid(o_lb, o_ub, step_size)
+	x, y = mesh
+	npts = n1d*n1d
+	less_points = int((i_ub-i_lb)/step_size)+1
+	npts = npts - less_points**2
+	
+	is_interior = ((x >= i_lb) & (x <= i_ub+step_size)) & ((y >= i_lb) & (y <= i_ub+step_size))
+	x_ext = x[~is_interior]
+	y_ext = y[~is_interior]
+
+	f_true = f(x_ext, y_ext)
+
+	ml_input = np.zeros((npts, 2))
+	ml_input[:,0] = x_ext.flatten()
+	ml_input[:,1] = y_ext.flatten()
+	ml_output = model.predict(ml_input)
+
+	f_ml = np.reshape(ml_output, (npts), order = 'C')
+
 	error = np.sqrt(np.mean(np.square(f_ml - f_true)))
 	return error
 
@@ -185,13 +216,18 @@ def main(configs: Configs):
 	# Data preparation
 	# ------------------------------------------------------------------------------
 	# Data for training NN based on L_f loss function
-	X_f_l, X_f_ul = data_creation(configs.num_data, configs.dataset, configs.corners)
+	X_f_l, X_f_ul = data_creation(configs.dataset, configs.corners)
 
 	# Set target function
-	f = lambda x,y : parabola(x,y, configs.f_a, configs.f_b)
+	f, grad_reg = get_target(configs.target, configs.gradient_loss, configs)
+	# f = lambda x,y : parabola(x,y, configs.f_a, configs.f_b)
 
 	f_true = f(X_f_l[:, 0:1], X_f_l[:, 1:2])
 	f_ul = tf.zeros((X_f_ul.shape[0], 1))
+
+	if configs.noise > 0:
+		f_true += np.reshape(configs.noise*np.random.randn((len(f_true))),(len(f_true),1))
+		f_ul += np.reshape(configs.noise*np.random.randn((len(f_ul))),(len(f_ul),1))
 
 	is_labeled_l = tf.fill(f_true.shape, True)
 	is_labeled_ul = tf.fill(f_ul.shape, False)
@@ -200,7 +236,8 @@ def main(configs: Configs):
 	f_all = tf.concat([f_true, f_ul], axis=0)
 	is_labeled_all = tf.concat([is_labeled_l, is_labeled_ul], axis=0)
 
-	if configs.detailed_save:
+	if "data-distribution" in configs.plots:
+		print("Saving data distribution plots")
 		plot_data(X_f_l, "labeled", figs_folder)
 		plot_data(X_f_ul, "unlabeled", figs_folder)
 		plot_data(X_f_all, "all", figs_folder)
@@ -215,6 +252,9 @@ def main(configs: Configs):
 	layers = configs.layers
 	model = create_nn(layers, configs)
 	model.summary()
+
+	# TODO: Hacky add...
+	model.gradient_regularizer = grad_reg
 
 	# ------------------------------------------------------------------------------
 	# Assess accuracy with non-optimized model
@@ -272,7 +312,8 @@ def main(configs: Configs):
 	tensorboard_callback = keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
 	logging_callbacks = [TimeLogger(), StressTestLogger(), tensorboard_callback]
 
-	if configs.plots:
+	if "tensorboard" in configs.plots:
+		print("Using tensorboard callbacks")
 		callbacks = logging_callbacks
 	else:
 		callbacks = []
@@ -284,7 +325,8 @@ def main(configs: Configs):
 	toc = time.time()
 	print("Training time: {:.2F} s\n".format(toc - tic))
 
-	if configs.detailed_save:
+	if "model" in configs.saves:
+		print("Saving final model")
 		model.save(output_dir + "/model")
 
 	# ------------------------------------------------------------------------------
@@ -305,13 +347,16 @@ def main(configs: Configs):
 
 	# Make grid to display true function and predicted
 	error1 = compute_error(model, f, -1.0, 1.0)
-	print("Error [-1,1]x[-1,1]: {:.6E}".format(error1))
-	error2 = compute_error(model, f, -2.0, 2.0)
+	print("Error [-1,1]x[-1,1] OLD: {:.6E}".format(error1))
+	#error2 = compute_error(model, f, -2.0, 2.0)
+	error2 = extrap_error(model, f, -1.0, 1.0, -2.0, 2.0)
 	print("Error [-2,2]x[-2,2]: {:.6E}".format(error2))
-	error3 = compute_error(model, f, -3.0, 3.0)
+	#error3 = compute_error(model, f, -3.0, 3.0)
+	error3 = extrap_error(model, f, -2.0, 2.0, -3.0, 3.0)
 	print("Error [-3,3]x[-3,3]: {:.6E}".format(error3))
 
-	if configs.detailed_save:
+	if "extrapolation" in configs.plots:
+		print("Saving extrapolation plots")
 		buf = plot_gridded_functions(model, f, -1.0, 1.0, "100", folder=figs_folder)
 		buf = plot_gridded_functions(model, f, -2.0, 2.0, "200", folder=figs_folder)
 		buf = plot_gridded_functions(model, f, -3.0, 3.0, "300", folder=figs_folder)

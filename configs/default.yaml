@@ -17,23 +17,25 @@ lr_scheduler_params: [1.0e-3, 1.0e-6, 2500, 1.0] #[initial, final, decay_steps, 
 #  Dataset  #
 #############
 output_dir: null   # overridden in main.py
-num_data: 10000
 f_a: 1.0
 f_b: 1.0
+target: parabola
 corners: false
-dataset: [.95, .05, 1.0, 1.0] #[interior%, exterior%, labeled_int%, labeled_ext%]
+dataset: [1000, 0, 3000, 1.0, 0.0] #[interior, exterior, border, labeled_int%, labeled_ext%]
+noise: 0.01
 
 ##################
 #  Regularizers  #
 ##################
 regularizer: none
 reg_const: 0.1
-gradient_loss: false  # l1 (l2?)
+gradient_loss: const
+#grad_reg_norm: l1 l2
 grad_reg_const: 1
 
 #############
 #  Logging  #
 #############
 debug: false
-plots: true
-detailed_save: true
+plots: [extrapolation, data-distribution, tensorboard]
+saves: [model]

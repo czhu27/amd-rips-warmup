@@ -21,19 +21,16 @@ f_a: 1.0
 f_b: 1.0
 target: parabola
 corners: false
-<<<<<<< HEAD
-dataset: [.25, .75, 1.0, 0.0] #[interior%, exterior%, labeled_int%, labeled_ext%]
-=======
-dataset: [10000, 0, 30000, 1.0, 0.0] #[interior, exterior, border, labeled_int%, labeled_ext%]
+dataset: [2500, 0, 7500, 1.0, 0.0] #[interior, exterior, border, labeled_int%, labeled_ext%]
 noise: 0.01
->>>>>>> 02a01f0fb89b442d3f8b4aeaaeda22bd53dcde75
 
 ##################
 #  Regularizers  #
 ##################
 regularizer: none
 reg_const: 0.1
-gradient_loss: const
+# none, const, zero, first
+gradient_loss: zero
 #grad_reg_norm: l1 l2
 grad_reg_const: 1
 

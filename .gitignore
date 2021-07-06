@@ -141,3 +141,4 @@ cython_debug/
 results/
 output/
 #configs/
+configs/single/test.yaml

@@ -9,7 +9,7 @@ layers: [2, 20, 20, 20, 1]
 #  Training  #
 ##############
 device: gpu
-runs: 10
+runs: 1
 seed: 0
 epochs: 12000
 batch_size: 256

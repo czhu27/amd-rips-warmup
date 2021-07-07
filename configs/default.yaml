@@ -2,11 +2,13 @@
 #  Model  #
 ###########
 activation: elu
+dropout_rates: [0.0, 0.0, 0.0]
 layers: [2, 20, 20, 20, 1]
 
 ##############
 #  Training  #
 ##############
+device: gpu
 runs: 10
 seed: 0
 epochs: 12000
@@ -39,7 +41,5 @@ grad_reg_const: 1
 #  Logging  #
 #############
 debug: false
-
-dropout_rates: [0.0, 0.0, 0.0]
 plots: [extrapolation, data-distribution, tensorboard]
 saves: [model]

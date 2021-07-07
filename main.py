@@ -18,7 +18,7 @@ from helpers import Configs
 from nn import create_nn
 from targets import get_target
 
-tf.debugging.set_log_device_placement(True)
+#tf.debugging.set_log_device_placement(True)
 
 def plot_data(X_f, tag, save_dir):
 	plt.scatter(X_f[:,0], X_f[:,1], s=2)
@@ -187,6 +187,15 @@ def plot_gridded_functions(model, f, lb, ub, tag, folder="figs"):
 
 
 def main(configs: Configs):
+
+	# Set device (GPU, CPU)
+	if configs.device == "gpu":
+		os.environ["CUDA_VISIBLE_DEVICES"]= "0"
+	elif configs.device == "cpu":
+		os.environ["CUDA_VISIBLE_DEVICES"]= ""
+	else:
+		raise ValueError("Unknown device " + configs.device)
+
 	# Setup folder structure vars
 	run_name = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 	output_dir = configs.output_dir + "/" + run_name
@@ -431,6 +440,7 @@ def single_configuration(changes_file):
 	changes_file_name = get_filename(changes_file)
 	configs.output_dir = "output/single/" + changes_file_name
 
+	#with tf.device('/cpu:0'):
 	run_runs(configs)
 	
 

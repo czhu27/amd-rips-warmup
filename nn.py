@@ -163,7 +163,8 @@ def create_nn(layer_widths, configs):
 							  name = 'input')
 
 	# Process dropout
-	if isinstance(configs.dropout_rates, list) and isinstance(configs.dropout_rates, tuple):
+	if isinstance(configs.dropout_rates, list) or isinstance(configs.dropout_rates, tuple):
+		assert len(configs.dropout_rates) == num_hidden_layers, "Wrong number of dropout rates."
 		dropout_rates = configs.dropout_rates
 	elif isinstance(configs.dropout_rates, float):
 		dropout_rates = num_hidden_layers * [configs.dropout_rates]

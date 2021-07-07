@@ -197,8 +197,7 @@ def main(configs: Configs):
 		raise ValueError("Unknown device " + configs.device)
 
 	# Setup folder structure vars
-	run_name = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-	output_dir = configs.output_dir + "/" + run_name
+	output_dir = configs.output_dir
 	# TB logs
 	log_dir = output_dir + "/logs" 
 	# TODO: This is a hack. Understand tensorboard dirs better...
@@ -397,15 +396,18 @@ def make_configs(changes_configs):
 def get_filename(path):
 	return os.path.basename(path).split(".")[0]
 
-def run_runs(configs):
-	# For each run, update output directory and seed
-	for run_id in range(configs.runs):
-		run_configs = copy.deepcopy(configs)
-		run_configs.output_dir = configs.output_dir + "/" + f"run_{run_id}"
-		run_configs.seed = configs.seed + run_id
+def run_trials(configs):
+	run_name = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+	configs.output_dir = configs.output_dir + "/" + "run_" + run_name
 
-		# RUN!
-		main(run_configs)
+	# For each run, update output directory and seed
+	for trial_id in range(configs.trials):
+		trial_configs = copy.deepcopy(configs)
+		trial_configs.output_dir = configs.output_dir + "/" + f"trial_{trial_id}"
+		trial_configs.seed = configs.seed + trial_id
+
+		# RUN TRIAL!
+		main(trial_configs)
 
 def grid_search(search_file):
 	print("Running a grid search.")
@@ -429,7 +431,7 @@ def grid_search(search_file):
 		all_configs.append(configs)
 		
 	for configs in all_configs:
-		run_runs(configs)
+		run_trials(configs)
 
 def single_configuration(changes_file):
 	print("Running a single configs file.")
@@ -441,7 +443,7 @@ def single_configuration(changes_file):
 	configs.output_dir = "output/single/" + changes_file_name
 
 	#with tf.device('/cpu:0'):
-	run_runs(configs)
+	run_trials(configs)
 	
 
 if __name__ == "__main__":

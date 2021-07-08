@@ -291,6 +291,7 @@ def main(configs: Configs):
 	opt_num_its = configs.epochs		# number of iterations
 
 	model.set_batch_size(opt_batch_size)
+	model.set_gd_noise(configs.gd_noise)
 
 	optimizer = optimizers.Adam(learning_rate = opt_step)
 	model.compile(optimizer = optimizer, run_eagerly=configs.debug)		# DEBUG

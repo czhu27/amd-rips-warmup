@@ -18,7 +18,8 @@ from helpers import Configs
 from nn import create_nn
 from targets import get_target
 
-tf.debugging.set_log_device_placement(True)
+#tf.debugging.set_log_device_placement(True)
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
 def plot_data(X_f, tag, save_dir):
 	plt.scatter(X_f[:,0], X_f[:,1], s=2)
@@ -184,7 +185,6 @@ def plot_gridded_functions(model, f, lb, ub, tag, folder="figs"):
 	plt.savefig(buf, format='png')
 	buf.seek(0)
 	return buf
-
 
 def main(configs: Configs):
 	# Setup folder structure vars

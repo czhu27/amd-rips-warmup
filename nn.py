@@ -152,6 +152,10 @@ def get_regularizer(configs):
 	else:
 		raise ValueError("Unknown regularizer")
 
+def relu_squared(x):
+	x = (K.relu(x))**2
+	return x
+
 def create_nn(layer_widths, configs):
 	num_hidden_layers = len(layer_widths) - 2
 	

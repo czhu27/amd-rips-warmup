@@ -12,8 +12,8 @@ runs: 5
 device: gpu
 trials: 1
 seed: 0
-epochs: 5000
-batch_size: 256
+epochs: 12000 #5000
+batch_size: 4096 #256
 lr: 1.0e-4
 lr_scheduler: false
 lr_scheduler_params: [1.0e-3, 1.0e-6, 2500, 1.0] #[initial, final, decay_steps, power]

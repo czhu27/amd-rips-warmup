@@ -20,7 +20,6 @@ lr_scheduler_params: [1.0e-3, 1.0e-6, 2500, 1.0] #[initial, final, decay_steps, 
 #############
 #  Dataset  #
 #############
-output_dir: null   # overridden in main.py
 target_coefficients: [1.0, 1.0]
 target: parabola
 corners: false
@@ -41,5 +40,7 @@ grad_reg_const: 1
 #  Logging  #
 #############
 debug: false
+output_dir: null   # overridden in main.py
+output_root: output/toy
 plots: [extrapolation, data-distribution, tensorboard]
 saves: [model]

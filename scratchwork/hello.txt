@@ -1,0 +1,7 @@
+Hello there.
+
+You have discovered a secret.
+
+Shhhh! Keep it secret.
+
+This file is of no value whatsoever.

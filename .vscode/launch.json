@@ -7,17 +7,17 @@
         {
             "name": "main.py | Grid Search",
             "type": "python",
-            "args": ["-g", "configs/search/int_ext.yaml"],
+            "args": ["-g", "src/configs/search/int_ext.yaml"],
             "request": "launch",
-            "program": "main.py",
+            "program": "src/main.py",
             "console": "integratedTerminal"
         },
         {
             "name": "main.py | Single Run",
             "type": "python",
-            "args": ["-s", "configs/single/test.yaml"],
+            "args": ["-s", "src/configs/single/test.yaml"],
             "request": "launch",
-            "program": "main.py",
+            "program": "src/main.py",
             "console": "integratedTerminal"
         }
     ]

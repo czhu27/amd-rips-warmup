@@ -19,7 +19,7 @@ from nn import create_nn
 from targets import get_target
 
 #tf.debugging.set_log_device_placement(True)
-os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+# os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
 def plot_data(X_f, tag, save_dir):
 	plt.scatter(X_f[:,0], X_f[:,1], s=2)

@@ -125,7 +125,8 @@ class NN(keras.models.Model):
 
 			# Add noise
 			if self.gd_noise > 0:
-				gradients += self.gd_noise * np.random.randn(gradients.shape)
+				noisy_gradients = [g + tf.random.normal(g.shape, stddev=self.gd_noise) for g in gradients]
+				gradients = noisy_gradients
 		
 			# Update network parameters
 			self.optimizer.apply_gradients(zip(gradients, trainable_vars))

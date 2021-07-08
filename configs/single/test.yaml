@@ -1,1 +1,3 @@
-{}
+device: cpu
+dataset: [250, 0, 750, 1.0, 0.0] #[interior, exterior, border, labeled_int%, labeled_ext%]
+gd_noise: 0.5

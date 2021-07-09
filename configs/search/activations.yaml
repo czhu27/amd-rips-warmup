@@ -1,1 +1,1 @@
-activation: [elu, tanh, sigmoid, softplus, selu, softplus, swish, relu_squared, relu]
+activation: [elu, tanh, sigmoid, relu, relu_squared]

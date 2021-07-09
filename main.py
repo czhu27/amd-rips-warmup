@@ -35,6 +35,8 @@ def run_trials(configs):
 
 		# RUN TRIAL!
 		train(trial_configs)
+	
+	create_run_summary(parent_dir)
 
 def grid_search(search_file, default_configs):
 	print("Running a grid search.")
@@ -63,6 +65,8 @@ def grid_search(search_file, default_configs):
 		
 	for configs in all_configs:
 		run_trials(configs)
+
+	create_overall_summary("output/search/" + search_file_name)
 
 def single_configuration(changes_file, default_configs):
 	print("Running a single configs file.")

@@ -191,7 +191,7 @@ def data_wave(time_steps, nx, ny, order, params):
 
 	#Pulls unlabeled data randomly from exterior for domain t \in (1,2]
 	for i in range(N_w_intul + N_w_borl, N_w_intul + N_w_borul + N_w_extul):
-		X_w_ul[i,:] = np.concatenate((np.random.rand(2),np.random.randint(time_steps,2*time_steps)))	
+		X_w_ul[i,:] = np.concatenate((np.random.rand(2),np.random.randint(time_steps,2*time_steps, (1))))	
 
 	return X_w_l, X_w_ul, Y_l, x_flat, y_flat, t_flat, p_flat
 
@@ -348,7 +348,7 @@ def main(configs: Configs):
 	# Data for training NN based on L_f loss function
 	#X_f_l, X_f_ul = data_creation(configs.dataset, configs.corners)
 	
-	X_w_l, X_w_ul, Y_l, x_flat, y_flat, t_flat, p_flat  = data_wave(50, 10, 10, 1, [5000, 5000, 5000, 1.0, 1.0, 0.0])
+	X_w_l, X_w_ul, Y_l, x_flat, y_flat, t_flat, p_flat  = data_wave(50, 10, 10, 1, [8000, 4000, 5000, 1.0, 1.0, 0.0])
 	# Set target function
 	#f, grad_reg = get_target(configs.target, configs.gradient_loss, configs)
 	# f = lambda x,y : parabola(x,y, configs.f_a, configs.f_b)
@@ -505,15 +505,17 @@ def main(configs: Configs):
 		dt = .02
 		t = 0
 
-		def update(frame, fig, t, dt, nx, ny):
+		def update(frame, fig, dt, nx, ny):
 			X = np.arange(0,1,1/nx)
 			Y = np.arange(0,1,1/ny)
 			X, Y = np.meshgrid(X,Y)
 			grid_pts = np.reshape(np.concatenate((X,Y)), (nx*ny,2))
-			time_vec = np.ones((len(grid_pts),1))*t
+			time_vec = np.ones((len(grid_pts),1))*dt*frame
+			print(time_vec)
 			inputs = np.concatenate((grid_pts,time_vec), axis=1)
 			soln = model.predict(inputs)
 			soln = np.reshape(soln, (nx,ny))
+			print(soln)
 
 
 			if len(fig.axes[0].collections) != 0:
@@ -521,15 +523,13 @@ def main(configs: Configs):
 				surf = fig.axes[0].plot_surface(X, Y, soln, cmap=cm.coolwarm, linewidth=0, antialiased=False)
 			else:
 				surf = fig.axes[0].plot_surface(X, Y, soln, cmap=cm.coolwarm, linewidth=0, antialiased=False)
-				ax.set_zlim(-5, 5)
-
-			t += dt
+			ax.set_zlim(-.04, .04)
 
 			fig.canvas.draw()
 			return surf,
 
-		ani = FuncAnimation(fig, update, fargs=[fig, t, dt, nx, ny], frames=50, blit=True)
-		ani.save("Movie")
+		ani = FuncAnimation(fig, update, fargs=[fig, dt, nx, ny], frames=50, blit=True)
+		ani.save('wave.gif', writer = 'PillowWriter', fps=5)
 
 		# print("Saving extrapolation plots")
 		# buf = make_movie(model, f, -1.0, 1.0, "100", folder=figs_folder)

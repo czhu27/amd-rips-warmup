@@ -5,9 +5,19 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Python: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal"
+        },
+        {
             "name": "main.py | Grid Search",
             "type": "python",
-            "args": ["-g", "configs/search/int_ext.yaml"],
+            "args": [
+                "-g",
+                "configs/search/int_ext.yaml"
+            ],
             "request": "launch",
             "program": "main.py",
             "console": "integratedTerminal"
@@ -15,7 +25,10 @@
         {
             "name": "main.py | Single Run",
             "type": "python",
-            "args": ["-s", "configs/single/test.yaml"],
+            "args": [
+                "-s",
+                "configs/single/test.yaml"
+            ],
             "request": "launch",
             "program": "main.py",
             "console": "integratedTerminal"

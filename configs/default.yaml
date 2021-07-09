@@ -2,12 +2,12 @@
 #  Model  #
 ###########
 activation: elu
-layers: [2, 20, 20, 20, 1]
+layers: [3, 20, 20, 20, 1]
 
 ##############
 #  Training  #
 ##############
-runs: 5
+runs: 1
 seed: 0
 epochs: 12000
 batch_size: 256
@@ -42,5 +42,5 @@ grad_reg_const: 0.1
 debug: false
 
 dropout_rates: [0.0, 0.0, 0.0]
-plots: [extrapolation, data-distribution, tensorboard]
-saves: [model]
+plots: [extrapolation_wave]
+saves: []

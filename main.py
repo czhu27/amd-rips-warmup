@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import cm
+from matplotlib import animation
 import time
 import os
 import io
@@ -8,6 +9,8 @@ import datetime
 import argparse
 import copy
 from tensorflow.python.ops.gen_array_ops import size
+from matplotlib.animation import FuncAnimation
+
 
 import yaml
 import tensorflow as tf
@@ -84,6 +87,113 @@ def data_creation(params, corners):
 
 	return X_f_l, X_f_ul
 
+#Data creation/reading for wave
+def data_wave(time_steps, nx, ny, order, params):
+	#Initialize vectors/constants
+	num_elements = nx*ny
+	nodes = (order+1)**2
+	length = 2*time_steps*num_elements*nodes
+	p = np.zeros((2*time_steps,num_elements,nodes), dtype=np.float32)
+	u = np.zeros((2*time_steps,num_elements,nodes), dtype=np.float32)
+	v = np.zeros((2*time_steps,num_elements,nodes), dtype=np.float32)
+	xy = np.zeros((2*time_steps,num_elements,nodes*2), dtype=np.float32)
+	x = np.zeros((2*time_steps,num_elements,nodes), dtype=np.float32)
+	y = np.zeros((2*time_steps,num_elements,nodes), dtype=np.float32)
+
+	#Read in data for wave equation up to t=2, t \in (1,2] for error calcs, etc.
+	for i in range(time_steps):
+		fname = "/home/bjt324/projectFiles/wave/forward/data/dump{:03d}.npz".format(i)
+		f = open(fname, "r")
+		loaded = np.load(fname, allow_pickle=True)
+		p[i,:,:] = loaded['p']
+		u[i,:,:] = loaded['u']
+		v[i,:,:] = loaded['v']
+		xy[i,:,:] = loaded['xy']
+		f.close()
+
+	#Reshapes data into column vectors
+	x = xy[:,:,0:18:2]
+	y = xy[:,:,1:18:2]
+	x_flat = np.reshape(x, (length,1))
+	y_flat = np.reshape(y, (length,1))
+	u_flat = np.reshape(u, (length,1))
+	v_flat = np.reshape(v, (length,1))
+	p_flat = np.reshape(p, (length,1))
+	t_flat = np.zeros((length,1), dtype=np.float32)
+	for i in range(time_steps):
+		t_flat[i*nodes*num_elements:(i+1)*nodes*num_elements,0] = np.reshape(.02*i*np.ones(nodes*num_elements), (nodes*num_elements))
+
+	#Label/Unlabeled Data
+	N_w_intl = int(params[0]*params[3])
+	N_w_borl = int(params[1]*params[4])
+	N_w_extl = int(params[2]*params[5])
+	N_w_intul = int(params[0]*(1 - params[3]))
+	N_w_borul = int(params[1]*(1 - params[4]))
+	N_w_extul = int(params[2]*(1 - params[5]))
+	X_w_l = np.zeros((N_w_intl+N_w_borl+N_w_extl, 3), dtype=np.float32)
+	Y_l = np.zeros((N_w_intl+N_w_borl+N_w_extl, 1), dtype=np.float32)
+	X_w_ul = np.zeros((N_w_intul+N_w_borul+N_w_extul, 3), dtype=np.float32)
+	
+	#Makes labeled data vector
+	#Pulls labeled data randomly from interior for domain t \in [0,1]
+	for i in range(N_w_intl):
+		rand = np.random.randint(0,len(X_w_l))
+		X_w_l[i,:] = np.concatenate((x_flat[rand],y_flat[rand],t_flat[rand]))
+		Y_l[i,:] = p_flat[rand]
+
+	#Pulls labeled data from random border points in simulated range
+	border_pointsleft = np.argwhere(x_flat == 0)
+	border_pointsright = np.argwhere(x_flat == 1)
+	border_pointsdown = np.argwhere(y_flat == 0)
+	border_pointsup = np.argwhere(y_flat == 1)
+
+	for i in range(N_w_borl):
+		rand1 = np.random.rand(2)
+		rand2 = np.random.randint(0,1000)
+		if rand1[0] > 0.5:
+			if rand1[1] > 0.5:
+				X_w_l[N_w_intl+i] = np.concatenate((x_flat[border_pointsup[rand2][0]],y_flat[border_pointsup[rand2][0]], t_flat[border_pointsright[rand2][0]]))
+				Y_l[N_w_intl+i] = p_flat[border_pointsup[rand2][0]]
+			else:
+				X_w_l[N_w_intl+i] = np.concatenate((x_flat[border_pointsright[rand2][0]],y_flat[border_pointsright[rand2][0]], t_flat[border_pointsright[rand2][0]]))
+				Y_l[N_w_intl+i] = p_flat[border_pointsright[rand2][0]]
+		else:
+			if rand1[1] > 0.5:
+				X_w_l[N_w_intl+i] = np.concatenate((x_flat[border_pointsdown[rand2][0]],y_flat[border_pointsdown[rand2][0]], t_flat[border_pointsright[rand2][0]]))
+				Y_l[N_w_intl+i] = p_flat[border_pointsdown[rand2][0]]
+			else:
+				X_w_l[N_w_intl+i] = np.concatenate((x_flat[border_pointsleft[rand2][0]],y_flat[border_pointsleft[rand2][0]], t_flat[border_pointsright[rand2][0]]))
+				Y_l[N_w_intl+i] = p_flat[border_pointsleft[rand2][0]]
+
+	#Pulls labeled data randomly from exterior for domain t \in (1,2]
+	for i in range(N_w_extl):
+		rand = np.random.randint(0,len(X_w_l))
+		X_w_l[i,:] = np.concatenate((x_flat[rand],y_flat[rand],t_flat[rand]))
+	
+	#Makes unlabeled data vector
+	#Pulls unlabeled data randomly from interior for domain t \in (1,2]
+	for i in range(N_w_intul):
+		X_w_ul[i,:] = np.random.rand(3)
+
+	#Makes unlabeled data for border
+	for i in range(N_w_intul, N_w_intul + N_w_borul):
+		rand1 = np.random.rand(2)
+		if rand1[0] > 0.5:
+			if rand1[1] > 0.5:
+				X_w_ul[i] = np.array((rand1[0],1, np.random.randint(time_steps, 2*time_steps)))
+			else:
+				X_w_ul[i] = np.array((1,rand1[1], np.random.randint(time_steps, 2*time_steps)))
+		else:
+			if rand1[1] > 0.5:
+				X_w_ul[i] = np.array((rand1[0],0, np.random.randint(time_steps, 2*time_steps)))
+			else:
+				X_w_ul[i] = np.array((0,rand1[1], np.random.randint(time_steps, 2*time_steps)))
+
+	#Pulls unlabeled data randomly from exterior for domain t \in (1,2]
+	for i in range(N_w_intul + N_w_borl, N_w_intul + N_w_borul + N_w_extul):
+		X_w_ul[i,:] = np.concatenate((np.random.rand(2),np.random.randint(time_steps,2*time_steps)))	
+
+	return X_w_l, X_w_ul, Y_l, x_flat, y_flat, t_flat, p_flat
 
 '''
 Create a meshgrid on the square [lb, ub] with ((ub-lb)/step_size + 1)^2 points
@@ -109,6 +219,18 @@ def compute_error(model, f, lb, ub):
 	ml_output = model.predict(ml_input)
 	
 	f_ml = np.reshape(ml_output, (n1d, n1d), order = 'C')
+	
+	error = np.sqrt(np.mean(np.square(f_ml - f_true)))
+	return error
+
+def compute_error_wave(model, x, y, t, p):
+	f_true = p
+
+	ml_input = np.concatenate((x,y,t))
+
+	ml_output = model.predict(ml_input)
+	
+	f_ml = np.reshape(ml_output, (len(p), 1))
 	
 	error = np.sqrt(np.mean(np.square(f_ml - f_true)))
 	return error
@@ -183,6 +305,13 @@ def plot_gridded_functions(model, f, lb, ub, tag, folder="figs"):
 	buf.seek(0)
 	return buf
 
+def make_wave_plot(t):
+	return
+
+def make_movie(time_steps, nx, ny):
+	
+	return
+
 
 def main(configs: Configs):
 	# Setup folder structure vars
@@ -217,31 +346,36 @@ def main(configs: Configs):
 	# Data preparation
 	# ------------------------------------------------------------------------------
 	# Data for training NN based on L_f loss function
-	X_f_l, X_f_ul = data_creation(configs.dataset, configs.corners)
-
+	#X_f_l, X_f_ul = data_creation(configs.dataset, configs.corners)
+	
+	X_w_l, X_w_ul, Y_l, x_flat, y_flat, t_flat, p_flat  = data_wave(50, 10, 10, 1, [5000, 5000, 5000, 1.0, 1.0, 0.0])
 	# Set target function
-	f, grad_reg = get_target(configs.target, configs.gradient_loss, configs)
+	#f, grad_reg = get_target(configs.target, configs.gradient_loss, configs)
 	# f = lambda x,y : parabola(x,y, configs.f_a, configs.f_b)
 
-	f_true = f(X_f_l[:, 0:1], X_f_l[:, 1:2])
-	f_ul = tf.zeros((X_f_ul.shape[0], 1))
+	#f_true = f(X_f_l[:, 0:1], X_f_l[:, 1:2])
+	#f_ul = tf.zeros((X_f_ul.shape[0], 1))
+	f_true = p_flat
 
 	if configs.noise > 0:
 		f_true += np.reshape(configs.noise*np.random.randn((len(f_true))),(len(f_true),1))
-		f_ul += np.reshape(configs.noise*np.random.randn((len(f_ul))),(len(f_ul),1))
+		
+	# is_labeled_l = tf.fill(f_true.shape, True)
+	# is_labeled_ul = tf.fill(f_ul.shape, False)
+	is_labeled_l = tf.fill(X_w_l.shape, True)
+	is_labeled_ul = tf.fill(X_w_ul.shape, False)
+	
 
-	is_labeled_l = tf.fill(f_true.shape, True)
-	is_labeled_ul = tf.fill(f_ul.shape, False)
-
-	X_f_all = tf.concat([X_f_l, X_f_ul], axis=0)
-	f_all = tf.concat([f_true, f_ul], axis=0)
+	X_f_all = tf.concat([x_flat, y_flat, t_flat], 1)
+	f_all = p_flat #tf.concat([f_true, f_ul], axis=0)
 	is_labeled_all = tf.concat([is_labeled_l, is_labeled_ul], axis=0)
+	#is_labeled_all = tf.concat([is_labeled_l, is_labeled_ul], axis=0)
 
-	if "data-distribution" in configs.plots:
-		print("Saving data distribution plots")
-		plot_data(X_f_l, "labeled", figs_folder)
-		plot_data(X_f_ul, "unlabeled", figs_folder)
-		plot_data(X_f_all, "all", figs_folder)
+	# if "data-distribution" in configs.plots:
+	# 	print("Saving data distribution plots")
+	# 	plot_data(X_f_l, "labeled", figs_folder)
+	# 	plot_data(X_f_ul, "unlabeled", figs_folder)
+	# 	plot_data(X_f_all, "all", figs_folder)
 	
 
 	# Create TensorFlow dataset for passing to 'fit' function (below)
@@ -255,13 +389,13 @@ def main(configs: Configs):
 	model.summary()
 
 	# TODO: Hacky add...
-	model.gradient_regularizer = grad_reg
+	#model.gradient_regularizer = grad_reg
 
 	# ------------------------------------------------------------------------------
 	# Assess accuracy with non-optimized model
 	# ------------------------------------------------------------------------------
-	f_pred_0 = model.predict(X_f_l)
-	error_0 = np.sqrt(np.mean(np.square(f_pred_0 - f_true)))
+	f_pred_0 = model.predict(X_f_all)
+	#error_0 = np.sqrt(np.mean(np.square(f_pred_0 - np.reshape(p, (500,2500,9)))))
 
 	# ------------------------------------------------------------------------------
 	# Model compilation / training (optimization)
@@ -333,13 +467,15 @@ def main(configs: Configs):
 	# ------------------------------------------------------------------------------
 	# Assess accuracy with optimized model and compare with non-optimized model
 	# ------------------------------------------------------------------------------
-	f_pred_1 = model.predict(X_f_l)
-	error_1 = np.sqrt(np.mean(np.square(f_pred_1 - f_true)))
-	loss_value = model.loss_function_f(f_pred_1, f_true)/X_f_l.shape[0]
+	#f_pred_1 = model.predict(X_f_l)
+	f_pred_1 = model.predict(X_w_l)
+	#error_1 = np.sqrt(np.mean(np.square(f_pred_1 - f_true)))
+	error_1 = np.sqrt(np.mean(np.square(f_pred_1 - Y_l)))
+	loss_value = model.loss_function_f(f_pred_1, Y_l)/X_w_l.shape[0]
 
-	print("Train set error (before opt): {:.15E}".format(error_0))
+	#print("Train set error (before opt): {:.15E}".format(error_0))
 	print("Train set error (after opt) : {:.15E}".format(error_1))
-	print("Ratio of errors             : {:.1F}".format(error_0/error_1))
+	#print("Ratio of errors             : {:.1F}".format(error_0/error_1))
 	print("Loss function value         : {:.15E}".format(loss_value))
 
 	# ------------------------------------------------------------------------------
@@ -347,28 +483,66 @@ def main(configs: Configs):
 	# ------------------------------------------------------------------------------
 
 	# Make grid to display true function and predicted
-	error1 = compute_error(model, f, -1.0, 1.0)
-	print("Error [-1,1]x[-1,1] OLD: {:.6E}".format(error1))
-	#error2 = compute_error(model, f, -2.0, 2.0)
-	error2 = extrap_error(model, f, -1.0, 1.0, -2.0, 2.0)
-	print("Error [-2,2]x[-2,2]: {:.6E}".format(error2))
+	#error1 = compute_error(model, f, -1.0, 1.0)
+	#print("Error [-1,1]x[-1,1] OLD: {:.6E}".format(error1))
+	##error2 = compute_error(model, f, -2.0, 2.0)
+	#error2 = extrap_error(model, f, -1.0, 1.0, -2.0, 2.0)
+	#print("Error [-2,2]x[-2,2]: {:.6E}".format(error2))
 	#error3 = compute_error(model, f, -3.0, 3.0)
-	error3 = extrap_error(model, f, -2.0, 2.0, -3.0, 3.0)
-	print("Error [-3,3]x[-3,3]: {:.6E}".format(error3))
+	#error3 = extrap_error(model, f, -2.0, 2.0, -3.0, 3.0)
+	#print("Error [-3,3]x[-3,3]: {:.6E}".format(error3))
 
-	if "extrapolation" in configs.plots:
-		print("Saving extrapolation plots")
-		buf = plot_gridded_functions(model, f, -1.0, 1.0, "100", folder=figs_folder)
-		buf = plot_gridded_functions(model, f, -2.0, 2.0, "200", folder=figs_folder)
-		buf = plot_gridded_functions(model, f, -3.0, 3.0, "300", folder=figs_folder)
+	# if "extrapolation" in configs.plots:
+	# 	print("Saving extrapolation plots")
+	# 	buf = plot_gridded_functions(model, f, -1.0, 1.0, "100", folder=figs_folder)
+	# 	buf = plot_gridded_functions(model, f, -2.0, 2.0, "200", folder=figs_folder)
+	# 	buf = plot_gridded_functions(model, f, -3.0, 3.0, "300", folder=figs_folder)
 
-	os.makedirs(results_dir, exist_ok=True)
-	with open(results_dir + '/results.yaml', 'w') as outfile:
-		e1, e2, e3, l1 = (float("{:.6E}".format(error1)), float("{:.6E}".format(error2)), 
-			float("{:.6E}".format(error3)), float("{:.6E}".format(loss_value)))
-		trainTime = "{:.2F} s".format(toc - tic)
-		yaml.dump({'error1': e1, 'error2': e2, 'error3': e3, 'loss_value': l1,
-		'training_time': trainTime}, outfile, default_flow_style=False)
+	if "extrapolation_wave" in configs.plots:
+		fig = plt.figure()
+		ax = fig.add_subplot(projection='3d')
+		nx = ny = 10
+		dt = .02
+		t = 0
+
+		def update(frame, fig, t, dt, nx, ny):
+			X = np.arange(0,1,1/nx)
+			Y = np.arange(0,1,1/ny)
+			X, Y = np.meshgrid(X,Y)
+			grid_pts = np.reshape(np.concatenate((X,Y)), (nx*ny,2))
+			time_vec = np.ones((len(grid_pts),1))*t
+			inputs = np.concatenate((grid_pts,time_vec), axis=1)
+			soln = model.predict(inputs)
+			soln = np.reshape(soln, (nx,ny))
+
+
+			if len(fig.axes[0].collections) != 0:
+				fig.axes[0].collections = []
+				surf = fig.axes[0].plot_surface(X, Y, soln, cmap=cm.coolwarm, linewidth=0, antialiased=False)
+			else:
+				surf = fig.axes[0].plot_surface(X, Y, soln, cmap=cm.coolwarm, linewidth=0, antialiased=False)
+				ax.set_zlim(-5, 5)
+
+			t += dt
+
+			fig.canvas.draw()
+			return surf,
+
+		ani = FuncAnimation(fig, update, fargs=[fig, t, dt, nx, ny], frames=50, blit=True)
+		ani.save("Movie")
+
+		# print("Saving extrapolation plots")
+		# buf = make_movie(model, f, -1.0, 1.0, "100", folder=figs_folder)
+		# buf = make_movie(model, f, -2.0, 2.0, "200", folder=figs_folder)
+		# buf = make_movie(model, f, -3.0, 3.0, "300", folder=figs_folder)
+
+	#os.makedirs(results_dir, exist_ok=True)
+	# with open(results_dir + '/results.yaml', 'w') as outfile:
+	# 	e1, e2, e3, l1 = (float("{:.6E}".format(error1)), float("{:.6E}".format(error2)), 
+	# 		float("{:.6E}".format(error3)), float("{:.6E}".format(loss_value)))
+	# 	trainTime = "{:.2F} s".format(toc - tic)
+	# 	yaml.dump({'error1': e1, 'error2': e2, 'error3': e3, 'loss_value': l1,
+	# 	'training_time': trainTime}, outfile, default_flow_style=False)
 
 def make_configs(changes_configs):
 	# Load dict from yaml file

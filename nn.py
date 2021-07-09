@@ -33,7 +33,7 @@ class NN(keras.models.Model):
 		batch_size = self.batch_size
 		
 		X_f, f, l_bools = dataset
-		
+
 		# Number of batches
 		m_f = X_f.shape[0]
 		num_batches = math.floor(m_f/batch_size)
@@ -51,6 +51,7 @@ class NN(keras.models.Model):
 			indices = perm_idx_f[idx0:idx1]
 			X_f_b = tf.gather(X_f, indices, axis = 0)
 			f_b = tf.gather(f, indices, axis = 0)
+			
 			l_bools_b = tf.gather(l_bools, indices, axis = 0)
 			
 			batch = (X_f_b, f_b, l_bools_b)
@@ -90,10 +91,10 @@ class NN(keras.models.Model):
 				tape.watch(X_f)
 				
 				# Forward run
-				xy = tf.unstack(X_f, axis=1)
-				x,y = xy
-				new_X_f = tf.stack(xy, axis=1)
-				X_f = new_X_f
+				# xy = tf.unstack(X_f, axis=1)
+				# x,y = xy
+				# new_X_f = tf.stack(xy, axis=1)
+				# X_f = new_X_f
 
 				# Calc. model predicted y values
 				f_pred = self.call(X_f)
@@ -101,7 +102,7 @@ class NN(keras.models.Model):
 				## Compute Loss
 				# Compute L_f: \sum_i |f_i - f_i*|^2
 				L_f = 0
-				L_f += self.loss_function_f(f[is_labeled], f_pred[is_labeled])
+				L_f += self.loss_function_f(f, f_pred)#[is_labeled], f_pred[is_labeled])
 
 				if self.gradient_loss:
 					# Compute gradient condition (deviation from diff. eq.)

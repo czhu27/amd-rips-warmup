@@ -1,5 +1,8 @@
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib import cm
+
+import io
 
 def plot_data_2D(X_l, X_ul, save_dir):
     '''

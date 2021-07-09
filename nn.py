@@ -93,9 +93,8 @@ class NN(keras.models.Model):
 				tape.watch(X_f)
 				
 				# Forward run
-				xy = tf.unstack(X_f, axis=1)
-				x,y = xy
-				new_X_f = tf.stack(xy, axis=1)
+				xyz = tf.unstack(X_f, axis=1)
+				new_X_f = tf.stack(xyz, axis=1)
 				X_f = new_X_f
 
 				# Calc. model predicted y values
@@ -108,7 +107,7 @@ class NN(keras.models.Model):
 
 				if self.gradient_loss:
 					# Compute gradient condition (deviation from diff. eq.)
-					grad_loss = self.gradient_regularizer(f_pred, [x, y], tape)
+					grad_loss = self.gradient_regularizer(f_pred, xyz, tape)
 					L_f += self.condition_weight * grad_loss
 						
 				# Add regularization loss	

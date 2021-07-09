@@ -142,3 +142,11 @@ results/
 output/
 #configs/
 configs/single/test.yaml
+
+.DS_Store
+data/
+wave/forward/traces/*.png
+wave/forward/traces/*.npz
+wave/forward/figs/
+
+.vscode

@@ -36,7 +36,9 @@ def get_data(configs):
 		}
 
 	elif configs.source == "wave":
-		X_l, X_ul, Y_l, x_flat, y_flat, t_flat, p_flat  = data_wave(50, 10, 10, 1, [8000, 4000, 5000, 1.0, 1.0, 0.0])
+		X_l, X_ul, Y_l, x_flat, y_flat, t_flat, p_flat  = data_wave([8000, 4000, 5000, 1.0, 1.0, 0.0])
+		grad_reg = None
+		error_metrics = {}
 	else:
 		raise ValueError("Unknown data source " + configs.source)
 

@@ -60,10 +60,10 @@ def plot_gridded_functions(model, f, lb, ub, tag, folder="figs"):
 def make_wave_plot(t):
 	return
 
-def make_movie(model, figs_folder, time_steps = 50, dx = .1, dt = .02):
+def make_movie(model, figs_folder, time_steps = 50, dx = .01, dt = .01):
     fig = plt.figure()
     ax = fig.add_subplot(projection='3d')
-    nx = ny = 1 / dx
+    nx = ny = int(1 / dx)
     dt = .02
 
     def update(frame, fig, dt, nx, ny):

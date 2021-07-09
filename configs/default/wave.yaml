@@ -34,7 +34,7 @@ noise: 0.0
 regularizer: none
 reg_const: 0.1
 # none, const, zero, first
-gradient_loss: zero
+gradient_loss: none
 #grad_reg_norm: l1 l2
 grad_reg_const: 1
 

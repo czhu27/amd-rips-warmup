@@ -1,4 +1,5 @@
 import numpy as np
+import glob
 
 def data_creation(params, corners):
 	N_f_int = params[0]
@@ -61,10 +62,29 @@ def data_creation(params, corners):
 
 	return X_f_l, X_f_ul
 
-def data_wave(time_steps, nx, ny, order, params):
+def data_wave(params, time_steps = None, nx = None, ny = None, order = None):
 	'''
 	Data creation/reading for wave
 	'''
+	# Load the proper values
+	if time_steps == None or nx == None or ny == None or order == None:
+		print("Getting nx, ny, nodes from loaded data")
+		fname = "data/wave/dump{:03d}.npz".format(0)
+		f = open(fname, "r")
+		loaded = np.load(fname, allow_pickle=True)
+		points, nodes = loaded['p'].shape
+		print("WARNING: Assuming input region is square")
+		nx = ny = points ** 0.5
+		assert abs(nx - int(nx)) < 0.001
+		nx, ny = int(nx), int(ny)
+		order = (nodes**0.5 - 1)
+		assert abs(order - int(order)) < 0.001, "Reading invalid data, nodes isn't square."
+		order = int(order)
+		num_dumps = len(glob.glob("data/wave/dump*.npz"))
+		print("WARNING: UNKNOWN TIME STEP")
+		dt = 0.01
+		time_steps = int(1 / dt)
+
 	#Initialize vectors/constants
 	num_elements = nx*ny
 	nodes = (order+1)**2
@@ -77,8 +97,8 @@ def data_wave(time_steps, nx, ny, order, params):
 	y = np.zeros((2*time_steps,num_elements,nodes), dtype=np.float32)
 
 	#Read in data for wave equation up to t=2, t \in (1,2] for error calcs, etc.
-	for i in range(2*time_steps):
-		fname = "/home/bjt324/projectFiles/wave/forward/data/dump{:03d}.npz".format(i)
+	for i in range(time_steps):
+		fname = "data/wave/dump{:03d}.npz".format(i)
 		f = open(fname, "r")
 		loaded = np.load(fname, allow_pickle=True)
 		p[i,:,:] = loaded['p']

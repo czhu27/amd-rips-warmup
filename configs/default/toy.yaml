@@ -8,14 +8,16 @@ layers: [2, 20, 20, 20, 1]
 ##############
 #  Training  #
 ##############
+runs: 5
 device: gpu
 trials: 1
 seed: 0
-epochs: 12000
-batch_size: 256
+epochs: 12000 #5000
+batch_size: 4096 #256
 lr: 1.0e-4
 lr_scheduler: false
 lr_scheduler_params: [1.0e-3, 1.0e-6, 2500, 1.0] #[initial, final, decay_steps, power]
+gd_noise: 0.0
 
 #############
 #  Dataset  #
@@ -44,4 +46,4 @@ debug: false
 output_dir: null   # overridden in main.py
 output_root: output/toy
 plots: [extrapolation, data-distribution, tensorboard]
-saves: [model]
+saves: []

@@ -1,4 +1,0 @@
-device: gpu
-epochs: 100
-#batch_size: 2048  #16384
-layers: [2, 100, 100, 100, 100, 1]

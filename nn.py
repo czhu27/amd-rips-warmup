@@ -27,6 +27,9 @@ class NN(keras.models.Model):
 	def set_batch_size(self, batch_size):
 		self.batch_size = batch_size
 
+	def set_gd_noise(self, gd_noise):
+		self.gd_noise = gd_noise
+
 	# Create mini batches
 	def create_mini_batches(self, dataset):
 		# Batch size should by user using the 'set_batch_size' function
@@ -119,6 +122,11 @@ class NN(keras.models.Model):
 			# w_l1 = sum(sum_list)
 			# L_f += w_l1
 			gradients = tape.gradient(L_f, trainable_vars)
+
+			# Add noise
+			if self.gd_noise > 0:
+				noisy_gradients = [g + tf.random.normal(g.shape, stddev=self.gd_noise) for g in gradients]
+				gradients = noisy_gradients
 		
 			# Update network parameters
 			self.optimizer.apply_gradients(zip(gradients, trainable_vars))
@@ -151,6 +159,10 @@ def get_regularizer(configs):
 		return tf.keras.regularizers.L1L2(l1=configs.reg_const, l2=configs.reg_const)
 	else:
 		raise ValueError("Unknown regularizer")
+
+def relu_squared(x):
+	x = (K.relu(x))**2
+	return x
 
 def create_nn(layer_widths, configs):
 	num_hidden_layers = len(layer_widths) - 2

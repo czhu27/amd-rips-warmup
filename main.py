@@ -1,15 +1,7 @@
-import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib import cm
-from matplotlib import animation
-import time
 import os
 import datetime
 import argparse
 import copy
-from tensorflow.python.ops.gen_array_ops import size
-from matplotlib.animation import FuncAnimation
-from wave_data import data_wave
 
 import yaml
 

@@ -1,16 +1,16 @@
 ###########
 #  Model  #
 ###########
-activation: elu
+activation: tanh
 dropout_rates: 0.0
 layers: [2, 20, 20, 20, 1]
 
 ##############
 #  Training  #
 ##############
-runs: 5
-device: gpu
-trials: 1
+runs: 1
+device: cpu
+trials: 5
 seed: 0
 epochs: 5000
 batch_size: 256
@@ -25,7 +25,7 @@ output_dir: null   # overridden in main.py
 target_coefficients: [1.0, 1.0]
 target: parabola
 corners: false
-dataset: [2500, 0, 7500, 1.0, 0.0] #[interior, exterior, border, labeled_int%, labeled_ext%]
+dataset: [2500, 7500, 0, 1.0, 0.0] #[interior, exterior, border, labeled_int%, labeled_ext%]
 noise: 0.0
 
 ##################

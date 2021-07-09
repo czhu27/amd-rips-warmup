@@ -56,7 +56,7 @@ def parabola_regularizer_const(f, xyz, tape):
     fxy = tape.gradient(fx, y)
     fyy = tape.gradient(fy, y)
 
-    grad_loss = (tf.math.reduce_variance(fxx) + tf.math.reduce_variance(fxy)
+    grad_loss = (tf.math.reduce_variance(fxx) + 2*tf.math.reduce_variance(fxy)
                 + tf.math.reduce_variance(fyy))
             
     return grad_loss

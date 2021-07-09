@@ -27,6 +27,9 @@ class NN(keras.models.Model):
 	def set_batch_size(self, batch_size):
 		self.batch_size = batch_size
 
+	def set_gd_noise(self, gd_noise):
+		self.gd_noise = gd_noise
+
 	# Create mini batches
 	def create_mini_batches(self, dataset):
 		# Batch size should by user using the 'set_batch_size' function
@@ -119,6 +122,11 @@ class NN(keras.models.Model):
 			# w_l1 = sum(sum_list)
 			# L_f += w_l1
 			gradients = tape.gradient(L_f, trainable_vars)
+
+			# Add noise
+			if self.gd_noise > 0:
+				noisy_gradients = [g + tf.random.normal(g.shape, stddev=self.gd_noise) for g in gradients]
+				gradients = noisy_gradients
 		
 			# Update network parameters
 			self.optimizer.apply_gradients(zip(gradients, trainable_vars))

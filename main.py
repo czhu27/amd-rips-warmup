@@ -291,6 +291,7 @@ def main(configs: Configs):
 	opt_num_its = configs.epochs		# number of iterations
 
 	model.set_batch_size(opt_batch_size)
+	model.set_gd_noise(configs.gd_noise)
 
 	optimizer = optimizers.Adam(learning_rate = opt_step)
 	model.compile(optimizer = optimizer, run_eagerly=configs.debug)		# DEBUG
@@ -416,20 +417,24 @@ def grid_search(search_file):
 	print("Running a grid search.")
 	print("YAML file: ", search_file)
 	search_configs = yaml.safe_load(open(search_file))
-	assert len(search_configs) == 1, "Only supports grid search in one argument"
-	key = list(search_configs.keys())[0]
-	values = search_configs[key]
+	# Pop off the independent variables
+	ivs = search_configs.pop("independent_vars")
+	# Now search_configs only has the const changes
+	assert len(ivs) == 1, "Only supports grid search in one argument"
+	iv_key = list(ivs.keys())[0]
+	iv_values = ivs[iv_key]
 	all_configs = []
-	for i, value in enumerate(values):
-		changes_configs = {key: value}
+	for i, iv_value in enumerate(iv_values):
+		changes_configs = copy.deepcopy(search_configs)
+		changes_configs[iv_key] = iv_value
 		configs = make_configs(changes_configs)
 
 		search_file_name = get_filename(search_file)
-		if isinstance(value, (list, tuple)):
-			value_name = '_'.join(str(i) for i in value)
+		if isinstance(iv_value, (list, tuple)):
+			value_name = '_'.join(str(i) for i in iv_value)
 		else:
-			value_name = str(value)
-		configs.output_dir = "output/search/" + search_file_name + f"/{key}={value_name}"
+			value_name = str(iv_value)
+		configs.output_dir = "output/search/" + search_file_name + f"/{iv_key}={value_name}"
 
 		all_configs.append(configs)
 		

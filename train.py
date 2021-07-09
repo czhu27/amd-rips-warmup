@@ -10,8 +10,8 @@ from tensorflow.keras import optimizers
 from helpers import Configs
 from nn import create_nn
 from targets import get_target
-from plots import plot_data_2D, plot_gridded_functions
-from data import data_creation, compute_error, extrap_error
+from plots import plot_data_2D, plot_gridded_functions, make_movie
+from data import data_creation, compute_error, extrap_error, data_wave
 
 
 #tf.debugging.set_log_device_placement(True)
@@ -36,7 +36,7 @@ def get_data(configs):
 		}
 
 	elif configs.source == "wave":
-		raise ValueError("THIS IS WHERE WAVE EQ DATA IS LOADED")
+		X_l, X_ul, Y_l, x_flat, y_flat, t_flat, p_flat  = data_wave(50, 10, 10, 1, [8000, 4000, 5000, 1.0, 1.0, 0.0])
 	else:
 		raise ValueError("Unknown data source " + configs.source)
 
@@ -68,8 +68,7 @@ def comparison_plots(model, figs_folder, configs):
 
 	elif configs.source == "wave":
 		# 3D Plotting
-
-		print("3D MOVIE HERE")
+		make_movie(model, figs_folder)
 	
 	else:
 		raise ValueError("Unknown data source " + configs.source)
@@ -109,6 +108,9 @@ def train(configs: Configs):
 	file_writer = tf.summary.create_file_writer(metrics_dir)
 	file_writer.set_as_default()
 
+	# ------------------------------------------------------------------------------
+	# General setup
+	# ------------------------------------------------------------------------------
 	# Set seeds for reproducibility
 	np.random.seed(configs.seed)
 	tf.random.set_seed(configs.seed)
@@ -116,9 +118,6 @@ def train(configs: Configs):
 	# ------------------------------------------------------------------------------
 	# Data preparation
 	# ------------------------------------------------------------------------------
-
-	# Interesting		-- Boring
-	# X_l, Y_l, X_ul 	-- Y_ul, is_labeled
 
 	# Get the "interesting" data
 	X_l, Y_l, X_ul, grad_reg, error_metrics = get_data(configs)
@@ -152,7 +151,9 @@ def train(configs: Configs):
 
 	# TODO: Hacky add...
 	model.gradient_regularizer = grad_reg
-
+	# ------------------------------------------------------------------------------
+	# Assess accuracy with non-optimized model
+	# ------------------------------------------------------------------------------
 	# ------------------------------------------------------------------------------
 	# Model compilation / training (optimization)
 	# ------------------------------------------------------------------------------

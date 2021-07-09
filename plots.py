@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import cm
+from matplotlib.animation import FuncAnimation
 
 import io
 
@@ -54,3 +55,37 @@ def plot_gridded_functions(model, f, lb, ub, tag, folder="figs"):
     plt.savefig(buf, format='png')
     buf.seek(0)
     return buf
+
+
+def make_wave_plot(t):
+	return
+
+def make_movie(model, figs_folder, time_steps = 50, dx = .1, dt = .02):
+    fig = plt.figure()
+    ax = fig.add_subplot(projection='3d')
+    nx = ny = 1 / dx
+    dt = .02
+
+    def update(frame, fig, dt, nx, ny):
+        X = np.arange(0,1,1/nx)
+        Y = np.arange(0,1,1/ny)
+        X, Y = np.meshgrid(X,Y)
+        grid_pts = np.reshape(np.concatenate((X,Y)), (nx*ny,2))
+        time_vec = np.ones((len(grid_pts),1))*dt*frame
+
+        inputs = np.concatenate((grid_pts,time_vec), axis=1)
+        soln = model.predict(inputs)
+        soln = np.reshape(soln, (nx,ny))
+
+        if len(fig.axes[0].collections) != 0:
+            fig.axes[0].collections = []
+            surf = fig.axes[0].plot_surface(X, Y, soln, cmap=cm.coolwarm, linewidth=0, antialiased=False)
+        else:
+            surf = fig.axes[0].plot_surface(X, Y, soln, cmap=cm.coolwarm, linewidth=0, antialiased=False)
+        ax.set_zlim(-.04, .04)
+
+        fig.canvas.draw()
+        return surf,
+
+    ani = FuncAnimation(fig, update, fargs=[fig, dt, nx, ny], frames=time_steps, blit=True)
+    ani.save(figs_folder + '/wave_pred.gif', writer = 'PillowWriter', fps=5)

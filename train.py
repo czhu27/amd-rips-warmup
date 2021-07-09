@@ -1,13 +1,6 @@
 import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib import cm
 import time
 import os
-import io
-import datetime
-import argparse
-import copy
-from tensorflow.python.ops.gen_array_ops import size
 
 import yaml
 import tensorflow as tf
@@ -17,21 +10,70 @@ from tensorflow.keras import optimizers
 from helpers import Configs
 from nn import create_nn
 from targets import get_target
+from plots import plot_data_2D, plot_gridded_functions
+from data import data_creation, compute_error, extrap_error
 
-from toy_data import data_creation
 
 #tf.debugging.set_log_device_placement(True)
 
 def get_data(configs):
-    # Data for training NN based on L_f loss function
-	X_l, X_ul = data_creation(configs.dataset, configs.corners)
 
-	# Set target function
-	f, grad_reg = get_target(configs.target, configs.gradient_loss, configs)
+	if configs.source == "synthetic":
 
-	Y_l = f(X_l[:, 0:1], X_l[:, 1:2])
+		# Data for training NN based on L_f loss function
+		X_l, X_ul = data_creation(configs.dataset, configs.corners)
 
-	return X_l, Y_l, X_ul, grad_reg
+		# Set target function
+		f, grad_reg = get_target(configs.target, configs.gradient_loss, configs)
+
+		# Apply target func to data
+		Y_l = f(X_l[:, 0:1], X_l[:, 1:2])
+
+		error_metrics = {
+			"interpolation error (1x1 square)": lambda model : compute_error(model, f, -1.0, 1.0),
+			"extrapolation error (2x2 ring)": lambda model : extrap_error(model, f, -1.0, 1.0, -2.0, 2.0),
+			"extrapolation error (3x3 ring)": lambda model : extrap_error(model, f, -2.0, 2.0, -3.0, 3.0),
+		}
+
+	elif configs.source == "wave":
+		raise ValueError("THIS IS WHERE WAVE EQ DATA IS LOADED")
+	else:
+		raise ValueError("Unknown data source " + configs.source)
+
+	return X_l, Y_l, X_ul, grad_reg, error_metrics
+
+
+def plot_data(X_l, X_ul, figs_folder, configs):
+	
+	if X_l.shape[1] == 2:
+		# 2D Plotting
+		plot_data_2D(X_l, X_ul, figs_folder)
+	elif X_l.shape[1] == 3:
+		# TODO: 3d plots here
+		for i in range(7):
+			print("PLOT PLOT PLOT")
+
+def comparison_plots(model, figs_folder, configs):
+
+	if configs.source == "synthetic":
+		# 2D Plotting
+
+		# Set target function
+		f, grad_reg = get_target(configs.target, configs.gradient_loss, configs)
+
+		print("Saving extrapolation plots")
+		buf = plot_gridded_functions(model, f, -1.0, 1.0, "100", folder=figs_folder)
+		buf = plot_gridded_functions(model, f, -2.0, 2.0, "200", folder=figs_folder)
+		buf = plot_gridded_functions(model, f, -3.0, 3.0, "300", folder=figs_folder)
+
+	elif configs.source == "wave":
+		# 3D Plotting
+
+		print("3D MOVIE HERE")
+	
+	else:
+		raise ValueError("Unknown data source " + configs.source)
+
 
 def train(configs: Configs):
 
@@ -79,13 +121,14 @@ def train(configs: Configs):
 	# X_l, Y_l, X_ul 	-- Y_ul, is_labeled
 
 	# Get the "interesting" data
-	X_l, Y_l, X_ul, grad_reg = get_data(configs)
+	X_l, Y_l, X_ul, grad_reg, error_metrics = get_data(configs)
 
 	Y_ul = tf.zeros((X_ul.shape[0], 1))
 
+	# Add noise to y-values
 	if configs.noise > 0:
-		Y_l += np.reshape(configs.noise*np.random.randn((len(Y_l))),(len(Y_l),1))
-		Y_ul += np.reshape(configs.noise*np.random.randn((len(Y_ul))),(len(Y_ul),1))
+		Y_l += tf.random.normal(Y_l.shape, stddev=configs.noise)
+		#Y_l += np.reshape(configs.noise*np.random.randn((len(Y_l))),(len(Y_l),1))
 
 	is_labeled_l = tf.fill(Y_l.shape, True)
 	is_labeled_ul = tf.fill(Y_ul.shape, False)
@@ -94,12 +137,8 @@ def train(configs: Configs):
 	Y_all = tf.concat([Y_l, Y_ul], axis=0)
 	is_labeled_all = tf.concat([is_labeled_l, is_labeled_ul], axis=0)
 
-	# if "data-distribution" in configs.plots:
-	# 	print("Saving data distribution plots")
-	# 	plot_data(X_l, "labeled", figs_folder)
-	# 	plot_data(X_ul, "unlabeled", figs_folder)
-	# 	plot_data(X_all, "all", figs_folder)
-	
+	if "data-distribution" in configs.plots:
+		plot_data(X_l, X_ul, figs_folder, configs)
 
 	# Create TensorFlow dataset for passing to 'fit' function (below)
 	dataset = tf.data.Dataset.from_tensors((X_all, Y_all, is_labeled_all))
@@ -113,12 +152,6 @@ def train(configs: Configs):
 
 	# TODO: Hacky add...
 	model.gradient_regularizer = grad_reg
-
-	# ------------------------------------------------------------------------------
-	# Assess accuracy with non-optimized model
-	# ------------------------------------------------------------------------------
-	# f_pred_0 = model.predict(X_l)
-	# error_0 = np.sqrt(np.mean(np.square(f_pred_0 - Y_l)))
 
 	# ------------------------------------------------------------------------------
 	# Model compilation / training (optimization)
@@ -161,11 +194,9 @@ def train(configs: Configs):
 		def on_epoch_end(self, epoch, logs):
 			self.test_every = 100
 			if epoch % self.test_every == self.test_every - 10:
-				# Make grid to display true function and predicted
-				error1 = compute_error(model, f, -1.0, 1.0)
-				tf.summary.scalar('Error/interpolation', data=error1, step=epoch)
-				error2 = compute_error(model, f, -2.0, 2.0)
-				tf.summary.scalar('Error/extrapolation', data=error2, step=epoch)
+				for error_name, error_func in error_metrics.items():
+					error_val = error_func(model)
+					tf.summary.scalar('Error/' + error_name, data=error_val, step=epoch)
 
 	tensorboard_callback = keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
 	logging_callbacks = [TimeLogger(), StressTestLogger(), tensorboard_callback]
@@ -190,39 +221,27 @@ def train(configs: Configs):
 	# ------------------------------------------------------------------------------
 	# Assess accuracy with optimized model and compare with non-optimized model
 	# ------------------------------------------------------------------------------
-	f_pred_1 = model.predict(X_l)
-	error_1 = np.sqrt(np.mean(np.square(f_pred_1 - Y_l)))
-	loss_value = model.loss_function_f(f_pred_1, Y_l)/X_l.shape[0]
-
-	print("Train set error (before opt): {:.15E}".format(error_0))
-	print("Train set error (after opt) : {:.15E}".format(error_1))
-	print("Ratio of errors             : {:.1F}".format(error_0/error_1))
-	print("Loss function value         : {:.15E}".format(loss_value))
-
 	# ------------------------------------------------------------------------------
 	# Stress set - Assess extrapolation capabilities
 	# ------------------------------------------------------------------------------
+	final_metrics = {}
 
-	# Make grid to display true function and predicted
-	error1 = compute_error(model, f, -1.0, 1.0)
-	print("Error [-1,1]x[-1,1] OLD: {:.6E}".format(error1))
-	#error2 = compute_error(model, f, -2.0, 2.0)
-	error2 = extrap_error(model, f, -1.0, 1.0, -2.0, 2.0)
-	print("Error [-2,2]x[-2,2]: {:.6E}".format(error2))
-	#error3 = compute_error(model, f, -3.0, 3.0)
-	error3 = extrap_error(model, f, -2.0, 2.0, -3.0, 3.0)
-	print("Error [-3,3]x[-3,3]: {:.6E}".format(error3))
+	Y_pred_l = model.predict(X_l)
+	loss_value = model.loss_function_f(Y_pred_l, Y_l)/X_l.shape[0]
+	print("FINAL Loss: \t\t\t {:.6E}".format(loss_value))
+	final_metrics['loss_value'] = "{:.6E}".format(loss_value)
+
+	for error_name, error_func in error_metrics.items():
+		error_val = error_func(model)
+		print('FINAL Error/' + error_name + f":\t\t\t {error_val:.6E}")
+		final_metrics[error_name] = "{:.6E}".format(error_val)
 
 	if "extrapolation" in configs.plots:
-		print("Saving extrapolation plots")
-		buf = plot_gridded_functions(model, f, -1.0, 1.0, "100", folder=figs_folder)
-		buf = plot_gridded_functions(model, f, -2.0, 2.0, "200", folder=figs_folder)
-		buf = plot_gridded_functions(model, f, -3.0, 3.0, "300", folder=figs_folder)
+		comparison_plots(model, figs_folder, configs)
+
+	train_time = toc - tic 
+	final_metrics['training_time'] = "{:.2F} s".format(train_time)
 
 	os.makedirs(results_dir, exist_ok=True)
 	with open(results_dir + '/results.yaml', 'w') as outfile:
-		e1, e2, e3, l1 = (float("{:.6E}".format(error1)), float("{:.6E}".format(error2)), 
-			float("{:.6E}".format(error3)), float("{:.6E}".format(loss_value)))
-		trainTime = "{:.2F} s".format(toc - tic)
-		yaml.dump({'error1': e1, 'error2': e2, 'error3': e3, 'loss_value': l1,
-		'training_time': trainTime}, outfile, default_flow_style=False)
+		yaml.dump(final_metrics, outfile, default_flow_style=False)

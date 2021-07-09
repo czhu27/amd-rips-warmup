@@ -1,0 +1,4 @@
+David:
+- Generalize code structure (toy + wave)
+    - Test said structure
+- Try changing dataset (to speed up graph creation)

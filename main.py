@@ -17,9 +17,9 @@ from tensorflow.keras import optimizers
 from helpers import Configs
 from nn import create_nn
 from targets import get_target
+from summary import create_run_summary, create_overall_summary
 
 #tf.debugging.set_log_device_placement(True)
-os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
 def plot_data(X_f, tag, save_dir):
 	plt.scatter(X_f[:,0], X_f[:,1], s=2)
@@ -317,7 +317,7 @@ def main(configs: Configs):
 				# Make grid to display true function and predicted
 				error1 = compute_error(model, f, -1.0, 1.0)
 				tf.summary.scalar('Error/interpolation', data=error1, step=epoch)
-				error2 = compute_error(model, f, -2.0, 2.0)
+				error2 = extrap_error(model, f, -1.0, 1.0, -2.0, 2.0)
 				tf.summary.scalar('Error/extrapolation', data=error2, step=epoch)
 
 	tensorboard_callback = keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
@@ -358,7 +358,7 @@ def main(configs: Configs):
 
 	# Make grid to display true function and predicted
 	error1 = compute_error(model, f, -1.0, 1.0)
-	print("Error [-1,1]x[-1,1] OLD: {:.6E}".format(error1))
+	print("Error [-1,1]x[-1,1]: {:.6E}".format(error1))
 	#error2 = compute_error(model, f, -2.0, 2.0)
 	error2 = extrap_error(model, f, -1.0, 1.0, -2.0, 2.0)
 	print("Error [-2,2]x[-2,2]: {:.6E}".format(error2))
@@ -398,6 +398,7 @@ def get_filename(path):
 
 def run_trials(configs):
 	run_name = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+	parent_dir = configs.output_dir
 	configs.output_dir = configs.output_dir + "/" + "run_" + run_name
 
 	# For each run, update output directory and seed
@@ -408,6 +409,8 @@ def run_trials(configs):
 
 		# RUN TRIAL!
 		main(trial_configs)
+
+	create_run_summary(parent_dir)
 
 def grid_search(search_file):
 	print("Running a grid search.")
@@ -432,6 +435,8 @@ def grid_search(search_file):
 		
 	for configs in all_configs:
 		run_trials(configs)
+
+	create_overall_summary("output/search/" + search_file_name)
 
 def single_configuration(changes_file):
 	print("Running a single configs file.")

@@ -24,9 +24,9 @@ def create_run_summary(run_path):
     for path in errorPaths:
         with open(path) as f:
             errorDict = yaml.safe_load(f)
-            error1s.append(float(errorDict['error1']))
-            error2s.append(float(errorDict['error2']))
-            error3s.append(float(errorDict['error3']))
+            error1s.append(float(errorDict['interpolation error (1x1 square)']))
+            error2s.append(float(errorDict['extrapolation error (2x2 ring)']))
+            error3s.append(float(errorDict['extrapolation error (3x3 ring)']))
     
     error1avg = avg(error1s)
     error2avg = avg(error2s)
@@ -47,7 +47,7 @@ def create_overall_summary(main_path):
 
     with open(main_path + "/" + descriptor + "_summary.txt", 'w') as f1:
         for path in summaryPaths:
-            run = path.split("/")[3]
+            run = path.split("/")[4]
             f1.write(run + " summary\n")
             with open(path, 'r') as f2:
                 for line in f2:

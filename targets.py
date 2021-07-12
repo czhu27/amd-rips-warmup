@@ -56,7 +56,7 @@ def parabola_regularizer_const(f, xyz, tape):
     fxy = tape.gradient(fx, y)
     fyy = tape.gradient(fy, y)
 
-    grad_loss = (tf.math.reduce_variance(fxx) + tf.math.reduce_variance(fxy)
+    grad_loss = (tf.math.reduce_variance(fxx) + 2*tf.math.reduce_variance(fxy)
                 + tf.math.reduce_variance(fyy))
             
     return grad_loss
@@ -77,6 +77,33 @@ def parabola_regularizer_first(f, xyz, tape):
     return 0.5*grad_loss
     
 
+##############
+# Oscillator #
+##############
+
+def waveish(x, y, k=3):
+	'''
+    Ye olde solution to the Laplace equation.
+	'''
+	# Function coefficients (f = f_a*x^2 + f_b*y^2)
+	return tf.math.sin(k*x) * tf.math.cosh(k*y)
+
+def waveish_regularizer_zero(f, xyz, tape):
+    '''
+    GL = fxx + fyy
+    '''
+
+    x, y = xyz
+
+    fxx = nth_gradient(f, x, 2, tape)
+    fyy = nth_gradient(f, y, 2, tape)
+
+    # L1 regularizer
+    grads = tf.concat([fxx, fyy], axis=0)
+    grad_loss = tf.math.reduce_mean(tf.math.abs(grads))
+
+    return grad_loss
+
 ##########
 # Cosine #
 ##########
@@ -85,23 +112,98 @@ def parabola_regularizer_first(f, xyz, tape):
 # Cubic #
 #########
 
+def cubic(x, y, f_a=1.0, f_b=1.0):
+	'''
+	Your not so friendly neighborhood cubic.
+	'''
+	# Function coefficients (f = f_a*x^2 + f_b*y^2)
+	return f_a * x**3 + f_b * y**3	# f_a*x^2 + f_b*y^2
+        
+def cubic_regularizer_zero(f, xyz, tape):
+    '''
+    Parabola gradient condition.
+    Third order derivs = 0
+    '''
+
+    # Unpack the columns
+    x,y = xyz
+
+    fxx = nth_gradient(f, x, 2, tape)
+    fyy = nth_gradient(f, y, 2, tape)
+    fxxx = tape.gradient(fxx, x)
+    fxyy = tape.gradient(fyy, x)
+    fyyy = tape.gradient(fyy,y)
+    fxxxx = tape.gradient(fxxx,x)
+    fxxxy = tape.gradient(fxxx,y)
+    fxxyy = tape.gradient(fxyy,x)
+    fxyyy = tape.gradient(fxyy,y)
+    fyyyy = tape.gradient(fyyy,y)
+
+    # L1 regularizer
+    grads = tf.concat([fxxxx, fxxyy, fxxyy, fxyyy, fyyyy], axis=0)
+    grad_loss = tf.math.reduce_mean(tf.math.abs(grads))
+
+    return grad_loss
+
+def cubic_regularizer_const(f, xyz, tape):
+    '''
+    Variance of second order derivs = 0
+    '''
+
+    # Unpack the columns
+    x,y = xyz
+
+    fxx = nth_gradient(f, x, 2, tape)
+    fyy = nth_gradient(f, y, 2, tape)
+    fxxy = tape.gradient(fxx, y)
+    fxyy = tape.gradient(fyy, x)
+    fxxx = tape.gradient(fxx, x)
+    fyyy = tape.gradient(fyy, y)
+
+    grad_loss = (tf.math.reduce_variance(fxxx) + 3*tf.math.reduce_variance(fxxy)
+                + 3*tf.math.reduce_variance(fxyy) + tf.math.reduce_variance(fyyy))
+            
+    return grad_loss
+
 ##################################
 ##################################
 
 def get_target(name: str, regularizer: str, configs):
     if name == 'parabola':
-        f = lambda x,y : parabola(x,y, configs.f_a, configs.f_b)
-        if regularizer == "zero":
+        f_a, f_b = configs.target_coefficients
+        f = lambda x,y : parabola(x,y, f_a, f_b)
+        if regularizer in ["zero", "third"]:
             reg = parabola_regularizer_zero
-        elif regularizer == "const":
+        elif regularizer in ["const", "second"]:
             reg = parabola_regularizer_const
         elif regularizer == "none":
             reg = None
         elif regularizer == "first":
             reg = parabola_regularizer_first
         else:
-            raise ValueError("Unknown regularizer for " + name)
-            
+            raise ValueError("Unknown regularizer for " + name + ", " + regularizer)
+
+    elif name == 'cubic':
+        f_a, f_b = configs.target_coefficients
+        f = lambda x,y : cubic(x,y, f_a, f_b)
+        if regularizer in ["zero", "fourth"]:
+            reg = cubic_regularizer_zero
+        elif regularizer in ["const", "third"]:
+            reg = cubic_regularizer_const
+        elif regularizer == "none":
+            reg = None
+        else:
+            raise ValueError("Unknown regularizer for " + name + ", " + regularizer)
+    
+    elif name == "sin-cosh":
+        # Unpack coefficients
+        k, = configs.target_coefficients[0]
+        f = lambda x,y : waveish(x, y, k=k)
+        if regularizer in ["zero", "laplacian"]:
+            reg = waveish_regularizer_zero
+        else:
+            raise ValueError("Unknown regularizer for " + name + ", " + regularizer)
+    
     else:
         raise ValueError("Unknown target function " + name)
 

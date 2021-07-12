@@ -27,6 +27,9 @@ class NN(keras.models.Model):
 	def set_batch_size(self, batch_size):
 		self.batch_size = batch_size
 
+	def set_gd_noise(self, gd_noise):
+		self.gd_noise = gd_noise
+
 	# Create mini batches
 	def create_mini_batches(self, dataset):
 		# Batch size should by user using the 'set_batch_size' function
@@ -90,9 +93,8 @@ class NN(keras.models.Model):
 				tape.watch(X_f)
 				
 				# Forward run
-				xy = tf.unstack(X_f, axis=1)
-				x,y = xy
-				new_X_f = tf.stack(xy, axis=1)
+				xyz = tf.unstack(X_f, axis=1)
+				new_X_f = tf.stack(xyz, axis=1)
 				X_f = new_X_f
 
 				# Calc. model predicted y values
@@ -105,7 +107,7 @@ class NN(keras.models.Model):
 
 				if self.gradient_loss:
 					# Compute gradient condition (deviation from diff. eq.)
-					grad_loss = self.gradient_regularizer(f_pred, [x, y], tape)
+					grad_loss = self.gradient_regularizer(f_pred, xyz, tape)
 					L_f += self.condition_weight * grad_loss
 						
 				# Add regularization loss	
@@ -119,6 +121,11 @@ class NN(keras.models.Model):
 			# w_l1 = sum(sum_list)
 			# L_f += w_l1
 			gradients = tape.gradient(L_f, trainable_vars)
+
+			# Add noise
+			if self.gd_noise > 0:
+				noisy_gradients = [g + tf.random.normal(g.shape, stddev=self.gd_noise) for g in gradients]
+				gradients = noisy_gradients
 		
 			# Update network parameters
 			self.optimizer.apply_gradients(zip(gradients, trainable_vars))
@@ -152,6 +159,10 @@ def get_regularizer(configs):
 	else:
 		raise ValueError("Unknown regularizer")
 
+def relu_squared(x):
+	x = (K.relu(x))**2
+	return x
+
 def create_nn(layer_widths, configs):
 	num_hidden_layers = len(layer_widths) - 2
 	
@@ -161,6 +172,15 @@ def create_nn(layer_widths, configs):
 	# Create input layer
 	input_layer = keras.Input(layer_widths[0], 
 							  name = 'input')
+
+	# Process dropout
+	if isinstance(configs.dropout_rates, list) or isinstance(configs.dropout_rates, tuple):
+		assert len(configs.dropout_rates) == num_hidden_layers, "Wrong number of dropout rates."
+		dropout_rates = configs.dropout_rates
+	elif isinstance(configs.dropout_rates, float):
+		dropout_rates = num_hidden_layers * [configs.dropout_rates]
+	else:
+		raise ValueError("Invalid dropout_rates in config")
 
 	# Create hidden layers
 	layer = input_layer
@@ -174,13 +194,7 @@ def create_nn(layer_widths, configs):
 									kernel_regularizer=get_regularizer(configs),
 									#kernel_regularizer=tf.keras.regularizers.L1L2(l1=lam, l2=lam),
 									)(layer)
-		layer = keras.layers.Dropout(0.2)(layer)
-		
-		#if i == 1:
-		#	layer = keras.layers.Dropout(.2)
-		#	print("DROPOUT")
-	
-				
+		layer = keras.layers.Dropout(dropout_rates[i])(layer)
 
 	# Create output layer
 	width = layer_widths[len(layer_widths) - 1]

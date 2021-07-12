@@ -1,27 +1,31 @@
 ###########
 #  Model  #
 ###########
-activation: elu
+activation: tanh
+dropout_rates: 0.0
 layers: [2, 20, 20, 20, 1]
 
 ##############
 #  Training  #
 ##############
-epochs: 12000
+device: gpu
+trials: 1
+seed: 0
+epochs: 5000
 batch_size: 256
 lr: 1.0e-4
 lr_scheduler: false
 lr_scheduler_params: [1.0e-3, 1.0e-6, 2500, 1.0] #[initial, final, decay_steps, power]
+gd_noise: 0.0
 
 #############
 #  Dataset  #
 #############
-output_dir: null   # overridden in main.py
-f_a: 1.0
-f_b: 1.0
+source: synthetic
 target: parabola
+target_coefficients: [1.0, 1.0]
 corners: false
-dataset: [2500, 0, 7500, 1.0, 0.0] #[interior, exterior, border, labeled_int%, labeled_ext%]
+dataset: [2500, 7500, 0, 1.0, 0.0] #[interior, exterior, border, labeled_int%, labeled_ext%]
 noise: 0.0
 
 ##################
@@ -32,13 +36,13 @@ reg_const: 0.1
 # none, const, zero, first
 gradient_loss: zero
 #grad_reg_norm: l1 l2
-grad_reg_const: 0.1
+grad_reg_const: 1
 
 #############
 #  Logging  #
 #############
 debug: false
-
-dropout_rates: [0.0, 0.0, 0.0]
+output_dir: null   # overridden in main.py
+output_root: output/toy
 plots: [extrapolation, data-distribution, tensorboard]
-saves: [model]
+saves: []

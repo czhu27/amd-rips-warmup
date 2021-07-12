@@ -1,6 +1,1 @@
-gradient_loss: true
-epochs: 5000
-#dropout_rates: [0.2, 0.0, 0.0]
-dataset: [1000, 0, 3000, 1.0, 0.0]
-gradient_loss: first
-lr: 1.0e-5
+{}

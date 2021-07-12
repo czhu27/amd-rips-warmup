@@ -1,0 +1,4 @@
+independent_vars: 
+  layers: [[2, 20, 20, 20, 1], [2, 20, 20, 20, 20, 1], [2, 20, 20, 20, 20, 20, 1]]
+
+gradient_loss: const

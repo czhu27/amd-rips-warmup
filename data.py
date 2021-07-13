@@ -214,9 +214,10 @@ def compute_error(model, f, lb, ub):
 
 	f_true = f(x0_g, x1_g)
 
-	ml_input = np.zeros((npts, 2))
+	ml_input = np.zeros((npts, 3))
 	ml_input[:,0] = x0_g.flatten()
 	ml_input[:,1] = x1_g.flatten()
+	ml_input[:,2] = t*np.ones((npts))
 	ml_output = model.predict(ml_input)
 	
 	f_ml = np.reshape(ml_output, (n1d, n1d), order = 'C')

@@ -59,8 +59,50 @@ def plot_gridded_functions(model, f, lb, ub, tag, folder="figs"):
     return buf
 
 
-def make_wave_plot(t):
-	return
+def make_wave_plot(mode, t, f_true, tag, folder="figs"):
+    n1d = 101
+    lb = 0
+    ub = 1
+    npts = n1d*n1d
+    x0 = np.linspace(lb, ub, n1d)
+    x1 = np.linspace(lb, ub, n1d)
+    x0_g, x1_g = np.meshgrid(x0, x1)
+
+    # Compute true function values
+    f_true = f(x0_g, x1_g)
+
+    # Compute ML function values
+    ml_input = np.zeros((npts, 2))
+    ml_input[:,0] = x0_g.flatten()
+    ml_input[:,1] = x1_g.flatten()
+    ml_input[:,2] = t*np.ones((npts))
+    ml_output = model.predict(ml_input)
+    f_ml = np.reshape(ml_output, (n1d, n1d), order = 'C')
+
+    fig = plt.figure()
+    fig.set_figheight(8)
+    fig.set_figwidth(8)
+    fig.tight_layout()
+    ax = fig.add_subplot(221, projection='3d')
+    ax.plot_surface(x0_g, x1_g, f_true, cmap=cm.coolwarm)
+    ax.set_title('True')
+    #plt.savefig('figs/true' + str(tag) + '.png')
+
+    ax = fig.add_subplot(222, projection='3d')
+    ax.plot_surface(x0_g, x1_g, f_ml, cmap=cm.coolwarm)
+    ax.set_title('ML')
+    #plt.savefig('figs/ml' + str(tag) + '.png')
+
+    ax = fig.add_subplot(223, projection='3d')
+    ax.plot_surface(x0_g, x1_g, np.abs(f_ml - f_true), cmap=cm.coolwarm)
+    ax.set_title('|True - ML|')
+    #plt.savefig('figs/diff' + str(tag) + '.png')
+    plt.savefig(folder + '/all' + str(tag) + '.png')
+    buf = io.BytesIO()
+    plt.savefig(buf, format='png')
+    buf.seek(0)
+    return buf
+
 
 def make_movie(model, figs_folder, time_steps = 50, dx = .01, dt = .01):
     fig = plt.figure()

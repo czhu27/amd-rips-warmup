@@ -1,7 +1,8 @@
 import sys
 import datetime
+sys.path.append(sys.path[0] + "/../..")
+from data import process_wave_data
 sys.path.append(sys.path[0] + "/app")
-
 from simulator import Simulator
 
 timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -19,6 +20,7 @@ params = {
 	# Time-related parameters
 	"tf": 0.2,			# final time
 	"dt": 0.002,		# time step
+	#"sample_step":     # amount of time between samples, should be multiple of dt
 	"show_every": 50,	# interval between two time steps reports
 	"integrator": 'rk2',# time integrator 
 	# Discretization-related parameters
@@ -42,3 +44,6 @@ params = {
 simulator = Simulator(params)
 simulator.run()
 simulator.finalize()
+
+# Process data here
+process_wave_data(data_dir, params)

@@ -17,7 +17,7 @@ params = {
 	"nx": 50,			# number of mesh elements (x)
 	"ny": 50,			# number of mesh elements (y)
 	# Time-related parameters
-	"tf": 5.0,			# final time
+	"tf": 0.2,			# final time
 	"dt": 0.002,		# time step
 	"show_every": 50,	# interval between two time steps reports
 	"integrator": 'rk2',# time integrator 

@@ -297,6 +297,8 @@ def process_wave_data(wave_data_dir):
         v_all[i, :] = v
         t_all[i] = dt * i
 
+	# sample
+
     x = x_all.flatten()
     y = y_all.flatten()
     p = p_all.flatten()

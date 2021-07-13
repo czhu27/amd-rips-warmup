@@ -42,7 +42,3 @@ params = {
 simulator = Simulator(params)
 simulator.run()
 simulator.finalize()
-
-# Process data here
-from data import process_wave_data
-process_wave_data(data_dir)

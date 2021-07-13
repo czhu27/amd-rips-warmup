@@ -152,7 +152,7 @@ def plot_data_dist(x,y):
 #     plt.savefig('test.png', dpi=500)
 #     plt.show()
 
-def make_heatmap_animation(mat_list, save_dir):
+def make_heatmap_animation(mat_list, save_dir, fps = 10):
     fig = plt.figure()
     cmap = sns.color_palette("coolwarm", as_cmap=True)
 
@@ -164,5 +164,5 @@ def make_heatmap_animation(mat_list, save_dir):
     anim = animation.FuncAnimation(fig, animate, frames=len(mat_list), repeat = False)
 
     savefile = save_dir + "/test.gif"
-    pillowwriter = animation.PillowWriter(fps=5)
+    pillowwriter = animation.PillowWriter(fps=fps)
     anim.save(savefile, writer=pillowwriter)

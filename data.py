@@ -1,8 +1,9 @@
+from plots import make_heatmap_animation
 import numpy as np
 import glob
 import time
 
-from helpers import unstack
+from helpers import get_p_mat_list, unstack
 
 def data_creation(params, corners):
 	N_f_int = params[0]
@@ -275,63 +276,71 @@ def load_data(dump_file):
     return x_n,y_n,p_n,u_n,v_n
 
 def process_wave_data(wave_data_dir):
-    tic = time.time()
+	tic = time.time()
 
-    # TODO: This is bad
-    tf = 5
-    dt = 0.002
-    T = int(tf / dt) + 1
+	# TODO: This is bad
+	tf = 5
+	dt = 0.002
+	T = int(tf / dt) + 1
 
-    x,y,p,u,v = load_data(wave_data_dir + "/dumps/dump000.npz")
-    slice_size = len(x)
+	x,y,p,u,v = load_data(wave_data_dir + "/dumps/dump000.npz")
+	slice_size = len(x)
 
-    x_all, y_all, p_all, u_all, v_all = [np.zeros((T, slice_size)) for i in range(5)]
-    t_all = np.zeros(T)
+	x_all, y_all, p_all, u_all, v_all = [np.zeros((T, slice_size)) for i in range(5)]
+	t_all = np.zeros(T)
 
-    for i in range(T): 
-        dump_file = wave_data_dir + "/dumps/dump{:03d}.npz".format(i)
-        x,y,p,u,v = load_data(dump_file)
-        x_all[i, :] = x
-        y_all[i, :] = y
-        p_all[i, :] = p
-        u_all[i, :] = u
-        v_all[i, :] = v
-        t_all[i] = dt * i
+	for i in range(T): 
+		dump_file = wave_data_dir + "/dumps/dump{:03d}.npz".format(i)
+		x,y,p,u,v = load_data(dump_file)
+		x_all[i, :] = x
+		y_all[i, :] = y
+		p_all[i, :] = p
+		u_all[i, :] = u
+		v_all[i, :] = v
+		t_all[i] = dt * i
+		if i % 100 == 0:
+			print(f"Loaded dump file {i}. Now {(i / T) * 100 : .0f}% complete")
+
+	print("Finished loading data.")
+
+	# Plot heatmap
+	# p_mat_list = get_p_mat_list(p_all, x_all, y_all, every_n_frames=10)
+	# make_heatmap_animation(p_mat_list, save_dir=wave_data_dir)
 
 	# sample
 
-    x = x_all.flatten()
-    y = y_all.flatten()
-    p = p_all.flatten()
-    u = u_all.flatten()
-    v = v_all.flatten()
-    t = np.repeat(t_all, slice_size)
+	x = x_all.flatten()
+	y = y_all.flatten()
+	p = p_all.flatten()
+	u = u_all.flatten()
+	v = v_all.flatten()
+	t = np.repeat(t_all, slice_size)
 
-    data = np.stack([x,y,t,p,u,v], axis=-1)
+	data = np.stack([x,y,t,p,u,v], axis=-1)
 
-    # Reduce data
-    count = len(data)
-    perc_sampled = 0.001
-    size = int(count * perc_sampled)
-    idx = np.random.choice(count, size)
-    data = data[idx]
+	# Reduce data
+	count = len(data)
+	perc_sampled = 0.001
+	size = int(count * perc_sampled)
+	idx = np.random.choice(count, size)
+	data = data[idx]
 
-    x,y,t,p,u,v = unstack(data, axis=-1)
+	x,y,t,p,u,v = unstack(data, axis=-1)
 
-    # Sample/filter/add data
-    is_interior = (t <= 1)
-    is_exterior_1 = (t <= 2) & (t > 1)
-    is_exterior_2 = (t > 2)
-    is_boundary = (x == 0) | (x == 1) | (y == 0) | (y == 1)
+	# Sample/filter/add data
+	is_interior = (t <= 1)
+	is_exterior_1 = (t <= 2) & (t > 1)
+	is_exterior_2 = (t > 2)
+	is_boundary = (x == 0) | (x == 1) | (y == 0) | (y == 1)
 
-    is_labeled = is_interior
-    inputs = np.stack([x,y,t], axis=-1)
-    outputs = np.stack([p], axis=-1)
-    np.savez(
-        wave_data_dir + '/processed_data.npz', 
-        inputs=inputs, outputs=outputs, is_labeled=is_labeled,
-        is_interior=is_interior, is_exterior_1=is_exterior_1, is_exterior_2=is_exterior_2,
-    )
+	is_labeled = is_interior
+	inputs = np.stack([x,y,t], axis=-1)
+	outputs = np.stack([p], axis=-1)
+	np.savez(
+		wave_data_dir + '/processed_data.npz', 
+		inputs=inputs, outputs=outputs, is_labeled=is_labeled,
+		is_interior=is_interior, is_exterior_1=is_exterior_1, is_exterior_2=is_exterior_2,
+	)
 
-    toc = time.time()
-    print("Time elapsed: ", toc - tic)
+	toc = time.time()
+	print("Time elapsed: ", toc - tic)

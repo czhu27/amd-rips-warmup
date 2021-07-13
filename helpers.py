@@ -1,8 +1,8 @@
 import numpy as np
 
 class Configs:
-	def __init__(self, **entries):
-		self.__dict__.update(entries)
+    def __init__(self, **entries):
+        self.__dict__.update(entries)
 
 def get_delta(x):
     '''
@@ -45,6 +45,8 @@ def get_p_mat(p, x, y, dx, dy, x_min, y_min, N, M):
         # x,y -> n,m
         n = point_to_index(x0, dx, x_min)
         m = point_to_index(y0, dy, y_min)
+        n = min(n, N-1)
+        m = min(m, M-1)
         # 
         p_mat[n,m].append(p0)
 
@@ -52,3 +54,44 @@ def get_p_mat(p, x, y, dx, dy, x_min, y_min, N, M):
     p_mat = avg(p_mat)
 
     return p_mat
+
+
+def get_p_mat_simple(p, x, y):
+	'''
+	Converts vectors p, x, y into matrix p_mat.
+	'''
+	dx, x_min, x_max = get_delta(x)
+	dy, y_min, y_max = get_delta(y)
+	N = point_to_index(x_max, dx, x_min)
+	M = point_to_index(y_max, dy, y_min)
+	p_mat = get_p_mat(p, x, y, dx, dy, x_min, y_min, N, M)
+	return p_mat
+
+def get_p_mat_list(p_all, x_all, y_all, every_n_frames=1):
+    p_mat_list = []
+    T = len(p_all)
+    for t, (p, x, y) in enumerate(zip(p_all, x_all, y_all)):
+        if t % every_n_frames != 0:
+            continue
+        if t % 10 == 0:
+            print(f"Generated p_mat {t}. Now {(t / T) * 100 : .0f}% complete")
+        p_mat = get_p_mat_simple(p, x, y)
+        p_mat_list.append(p_mat)
+    return p_mat_list
+
+
+# def get_p_mat_list(p_all, x_all, y_all):
+
+# 	assert len(x_all.shape) == 2, "First axis should be time"
+    
+# 	T, slice_size = x_all.shape
+# 	dx, x_min, x_max = get_delta(x_all[0])
+# 	dy, y_min, y_max = get_delta(y_all[0])
+# 	N = point_to_index(x_max, dx, x_min)
+# 	M = point_to_index(y_max, dy, y_min)
+# 	p_mat_list = np.zeros((T, N, M))
+# 	for t, p, x, y in enumerate(zip(p_all, x_all, y_all)):
+# 		p_mat = get_p_mat(p_all[t], x_all[t], y_all[t], dx, dy, x_min, y_min, N, M)
+# 		p_mat_list[t,:,:] = p_mat
+    
+# 	return p_mat_list

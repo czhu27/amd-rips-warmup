@@ -1,6 +1,7 @@
 import numpy as np
 import time
 import os
+from tensorflow.python.ops.gen_array_ops import zeros_like
 
 import yaml
 import tensorflow as tf
@@ -15,6 +16,11 @@ from data import data_creation, compute_error, extrap_error, data_wave
 
 
 #tf.debugging.set_log_device_placement(True)
+def general_error(model, X, Y):
+	Y_pred = model.predict(X)
+	Y_diff = Y - Y_pred
+	mse = np.sqrt(np.mean(np.square(Y_diff)))
+	return mse
 
 def get_data(configs):
 
@@ -36,9 +42,28 @@ def get_data(configs):
 		}
 
 	elif configs.source == "wave":
-		X_l, X_ul, Y_l, x_flat, y_flat, t_flat, p_flat  = data_wave([8000, 4000, 5000, 1.0, 1.0, 0.0])
+		data = np.load('data/wave/20210712-161608/processed_data.npz')
+		inputs, outputs, is_labeled = data['inputs'], data['outputs'], data['is_labeled']
+		is_interior, is_exterior_1, is_exterior_2 = data['is_interior'], data['is_exterior_1'], data['is_exterior_2']
+		X_l = inputs[is_labeled]
+		X_ul = inputs[~is_labeled]
+		Y_l = outputs[is_labeled]
+		X, Y = inputs, outputs
+		
+		#X_l, X_ul, Y_l, x_flat, y_flat, t_flat, p_flat  = data_wave([8000, 4000, 5000, 1.0, 1.0, 0.0])
+		
 		grad_reg = None
-		error_metrics = {}
+		X_int, Y_int = X[is_interior], Y[is_interior]
+		X_ext_1, Y_ext_1 = X[is_exterior_1], Y[is_exterior_1]
+		X_ext_2, Y_ext_2 = X[is_exterior_2], Y[is_exterior_2]
+
+		error_metrics = {
+			"interpolation error (t <= 1)" : lambda model : general_error(model, X_int, Y_int),
+			"extrapolation error (1 < t <= 2)" : lambda model : general_error(model, X_ext_1, Y_ext_1),
+			"extrapolation error (2 < t)" : lambda model : general_error(model, X_ext_2, Y_ext_2),
+		}
+
+		print(f"Loaded wave eq. simulation inputs/outputs. Count: {len(inputs)}")
 	else:
 		raise ValueError("Unknown data source " + configs.source)
 
@@ -69,7 +94,15 @@ def comparison_plots(model, figs_folder, configs):
 		buf = plot_gridded_functions(model, f, -3.0, 3.0, "300", folder=figs_folder)
 
 	elif configs.source == "wave":
-		# 3D Plotting
+		for t in tf.range(0, 2 + 1e-3, 0.1):
+			class m:
+				@staticmethod
+				def predict(X):
+					ml_input = tf.concat([X, tf.fill((len(X), 1), t)], axis=1)
+					return model.predict(ml_input)
+			f = lambda x, y: tf.zeros_like(x)
+			buf = plot_gridded_functions(m, f, 0, 1, f"_t={t:.3f}", folder=figs_folder)
+			# 3D Plotting
 		make_movie(model, figs_folder)
 	
 	else:

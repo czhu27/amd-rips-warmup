@@ -1,5 +1,6 @@
 import numpy as np
 import time
+import os
 
 from mesh import Mesh
 from field import Field
@@ -11,6 +12,9 @@ from kernel import KernelAcoustic
 # ------------------------------------------------------------------------------
 class Simulator:
 	def __init__(self, params):
+		# Create save dir
+		os.makedirs(params["data_dir"])
+
 		# Save ref to parameters
 		self.__params = params
 
@@ -32,7 +36,7 @@ class Simulator:
 		else:
 			print("   Invalid integrator!" + self.__params["integrator"])
 
-		self.__kernel = KernelAcoustic(self.__mesh, self.__field)	
+		self.__kernel = KernelAcoustic(self.__mesh, self.__field, params)	
 		print("Initialization time: " + "{:.2F} s".format(toc - tic))
 
 	# def __init__

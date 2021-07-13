@@ -1,7 +1,11 @@
 import sys
+import datetime
 sys.path.append(sys.path[0] + "/app")
 
 from simulator import Simulator
+
+timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+data_dir = "data/wave/" + timestamp
 
 # Create all parameters
 params = {
@@ -13,7 +17,7 @@ params = {
 	"nx": 50,			# number of mesh elements (x)
 	"ny": 50,			# number of mesh elements (y)
 	# Time-related parameters
-	"tf": 1.0,			# final time
+	"tf": 5.0,			# final time
 	"dt": 0.002,		# time step
 	"show_every": 50,	# interval between two time steps reports
 	"integrator": 'rk2',# time integrator 
@@ -29,10 +33,16 @@ params = {
 	"src_f": 5.0,		# source frequency (Hz)
 	"src_a": 1.0,		# source magnitude (set to 0 to disable source)
 	# Receivers coordinates (x0, y0, x1, y1, ...) 
-	"rcv_loc": [ [0.25, 0.25], [0.60, 0.50] ]
+	"rcv_loc": [ [0.25, 0.25], [0.60, 0.50] ],
+	# Where to save this run
+	"data_dir": data_dir
 }	
 
 # Create simulator and run
 simulator = Simulator(params)
 simulator.run()
 simulator.finalize()
+
+# Process data here
+from data import process_wave_data
+process_wave_data(data_dir)

@@ -1,5 +1,8 @@
 import numpy as np
 import glob
+import time
+
+from helpers import unstack
 
 def data_creation(params, corners):
 	N_f_int = params[0]
@@ -133,7 +136,7 @@ def data_wave(params, time_steps = None, nx = None, ny = None, order = None):
 	#Makes labeled data vector
 	#Pulls labeled data randomly from interior for domain t \in [0,1]
 	for i in range(N_w_intl):
-		rand = np.random.randint(0,len(X_w_l))
+		rand = np.random.randint(0,length/2)
 		X_w_l[i,:] = np.concatenate((x_flat[rand],y_flat[rand],t_flat[rand]))
 		Y_l[i,:] = p_flat[rand]
 
@@ -257,3 +260,75 @@ def compute_error_wave(model, x, y, t, p):
 	f_ml = np.reshape(ml_output, (len(p), 1))
 	error = np.sqrt(np.mean(np.square(f_ml - f_true)))
 	return error
+
+def load_data(dump_file):
+    '''
+    Loads data from dump file
+    '''
+    stuff = np.load(dump_file)
+    u = stuff['u']
+    v = stuff['v']
+    p = stuff['p']
+    x, y = stuff['xy'][:,0:18:2], stuff['xy'][:,1:18:2]
+    x_n,y_n,p_n,u_n,v_n = x.flatten(), y.flatten(), p.flatten(), u.flatten(), v.flatten()
+    return x_n,y_n,p_n,u_n,v_n
+
+def process_wave_data(wave_data_dir):
+    tic = time.time()
+
+    # TODO: This is bad
+    tf = 5
+    dt = 0.002
+    T = int(tf / dt) + 1
+
+    x,y,p,u,v = load_data(wave_data_dir + "/dumps/dump000.npz")
+    slice_size = len(x)
+
+    x_all, y_all, p_all, u_all, v_all = [np.zeros((T, slice_size)) for i in range(5)]
+    t_all = np.zeros(T)
+
+    for i in range(T): 
+        dump_file = wave_data_dir + "/dumps/dump{:03d}.npz".format(i)
+        x,y,p,u,v = load_data(dump_file)
+        x_all[i, :] = x
+        y_all[i, :] = y
+        p_all[i, :] = p
+        u_all[i, :] = u
+        v_all[i, :] = v
+        t_all[i] = dt * i
+
+    x = x_all.flatten()
+    y = y_all.flatten()
+    p = p_all.flatten()
+    u = u_all.flatten()
+    v = v_all.flatten()
+    t = np.repeat(t_all, slice_size)
+
+    data = np.stack([x,y,t,p,u,v], axis=-1)
+
+    # Reduce data
+    count = len(data)
+    perc_sampled = 0.001
+    size = int(count * perc_sampled)
+    idx = np.random.choice(count, size)
+    data = data[idx]
+
+    x,y,t,p,u,v = unstack(data, axis=-1)
+
+    # Sample/filter/add data
+    is_interior = (t <= 1)
+    is_exterior_1 = (t <= 2) & (t > 1)
+    is_exterior_2 = (t > 2)
+    is_boundary = (x == 0) | (x == 1) | (y == 0) | (y == 1)
+
+    is_labeled = is_interior
+    inputs = np.stack([x,y,t], axis=-1)
+    outputs = np.stack([p], axis=-1)
+    np.savez(
+        wave_data_dir + '/processed_data.npz', 
+        inputs=inputs, outputs=outputs, is_labeled=is_labeled,
+        is_interior=is_interior, is_exterior_1=is_exterior_1, is_exterior_2=is_exterior_2,
+    )
+
+    toc = time.time()
+    print("Time elapsed: ", toc - tic)

@@ -298,7 +298,7 @@ def process_wave_data(wave_data_dir, params):
 
 
     for i in range(num_slices): 
-        dump_file = wave_data_dir + "/dumps/dump{:03d}.npz".format(num_slices)
+        dump_file = wave_data_dir + "/dumps/dump{:03d}.npz".format(i * step_size)
         x,y,p,u,v = load_data(dump_file)
         x_all[i, :] = x
         y_all[i, :] = y

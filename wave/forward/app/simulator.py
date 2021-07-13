@@ -161,7 +161,7 @@ class Simulator:
 		self.__field.save_traces()
 
 		# Process data
-		process_wave_data(self.__params["data_dir"])
+		process_wave_data(self.__params["data_dir"], self.__params)
 
 		return min_max
 	# def finalize

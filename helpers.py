@@ -77,6 +77,8 @@ def get_p_mat_list(p_all, x_all, y_all, every_n_frames=1):
             print(f"Generated p_mat {t}. Now {(t / T) * 100 : .0f}% complete")
         p_mat = get_p_mat_simple(p, x, y)
         p_mat_list.append(p_mat)
+
+    p_mat_list = np.array(p_mat_list)
     return p_mat_list
 
 

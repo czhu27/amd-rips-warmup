@@ -152,17 +152,27 @@ def plot_data_dist(x,y):
 #     plt.savefig('test.png', dpi=500)
 #     plt.show()
 
-def make_heatmap_animation(mat_list, save_dir, fps = 10):
+def make_heatmap_animation(mat_list, save_dir, R=None, fps = 10):
+    '''
+    '''
+    assert len(mat_list.shape) == 3, "Needs to be an array, not a list. An array of shape (T,N,M)"
+    avg = np.mean(mat_list)
+    std = np.std(mat_list)
+    if R is None:
+        # Deduce R from matrix
+        R = np.max([np.abs(avg + std), np.abs(avg - std)])
+
     fig = plt.figure()
     cmap = sns.color_palette("coolwarm", as_cmap=True)
 
     def animate(i):
-        sns.heatmap(mat_list[i],  vmin = -3, vmax= 3, square=True, cbar=False, center=0.00, cmap=cmap)
+        print(i)
+        sns.heatmap(mat_list[i],  vmin = -R, vmax= R, square=True, cbar=False, center=0.00, cmap=cmap)
         # plt.clf()
         # plt.close()
 
     anim = animation.FuncAnimation(fig, animate, frames=len(mat_list), repeat = False)
 
-    savefile = save_dir + "/test.gif"
+    savefile = save_dir + "/heatmap.gif"
     pillowwriter = animation.PillowWriter(fps=fps)
     anim.save(savefile, writer=pillowwriter)

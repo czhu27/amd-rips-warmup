@@ -1,5 +1,6 @@
 import numpy as np
 import math
+import os
 
 import matplotlib.pyplot as plt
 from matplotlib import cm
@@ -15,6 +16,11 @@ class Field:
 	# Constructor
 	def __init__(self, params, mesh):
 		self.ps = params["ps"]
+		self.figs_dir = params["data_dir"] + "/figs"
+		self.traces_dir = params["data_dir"] + "/traces"
+		os.makedirs(self.figs_dir)
+		os.makedirs(self.traces_dir)
+
 		self.num_nodes_per_element = (self.ps + 1)*(self.ps + 1)
 		self.mesh = mesh
 		if "dt" in params:
@@ -271,7 +277,8 @@ class Field:
 		ax.set_title("Simulation (t = {:.2F})".format(self.dt*index))
 		#plt.show()
 		plt.tight_layout(pad=0.75)
-		str_name = "wave/forward/figs/fig_sim_{:03d}.png".format(index)
+		#str_name = "wave/forward/figs/fig_sim_{:03d}.png".format(index)
+		str_name = self.figs_dir + "/fig_sim_{:03d}.png".format(index)
 		plt.savefig(str_name)
 		plt.close()
 
@@ -363,7 +370,8 @@ class Field:
 	# Save all traces to disk
 	def save_traces(self):
 		if self.has_receivers:
-			fname = "wave/forward/traces/traces.npz"
+			#fname = "wave/forward/traces/traces.npz"
+			fname = self.traces_dir + "/traces.npz"
 			f = open(fname, "w")
 			np.savez(fname, traces = self.traces)
 			f.close()

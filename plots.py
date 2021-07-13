@@ -4,6 +4,8 @@ from matplotlib import cm
 from matplotlib.animation import FuncAnimation
 
 import io
+import seaborn as sns
+from matplotlib import animation
 
 def plot_data_2D(X_l, X_ul, save_dir):
     '''
@@ -131,3 +133,36 @@ def make_movie(model, figs_folder, time_steps = 50, dx = .01, dt = .01):
 
     ani = FuncAnimation(fig, update, fargs=[fig, dt, nx, ny], frames=time_steps, blit=True)
     ani.save(figs_folder + '/wave_pred.gif', writer = 'PillowWriter', fps=5)
+
+
+def plot_data_dist(x,y):
+    '''
+    Plots flattened (1D) x, y arrays
+    '''
+    x_c, y_c = x[4::9], y[4::9]
+    plt.scatter(x,y, s=0.1, alpha=0.3)
+    plt.scatter(x_c,y_c, s=0.1, c='r')
+    plt.show()
+    #plt.savefig('test.png', dpi=1000)
+
+# def plot_heatmap(x,y,p):
+#     plt.figure(figsize=(8, 8))
+#     cmap = cm.get_cmap('Reds')
+#     plt.scatter(x,y, s=3.7, marker='s', c=p, cmap=cmap)
+#     plt.savefig('test.png', dpi=500)
+#     plt.show()
+
+def make_heatmap_animation(mat_list, save_dir):
+    fig = plt.figure()
+    cmap = sns.color_palette("coolwarm", as_cmap=True)
+
+    def animate(i):
+        sns.heatmap(mat_list[i],  vmin = -3, vmax= 3, square=True, cbar=False, center=0.00, cmap=cmap)
+        # plt.clf()
+        # plt.close()
+
+    anim = animation.FuncAnimation(fig, animate, frames=len(mat_list), repeat = False)
+
+    savefile = save_dir + "/test.gif"
+    pillowwriter = animation.PillowWriter(fps=5)
+    anim.save(savefile, writer=pillowwriter)

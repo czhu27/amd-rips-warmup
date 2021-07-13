@@ -1,4 +1,5 @@
 import numpy as np
+import os
 
 from element import Element2d
 from quadrature import GLL2d
@@ -11,9 +12,11 @@ __ML_DUMP__ = True
 # class KernelAcoustic
 # ------------------------------------------------------------------------------
 class KernelAcoustic:
-	def __init__(self, mesh, field):
+	def __init__(self, mesh, field, params):
 		self.mesh = mesh
 		self.field = field
+		self.dumps_dir = params["data_dir"] + "/dumps"
+		os.makedirs(self.dumps_dir)
 
 		# Create element and quadrature (note that the quadrature points are
 		# colocated with the element coordinates)
@@ -262,7 +265,8 @@ class KernelAcoustic:
 	
 	def dump(self):
 		if (__ML_DUMP__):
-			fname = "data/wave/dump{:03d}.npz".format(self.__ml_dump_index)
+			#fname = "data/wave/dump{:03d}.npz".format(self.__ml_dump_index)
+			fname = self.dumps_dir + "/dump{:03d}.npz".format(self.__ml_dump_index)
 			f = open(fname, "w")
 			np.savez(fname, 
 					 p = self.field.val["p"],

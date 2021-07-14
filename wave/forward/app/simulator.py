@@ -2,10 +2,16 @@ import numpy as np
 import time
 import os
 
+import math
+
 from mesh import Mesh
 from field import Field
 from integrator import IntegratorRK2, IntegratorRK3
 from kernel import KernelAcoustic
+import sys
+sys.path.append(sys.path[0] + "/../..")
+from data import process_wave_data
+from plots import make_heatmap_animation
 
 # ------------------------------------------------------------------------------
 # Simulator: main driver
@@ -65,10 +71,11 @@ class Simulator:
 		dt = self.__params["dt"]
 		show_every = self.__params["show_every"]
 		current_time = 0
+		num_steps = math.ceil(self.__params["tf"]/self.__params["dt"])
 		step_number = 0
 		step_size = int(self.__params["sample_step"] / dt)
 		#self.__field.display_p(step_number)
-		while (current_time < tf) & (dt > 1e-15):
+		while step_number < num_steps: # (current_time < tf) and (dt > 1e-15):
 			
 			# Initialize time integrator
 			self.__integrator.initialize_step(current_time, dt)
@@ -135,6 +142,7 @@ class Simulator:
 			# Display pressure field at end of time step
 			if (step_number%100 == 0):
 				self.__field.display_p(step_number)
+
 		# while	
 
 		elapsed_time[0] = time.time() - tic[0]
@@ -153,6 +161,10 @@ class Simulator:
 		min_max = self.__field.display_diagnostics()
 		self.__field.compute_errors(self.__params)
 		self.__field.save_traces()
+
+		# Process data
+		process_wave_data(self.__params["data_dir"], self.__params)
+
 		return min_max
 	# def finalize
 

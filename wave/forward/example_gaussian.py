@@ -38,4 +38,4 @@ simulator = Simulator(params)
 simulator.run()
 simulator.finalize()
 
-process_wave_data(data_dir, params)
+# process_wave_data(data_dir, params)

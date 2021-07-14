@@ -20,7 +20,7 @@ params = {
 	# Time-related parameters
 	"tf": 1,			# final time
 	"dt": 0.002,		# time step
-	#"sample_step":     # amount of time between samples, should be multiple of dt
+	"sample_step": 0.02,# amount of time between samples, should be multiple of dt
 	"show_every": 50,	# interval between two time steps reports
 	"integrator": 'rk2',# time integrator 
 	# Discretization-related parameters

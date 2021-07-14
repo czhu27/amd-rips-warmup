@@ -158,9 +158,10 @@ def make_heatmap_animation(mat_list, save_dir, R=None, fps = 10):
     assert len(mat_list.shape) == 3, "Needs to be an array, not a list. An array of shape (T,N,M)"
     avg = np.mean(mat_list)
     std = np.std(mat_list)
+    color_spread = 2
     if R is None:
         # Deduce R from matrix
-        R = np.max([np.abs(avg + std), np.abs(avg - std)])
+        R = np.max([np.abs(avg + color_spread * std), np.abs(avg - color_spread * std)])
 
     fig = plt.figure()
     cmap = sns.color_palette("coolwarm", as_cmap=True)

@@ -276,29 +276,32 @@ class KernelAcoustic:
 			self.field.traces[num_rcvs, step_number] = t
 
 	def clean_data(self):
-		p = self.field.val["p"],
-		u = self.field.val['u'],
-		v = self.field.val['v'],
-		xy = self.field.global_node_coordinates
-		x = xy[:,0:18:2]
-		y = xy[:,1:18:2]
+		#Flattens all arrays to make indexing easier
+		p = np.ndarray.flatten(self.field.val["p"])
+		u = np.ndarray.flatten(self.field.val['u'])
+		v = np.ndarray.flatten(self.field.val['v'])
+		xy = np.ndarray.flatten(self.field.global_node_coordinates)
+		x = xy[0::2]
+		y = xy[1::2]
 
+		#Separates boundary points for all variables
 		indices = np.argwhere((x == 0) | (x == 1) | (y == 0) | (y == 1))
-		boundaries = np.zeros((2*len(indices), 6))
-		boundaries[:,0] = np.ndarray.flatten(np.take(x, indices))
-		boundaries[:,1] = np.ndarray.flatten(np.take(y, indices))
+		boundaries = np.zeros((len(indices), 6))
+		boundaries[:,0] = np.reshape(np.take(x, indices), (len(indices)))
+		boundaries[:,1] = np.reshape(np.take(y, indices), (len(indices)))
 		boundaries[:,2] = self.dt*self.__ml_dump_index*np.ones((boundaries.shape[0]))
-		boundaries[:,3] = np.ndarray.flatten(np.take(p, indices))
-		boundaries[:,4] = np.ndarray.flatten(np.take(u, indices))
-		boundaries[:,5] = np.ndarray.flatten(np.take(v, indices))
+		boundaries[:,3] = np.reshape(np.take(p, indices), (len(indices)))
+		boundaries[:,4] = np.reshape(np.take(u, indices), (len(indices)))
+		boundaries[:,5] = np.reshape(np.take(v, indices), (len(indices)))
 
-		pts = np.array([np.delete(x, indices)])
+		#Deletes boundary points from inner points
+		pts = np.array([np.ndarray.flatten(np.delete(x, indices))])
 		pts = np.append(pts, np.array([np.delete(y, indices)]), axis=0)
 		pts = np.append(pts, np.array([np.delete(p, indices)]), axis=0)
 		pts = np.append(pts, np.array([np.delete(u, indices)]), axis=0)
 		pts = np.append(pts, np.array([np.delete(v, indices)]), axis=0)
 		pts = np.insert(pts, 2, self._KernelAcoustic__ml_dump_index*np.ones((1,pts.shape[1])), axis=0)
-		pts = pts.T
+		pts = pts.T #Make each variable a column (x,y,t,p,u,v)
 
 		return pts, boundaries
 	

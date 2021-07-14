@@ -39,7 +39,8 @@ params = {
 	# Where to save this run
 	"data_dir": data_dir,
 	# Save percentages of [[interior, int bound], [exterior,ext bound], test points]
-	"data_percents": [[.75, .25], [.5, .25], [.25,.5]]
+	"data_percents": [[.75, .25], [.5, .25], [.25,.5]],
+	"heatmap": False
 }	
 
 # Create simulator and run

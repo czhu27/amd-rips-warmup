@@ -305,20 +305,32 @@ def process_wave_data_sample(wave_data_dir, params):
 	int_test = np.zeros((0,6))
 	ext_test = np.zeros((0,6))
 
+	#x_all = np.zeros(int(tf/params["sample_step"]), )
+	x_all = None
+	y_all = None
+	p_all = None
+
 	for i in range(0, int(tf/params["dt"]), int(params["sample_step"]/params['dt'])):
 		pts, boundaries = load_data(wave_data_dir + "/dumps/dump{:03d}.npz".format(i))
+		if i == 0:
+			x_all = np.zeros((0,pts.shape[0]+boundaries.shape[0]))
+			y_all = np.zeros((0,pts.shape[0]+boundaries.shape[0]))
+			p_all = np.zeros((0,pts.shape[0]+boundaries.shape[0]))
+			#u_all
+			#v_all
+		all_pts = np.concatenate((pts, boundaries))
+		x_all = np.append(x_all, np.array([all_pts[:,0]]), axis=0)
+		y_all = np.append(y_all, np.array([all_pts[:,1]]), axis=0)
+		p_all = np.append(p_all, np.array([all_pts[:,3]]), axis=0)
 		if i <= 1/params["dt"]:
-			print(i)
 			num_pts = int(params["data_percents"][0][0]*pts.shape[0])
 			num_bound = int(params["data_percents"][0][1]*boundaries.shape[0])
 			num_test = int(params["data_percents"][2][0]*pts.shape[0])
 			indices_pts = np.random.randint(0,pts.shape[0], num_pts)
-			print(indices_pts)
 			interior = np.append(interior, pts[indices_pts,:], axis=0)
 			indices_bound = np.random.randint(0,pts.shape[0], num_bound)
 			boundary = np.append(boundary, pts[indices_bound,:], axis=0)
 			indices_test = np.random.randint(0,pts.shape[0] + boundaries.shape[0], num_pts)
-			all_pts = np.concatenate((pts, boundaries))
 			int_test = np.append(int_test, all_pts[indices_test,:], axis = 0)
 
 		else:
@@ -330,9 +342,9 @@ def process_wave_data_sample(wave_data_dir, params):
 			indices_bound = np.random.randint(0,pts.shape[0], num_bound)
 			boundary = np.append(boundary, pts[indices_bound,:], axis=0)
 			indices_test = np.random.randint(0,pts.shape[0] + boundaries.shape[0], num_pts)
-			all_pts = np.concatenate((pts, boundaries))
 			ext_test = np.append(int_test, all_pts[indices_test,:], axis = 0)
 
+	
 	num_int_label = int(interior.shape[0]*label_int)
 	perm_int = np.random.permutation(interior)
 	int_label = perm_int[0:num_int_label,:]
@@ -344,6 +356,22 @@ def process_wave_data_sample(wave_data_dir, params):
 		ext_label = perm_ext[0:num_ext_label,:]
 		ext_unlabel = perm_ext[num_ext_label:,:]
 	
+	if params["heatmap"]:
+		# Make crude heatmap
+		print("Making p_mat_list (for heatmap animation)...")
+		heatmap_dt = 0.02
+		heatmap_seconds_per_second = 0.2
+		heatmap_step_size = int(heatmap_dt / dt)
+		if heatmap_step_size <= step_size:
+			every_n_frames = 1
+		else:
+			every_n_frames = int(heatmap_step_size / step_size)
+		p_mat_list = get_p_mat_list(p_all, x_all, y_all, every_n_frames=every_n_frames)
+		print("Making heatmap animation...")
+		fps = heatmap_seconds_per_second / heatmap_dt
+		make_heatmap_animation(p_mat_list, save_dir=wave_data_dir, fps=fps)
+		print("Finished making heatmap animation")
+
 	np.savez(
 		wave_data_dir + '/processed_data.npz', 
 		int_label = int_label, int_unlabel = int_unlabel, bound = boundaries, int_test = int_test #ext_label = ext_label, ext_unlabel = ext_unlabel,

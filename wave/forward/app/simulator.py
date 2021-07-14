@@ -136,7 +136,7 @@ class Simulator:
 			
 			# Simulation dump (flag in kernel.py must be True for 
 			# simulation data to be saved into files!)
-			if step_number % step_size:
+			if step_number % step_size == 0:
 				self.__kernel.dump()
 
 			# Display pressure field at end of time step

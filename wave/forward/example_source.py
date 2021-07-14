@@ -18,7 +18,7 @@ params = {
 	"nx": 10,			# number of mesh elements (x)
 	"ny": 10,			# number of mesh elements (y)
 	# Time-related parameters
-	"tf": 1,			# final time
+	"tf": 2,			# final time
 	"dt": 0.002,		# time step
 	"sample_step": 0.02,# amount of time between samples, should be multiple of dt
 	"show_every": 50,	# interval between two time steps reports

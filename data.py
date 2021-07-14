@@ -1,3 +1,4 @@
+from seaborn.matrix import heatmap
 from plots import make_heatmap_animation
 import numpy as np
 import glob
@@ -314,9 +315,14 @@ def process_wave_data(wave_data_dir, params):
 
 	# Make crude heatmap
 	print("Making p_mat_list (for heatmap animation)...")
-	p_mat_list = get_p_mat_list(p_all, x_all, y_all, every_n_frames=100)
+	heatmap_dt = 0.02
+	heatmap_seconds_per_second = 0.2
+	heatmap_step_size = int(heatmap_dt / dt)
+	every_n_frames = int(heatmap_step_size / step_size)
+	p_mat_list = get_p_mat_list(p_all, x_all, y_all, every_n_frames=every_n_frames)
 	print("Making heatmap animation...")
-	make_heatmap_animation(p_mat_list, save_dir=wave_data_dir, fps=1)
+	fps = heatmap_seconds_per_second / heatmap_dt
+	make_heatmap_animation(p_mat_list, save_dir=wave_data_dir, fps=fps)
 	print("Finished making heatmap animation")
 
 	x = x_all.flatten()

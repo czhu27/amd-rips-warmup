@@ -15,12 +15,12 @@ params = {
 	"x1": 1.0,			# domain dimension (x1)
 	"y0": 0.0,			# domain dimension (y0)
 	"y1": 1.0,			# domain dimension (y1)
-	"nx": 10,			# number of mesh elements (x)
-	"ny": 10,			# number of mesh elements (y)
+	"nx": 25,			# number of mesh elements (x)
+	"ny": 25,			# number of mesh elements (y)
 	# Time-related parameters
-	"tf": 1,			# final time
+	"tf": 2,			# final time
 	"dt": 0.002,		# time step
-	#"sample_step":     # amount of time between samples, should be multiple of dt
+	"sample_step": .1,  # amount of time between samples, should be multiple of dt
 	"show_every": 50,	# interval between two time steps reports
 	"integrator": 'rk2',# time integrator 
 	# Discretization-related parameters
@@ -37,7 +37,9 @@ params = {
 	# Receivers coordinates (x0, y0, x1, y1, ...) 
 	"rcv_loc": [ [0.25, 0.25], [0.60, 0.50] ],
 	# Where to save this run
-	"data_dir": data_dir
+	"data_dir": data_dir,
+	# Save percentages of [[interior, int bound], [exterior,ext bound], test points]
+	"data_percents": [[.75, .25], [.5, .25], [.25,.5]]
 }	
 
 # Create simulator and run

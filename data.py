@@ -268,12 +268,88 @@ def load_data(dump_file):
 	Loads data from dump file
 	'''
 	stuff = np.load(dump_file)
-	u = stuff['u']
-	v = stuff['v']
-	p = stuff['p']
-	x, y = stuff['xy'][:,0:18:2], stuff['xy'][:,1:18:2]
-	x_n,y_n,p_n,u_n,v_n = x.flatten(), y.flatten(), p.flatten(), u.flatten(), v.flatten()
-	return x_n,y_n,p_n,u_n,v_n
+	pts = stuff['pts']
+	bound = stuff['bound']
+	return pts, bound
+
+def load_slices(dump_file):
+	'''
+	Loads data from dump file
+	'''
+	stuff = np.load(dump_file)
+	pts = stuff['pts']
+	bound = stuff['bound']
+	return pts, bound
+
+def process_wave_data_sample(wave_data_dir, params):
+	tic = time.time()
+
+	# TODO: This is bad
+	label_int = .7
+	label_ext = .3
+	# End bad stuff
+	tf = params["tf"]
+	dt = params["dt"]
+	T = int(tf / dt) + 1
+
+	if "sample_step" in params:
+		step_size = int(params["sample_step"]/dt)
+		assert params["sample_step"]/dt - step_size < 0.001, "Sample step not a multiple of dt"
+	else:
+		step_size = 1
+
+	interior = np.zeros((0,6))
+	exterior = np.zeros((0,6))
+	boundary = np.zeros((0,6))
+	int_test = np.zeros((0,6))
+	ext_test = np.zeros((0,6))
+
+	for i in range(0, int(tf/params["dt"]), int(params["sample_step"]/params['dt'])):
+		pts, boundaries = load_data(wave_data_dir + "/dumps/dump{:03d}.npz".format(i))
+		if i <= 1/params["dt"]:
+			print(i)
+			num_pts = int(params["data_percents"][0][0]*pts.shape[0])
+			num_bound = int(params["data_percents"][0][1]*boundaries.shape[0])
+			num_test = int(params["data_percents"][2][0]*pts.shape[0])
+			indices_pts = np.random.randint(0,pts.shape[0], num_pts)
+			print(indices_pts)
+			interior = np.append(interior, pts[indices_pts,:], axis=0)
+			indices_bound = np.random.randint(0,pts.shape[0], num_bound)
+			boundary = np.append(boundary, pts[indices_bound,:], axis=0)
+			indices_test = np.random.randint(0,pts.shape[0] + boundaries.shape[0], num_pts)
+			all_pts = np.concatenate((pts, boundaries))
+			int_test = np.append(int_test, all_pts[indices_test,:], axis = 0)
+
+		else:
+			num_pts = int(params["data_percents"][1][0]*pts.shape[0])
+			num_bound = int(params["data_percents"][1][1]*boundaries.shape[0])
+			num_test = int(params["data_percents"][2][1]*pts.shape[0])
+			indices_pts = np.random.randint(0,pts.shape[0], num_pts)
+			exterior = np.append(exterior, pts[indices_pts,:], axis=0)
+			indices_bound = np.random.randint(0,pts.shape[0], num_bound)
+			boundary = np.append(boundary, pts[indices_bound,:], axis=0)
+			indices_test = np.random.randint(0,pts.shape[0] + boundaries.shape[0], num_pts)
+			all_pts = np.concatenate((pts, boundaries))
+			ext_test = np.append(int_test, all_pts[indices_test,:], axis = 0)
+
+	num_int_label = int(interior.shape[0]*label_int)
+	perm_int = np.random.permutation(interior)
+	int_label = perm_int[0:num_int_label,:]
+	int_unlabel = perm_int[num_int_label:,:]
+
+	if tf > 1:
+		num_ext_label = int(exterior.shape[0]*label_ext)
+		perm_ext = np.random.permutation(exterior)
+		ext_label = perm_ext[0:num_ext_label,:]
+		ext_unlabel = perm_ext[num_ext_label:,:]
+	
+	np.savez(
+		wave_data_dir + '/processed_data.npz', 
+		int_label = int_label, int_unlabel = int_unlabel, bound = boundaries, int_test = int_test #ext_label = ext_label, ext_unlabel = ext_unlabel,
+	)
+
+	toc = time.time()
+	print("Time elapsed: ", toc - tic)
 
 def process_wave_data(wave_data_dir, params):
 	tic = time.time()
@@ -289,7 +365,9 @@ def process_wave_data(wave_data_dir, params):
 	else:
 		step_size = 1
 
-	x,y,p,u,v = load_data(wave_data_dir + "/dumps/dump000.npz")
+	for i in range(0, int(tf/params["sample_step"]), int(1/params["sample_step"])):
+		pts, bound, test_pts = load_data(wave_data_dir + "/dumps/dump{:03d}.npz".format(i))
+	
 	slice_size = len(x)
 
 	num_slices = T // step_size

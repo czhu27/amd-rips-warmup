@@ -10,7 +10,7 @@ from integrator import IntegratorRK2, IntegratorRK3
 from kernel import KernelAcoustic
 import sys
 sys.path.append(sys.path[0] + "/../..")
-from data import process_wave_data
+from data import process_wave_data_sample
 from plots import make_heatmap_animation
 
 # ------------------------------------------------------------------------------
@@ -136,7 +136,7 @@ class Simulator:
 			
 			# Simulation dump (flag in kernel.py must be True for 
 			# simulation data to be saved into files!)
-			if step_number % step_size:
+			if (step_number%step_size == 0):
 				self.__kernel.dump()
 
 			# Display pressure field at end of time step
@@ -163,7 +163,7 @@ class Simulator:
 		self.__field.save_traces()
 
 		# Process data
-		process_wave_data(self.__params["data_dir"], self.__params)
+		process_wave_data_sample(self.__params["data_dir"], self.__params)
 
 		return min_max
 	# def finalize

@@ -1,5 +1,6 @@
 import numpy as np
 import os
+import math
 
 from element import Element2d
 from quadrature import GLL2d
@@ -17,6 +18,10 @@ class KernelAcoustic:
 		self.field = field
 		self.dumps_dir = params["data_dir"] + "/dumps"
 		os.makedirs(self.dumps_dir)
+		self.data_percents = params["data_percents"]
+		self.num_steps = math.ceil(1/params["dt"])	
+		self.dt = params["dt"]
+
 
 		# Create element and quadrature (note that the quadrature points are
 		# colocated with the element coordinates)
@@ -269,20 +274,43 @@ class KernelAcoustic:
 				p = np.dot(psi, rhs_p[eid, :])
 				self.field.traces[i, step_number] = p
 			self.field.traces[num_rcvs, step_number] = t
+
+	def clean_data(self):
+		p = self.field.val["p"],
+		u = self.field.val['u'],
+		v = self.field.val['v'],
+		xy = self.field.global_node_coordinates
+		x = xy[:,0:18:2]
+		y = xy[:,1:18:2]
+
+		indices = np.argwhere((x == 0) | (x == 1) | (y == 0) | (y == 1))
+		boundaries = np.zeros((2*len(indices), 6))
+		boundaries[:,0] = np.ndarray.flatten(np.take(x, indices))
+		boundaries[:,1] = np.ndarray.flatten(np.take(y, indices))
+		boundaries[:,2] = self.dt*self.__ml_dump_index*np.ones((boundaries.shape[0]))
+		boundaries[:,3] = np.ndarray.flatten(np.take(p, indices))
+		boundaries[:,4] = np.ndarray.flatten(np.take(u, indices))
+		boundaries[:,5] = np.ndarray.flatten(np.take(v, indices))
+
+		pts = np.array([np.delete(x, indices)])
+		pts = np.append(pts, np.array([np.delete(y, indices)]), axis=0)
+		pts = np.append(pts, np.array([np.delete(p, indices)]), axis=0)
+		pts = np.append(pts, np.array([np.delete(u, indices)]), axis=0)
+		pts = np.append(pts, np.array([np.delete(v, indices)]), axis=0)
+		pts = np.insert(pts, 2, self._KernelAcoustic__ml_dump_index*np.ones((1,pts.shape[1])), axis=0)
+		pts = pts.T
+
+		return pts, boundaries
 	
 	def dump(self):
 		if (__ML_DUMP__):
 			#fname = "data/wave/dump{:03d}.npz".format(self.__ml_dump_index)
 			fname = self.dumps_dir + "/dump{:03d}.npz".format(self.__ml_dump_index)
+			pts, boundaries = self.clean_data()
 			f = open(fname, "w")
-			np.savez(fname, 
-					 p = self.field.val["p"],
-					 u = self.field.val['u'],
-					 v = self.field.val['v'],
-					 xy = self.field.global_node_coordinates)
+			np.savez(fname, pts = pts, bound = boundaries)
 			f.close()
 			self.__ml_dump_index += self.ml_dump_step
-
 
 		# if __ML_DUMP__	
 	# def dump	

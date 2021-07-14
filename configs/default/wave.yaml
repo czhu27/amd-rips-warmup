@@ -3,7 +3,7 @@
 ###########
 activation: elu
 dropout_rates: 0.0
-layers: [3, 20, 20, 20, 1]
+layers: [3, 100, 100, 100, 100, 100, 1]
 
 ##############
 #  Training  #

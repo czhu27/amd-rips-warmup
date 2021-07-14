@@ -42,7 +42,7 @@ def get_data(configs):
 		}
 
 	elif configs.source == "wave":
-		data = np.load('data/wave/fine_mesh/processed_data.npz')
+		data = np.load('data/wave/rough_mesh/processed_data.npz')
 		inputs, outputs, is_labeled = data['inputs'], data['outputs'], data['is_labeled']
 		is_interior, is_exterior_1, is_exterior_2 = data['is_interior'], data['is_exterior_1'], data['is_exterior_2']
 		X_l = inputs[is_labeled]

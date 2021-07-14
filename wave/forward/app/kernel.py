@@ -35,6 +35,13 @@ class KernelAcoustic:
 	
 		# Used for tracking snapshots dumped for ML training
 		self.__ml_dump_index = 0
+		#NEED TO ASSERT THIS WORKS SOMEWHERE
+		if "sample_step" in params:
+			step_size = int(params["sample_step"]/params["dt"])
+			assert params["sample_step"]/params["dt"] - step_size < 0.001, "Sample step not a multiple of dt"
+			self.ml_dump_step = step_size
+		else:
+			self.ml_dump_step = 1		
 
 		# Used to keep track of time
 		self.t = 0.0;
@@ -274,7 +281,9 @@ class KernelAcoustic:
 					 v = self.field.val['v'],
 					 xy = self.field.global_node_coordinates)
 			f.close()
-			self.__ml_dump_index += 1
+			self.__ml_dump_index += self.ml_dump_step
+
+
 		# if __ML_DUMP__	
 	# def dump	
 # def KernelAcoustic

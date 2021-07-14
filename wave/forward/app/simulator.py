@@ -66,6 +66,7 @@ class Simulator:
 		show_every = self.__params["show_every"]
 		current_time = 0
 		step_number = 0
+		step_size = int(self.__params["sample_step"] / dt)
 		#self.__field.display_p(step_number)
 		while (current_time < tf) & (dt > 1e-15):
 			
@@ -128,7 +129,8 @@ class Simulator:
 			
 			# Simulation dump (flag in kernel.py must be True for 
 			# simulation data to be saved into files!)
-			self.__kernel.dump()
+			if step_number % step_size:
+				self.__kernel.dump()
 
 			# Display pressure field at end of time step
 			if (step_number%100 == 0):

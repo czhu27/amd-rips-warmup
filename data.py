@@ -1,3 +1,4 @@
+from seaborn.matrix import heatmap
 from plots import make_heatmap_animation
 import numpy as np
 import glob
@@ -352,6 +353,7 @@ def process_wave_data_sample(wave_data_dir, params):
 	print("Time elapsed: ", toc - tic)
 
 def process_wave_data(wave_data_dir, params):
+	print("Processing wave data...")
 	tic = time.time()
 
 	# TODO: This is bad
@@ -359,9 +361,10 @@ def process_wave_data(wave_data_dir, params):
 	dt = params["dt"]
 	T = int(tf / dt) + 1
 
+	# Compute step_size (how many timesteps to jump by while loading)
 	if "sample_step" in params:
 		step_size = int(params["sample_step"]/dt)
-		assert params["sample_step"]/dt - step_size < 0.001, "Sample step not a multiple of dt"
+		assert abs(params["sample_step"]/dt - step_size) < 0.001, "Sample step not a multiple of dt"
 	else:
 		step_size = 1
 
@@ -376,6 +379,7 @@ def process_wave_data(wave_data_dir, params):
 	t_all = np.zeros(num_slices)
 
 
+	print("Loading data.")
 	for i in range(num_slices): 
 		dump_file = wave_data_dir + "/dumps/dump{:03d}.npz".format(i * step_size)
 		x,y,p,u,v = load_data(dump_file)
@@ -385,10 +389,19 @@ def process_wave_data(wave_data_dir, params):
 		u_all[i, :] = u
 		v_all[i, :] = v
 		t_all[i] = dt * i * step_size
+	print("Loaded data.")
 
 	# Make crude heatmap
-	p_mat_list = get_p_mat_list(p_all, x_all, y_all, every_n_frames=100)
-	make_heatmap_animation(p_mat_list, save_dir=wave_data_dir, fps=1)
+	print("Making p_mat_list (for heatmap animation)...")
+	heatmap_dt = 0.02
+	heatmap_seconds_per_second = 0.2
+	heatmap_step_size = int(heatmap_dt / dt)
+	every_n_frames = int(heatmap_step_size / step_size)
+	p_mat_list = get_p_mat_list(p_all, x_all, y_all, every_n_frames=every_n_frames)
+	print("Making heatmap animation...")
+	fps = heatmap_seconds_per_second / heatmap_dt
+	make_heatmap_animation(p_mat_list, save_dir=wave_data_dir, fps=fps)
+	print("Finished making heatmap animation")
 
 	x = x_all.flatten()
 	y = y_all.flatten()
@@ -397,6 +410,7 @@ def process_wave_data(wave_data_dir, params):
 	v = v_all.flatten()
 	t = np.repeat(t_all, slice_size)
 
+	print("Sampling data...")
 	data = np.stack([x,y,t,p,u,v], axis=-1)
 
 	# Reduce data
@@ -414,9 +428,13 @@ def process_wave_data(wave_data_dir, params):
 	is_exterior_2 = (t > 2)
 	is_boundary = (x == 0) | (x == 1) | (y == 0) | (y == 1)
 
+	print("Formatting data...")
+
 	is_labeled = is_interior
 	inputs = np.stack([x,y,t], axis=-1)
 	outputs = np.stack([p], axis=-1)
+
+	print("Saving data...")
 	np.savez(
 		wave_data_dir + '/processed_data.npz', 
 		inputs=inputs, outputs=outputs, is_labeled=is_labeled,
@@ -424,4 +442,4 @@ def process_wave_data(wave_data_dir, params):
 	)
 
 	toc = time.time()
-	print("Time elapsed: ", toc - tic)
+	print("Finished processing wave data.", "Time elapsed: ", toc - tic)

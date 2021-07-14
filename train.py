@@ -42,7 +42,7 @@ def get_data(configs):
 		}
 
 	elif configs.source == "wave":
-		data = np.load('data/wave/20210714-111939/processed_data.npz')
+		data = np.load('data/wave/fine_mesh/processed_data.npz')
 		inputs, outputs, is_labeled = data['inputs'], data['outputs'], data['is_labeled']
 		is_interior, is_exterior_1, is_exterior_2 = data['is_interior'], data['is_exterior_1'], data['is_exterior_2']
 		X_l = inputs[is_labeled]
@@ -251,7 +251,7 @@ def train(configs: Configs):
 
 	model.fit(dataset, 
 			epochs=opt_num_its, 
-			verbose=2,
+			verbose=1,
 			callbacks=callbacks)
 	toc = time.time()
 	print("Training time: {:.2F} s\n".format(toc - tic))

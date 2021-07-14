@@ -11,7 +11,7 @@ from tensorflow.python.ops.gen_math_ops import lgamma
 from tensorflow.python.types.core import Value
 
 # TODO: Add to NN's constructor
-loss_tracker = keras.metrics.Mean(name="loss")
+loss_tracker = keras.metrics.Sum(name='loss')		# TODO: Mean is more conventional
 
 # ------------------------------------------------------------------------------
 # Custom model based on Keras Model.
@@ -89,6 +89,7 @@ class NN(keras.models.Model):
 	# Redefine train_step used for optimizing the neural network parameters
 	# This function implements one epoch (one pass over entire dataset)
 	def train_step(self, batch):
+		print("HI HI HI HI HI HI HI HI HI")
 		
 		#mini_batches = self.create_mini_batches(dataset)	
 		

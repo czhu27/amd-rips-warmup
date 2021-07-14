@@ -15,8 +15,8 @@ params = {
 	"x1": 1.0,			# domain dimension (x1)
 	"y0": 0.0,			# domain dimension (y0)
 	"y1": 1.0,			# domain dimension (y1)
-	"nx": 10,			# number of mesh elements (x)
-	"ny": 10,			# number of mesh elements (y)
+	"nx": 50,			# number of mesh elements (x)
+	"ny": 50,			# number of mesh elements (y)
 	# Time-related parameters
 	"tf": 2,			# final time
 	"dt": 0.002,		# time step

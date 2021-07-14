@@ -42,7 +42,7 @@ def get_data(configs):
 		}
 
 	elif configs.source == "wave":
-		data = np.load('data/wave/20210712-161608/processed_data.npz')
+		data = np.load('data/wave/20210714-111939/processed_data.npz')
 		inputs, outputs, is_labeled = data['inputs'], data['outputs'], data['is_labeled']
 		is_interior, is_exterior_1, is_exterior_2 = data['is_interior'], data['is_exterior_1'], data['is_exterior_2']
 		X_l = inputs[is_labeled]
@@ -60,7 +60,7 @@ def get_data(configs):
 		error_metrics = {
 			"interpolation error (t <= 1)" : lambda model : general_error(model, X_int, Y_int),
 			"extrapolation error (1 < t <= 2)" : lambda model : general_error(model, X_ext_1, Y_ext_1),
-			"extrapolation error (2 < t)" : lambda model : general_error(model, X_ext_2, Y_ext_2),
+			#"extrapolation error (2 < t)" : lambda model : general_error(model, X_ext_2, Y_ext_2),
 		}
 
 		print(f"Loaded wave eq. simulation inputs/outputs. Count: {len(inputs)}")
@@ -175,7 +175,7 @@ def train(configs: Configs):
 		plot_data(X_l, X_ul, figs_folder, configs)
 
 	# Create TensorFlow dataset for passing to 'fit' function (below)
-	dataset = tf.data.Dataset.from_tensors((X_all, Y_all, is_labeled_all))
+	dataset = tf.data.Dataset.from_tensor_slices((X_all, Y_all, is_labeled_all))
 
 	# ------------------------------------------------------------------------------
 	# Create neural network (physics-inspired)
@@ -206,11 +206,16 @@ def train(configs: Configs):
 	opt_batch_size = configs.batch_size	# batch size
 	opt_num_its = configs.epochs		# number of iterations
 
-	model.set_batch_size(opt_batch_size)
+	#model.set_batch_size(opt_batch_size)
+	dataset = dataset.batch(opt_batch_size, drop_remainder=True)
 	model.set_gd_noise(configs.gd_noise)
 
 	optimizer = optimizers.Adam(learning_rate = opt_step)
+	tic = time.time()
+	print("Compiling model...")
 	model.compile(optimizer = optimizer, run_eagerly=configs.debug)		# DEBUG
+	toc = time.time()
+	print(f"Finished compiling model. Time elapsed: {toc - tic}.")
 	tic = time.time()
 
 	# Define Tensorboard Callbacks

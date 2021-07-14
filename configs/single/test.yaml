@@ -1,1 +1,3 @@
 epochs: 100
+debug: false
+# batch_size: 512

@@ -337,7 +337,7 @@ def process_wave_data(wave_data_dir, params):
 
 	# Reduce data
 	count = len(data)
-	perc_sampled = 0.001
+	perc_sampled = 1 #0.001
 	size = int(count * perc_sampled)
 	idx = np.random.choice(count, size)
 	data = data[idx]

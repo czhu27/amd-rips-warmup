@@ -12,7 +12,7 @@ from helpers import Configs
 from nn import create_nn
 from targets import get_target
 from plots import plot_data_2D, plot_gridded_functions, make_movie
-from data import data_creation, compute_error, extrap_error, data_wave
+from data import data_creation, compute_error, extrap_error, data_wave, compute_error_wave
 
 
 #tf.debugging.set_log_device_placement(True)
@@ -42,30 +42,41 @@ def get_data(configs):
 		}
 
 	elif configs.source == "wave":
-		data = np.load('data/wave/20210712-161608/processed_data.npz')
-		inputs, outputs, is_labeled = data['inputs'], data['outputs'], data['is_labeled']
-		is_interior, is_exterior_1, is_exterior_2 = data['is_interior'], data['is_exterior_1'], data['is_exterior_2']
-		X_l = inputs[is_labeled]
-		X_ul = inputs[~is_labeled]
-		Y_l = outputs[is_labeled]
-		X, Y = inputs, outputs
-		
+		data = np.load('data/wave/standard/processed_data.npz')
+		int_label, int_unlabel, bound, int_test = data['int_label'], data['int_unlabel'], data['bound'], data['int_test']
+		#inputs, outputs, is_labeled = data['inputs'], data['outputs'], data['is_labeled']
+		#is_interior, is_exterior_1, is_exterior_2 = data['is_interior'], data['is_exterior_1'], data['is_exterior_2']
+		#X_l = inputs[is_labeled]
+		#X_ul = inputs[~is_labeled]
+		#Y_l = outputs[is_labeled]
+		#X, Y = inputs, outputs
+		X_l = np.float32(np.concatenate((int_label[:,0:3], bound[:,0:3])))
+		Y_l = np.float32(np.concatenate((int_label[:,3], bound[:,3])))
+		X_ul = int_unlabel
 		#X_l, X_ul, Y_l, x_flat, y_flat, t_flat, p_flat  = data_wave([8000, 4000, 5000, 1.0, 1.0, 0.0])
 		
 		grad_reg = None
+		'''
 		X_int, Y_int = X[is_interior], Y[is_interior]
 		X_ext_1, Y_ext_1 = X[is_exterior_1], Y[is_exterior_1]
 		X_ext_2, Y_ext_2 = X[is_exterior_2], Y[is_exterior_2]
-
+		'''
+		
+		test_x = np.reshape(int_test[:,0],(len(int_test[:,0]),1))
+		test_y = np.reshape(int_test[:,1],(len(int_test[:,1]),1))
+		test_t = np.reshape(int_test[:,2],(len(int_test[:,2]),1))
+		test_p = np.reshape(int_test[:,3],(len(int_test[:,3]),1))
+		
 		error_metrics = {
-			"interpolation error (t <= 1)" : lambda model : general_error(model, X_int, Y_int),
-			"extrapolation error (1 < t <= 2)" : lambda model : general_error(model, X_ext_1, Y_ext_1),
-			"extrapolation error (2 < t)" : lambda model : general_error(model, X_ext_2, Y_ext_2),
+			"interpolation error (t <= 1)" : lambda model : compute_error_wave(model, test_x, test_y, test_t, test_p)
+			#"extrapolation error (1 < t <= 2)" : lambda model : general_error(model, X_ext_1, Y_ext_1),
+			#"extrapolation error (2 < t)" : lambda model : general_error(model, X_ext_2, Y_ext_2),
 		}
+		
+		print(f"Loaded wave eq. simulation inputs/outputs. Count: {len(X_l)}")
 
-		print(f"Loaded wave eq. simulation inputs/outputs. Count: {len(inputs)}")
-	else:
-		raise ValueError("Unknown data source " + configs.source)
+	#else:
+	#	raise ValueError("Unknown data source " + configs.source)
 
 	return X_l, Y_l, X_ul, grad_reg, error_metrics
 
@@ -155,15 +166,16 @@ def train(configs: Configs):
 	# ------------------------------------------------------------------------------
 
 	# Get the "interesting" data
-	X_l, Y_l, X_ul, grad_reg, error_metrics = get_data(configs)
+	X_l, Y_l, X_ul, grad_reg, error_metrics = get_data(configs) #, error_metrics
 
-	Y_ul = tf.zeros((X_ul.shape[0], 1))
+	#Y_ul = tf.zeros((X_ul.shape[0], 1))
 
 	# Add noise to y-values
 	if configs.noise > 0:
 		Y_l += tf.random.normal(Y_l.shape, stddev=configs.noise)
 		#Y_l += np.reshape(configs.noise*np.random.randn((len(Y_l))),(len(Y_l),1))
 
+	'''
 	is_labeled_l = tf.fill(Y_l.shape, True)
 	is_labeled_ul = tf.fill(Y_ul.shape, False)
 
@@ -173,6 +185,7 @@ def train(configs: Configs):
 
 	if "data-distribution" in configs.plots:
 		plot_data(X_l, X_ul, figs_folder, configs)
+	'''
 
 	# Create TensorFlow dataset for passing to 'fit' function (below)
 	dataset = tf.data.Dataset.from_tensors((X_all, Y_all, is_labeled_all))
@@ -263,18 +276,21 @@ def train(configs: Configs):
 	# ------------------------------------------------------------------------------
 	final_metrics = {}
 
+	'''
 	Y_pred_l = model.predict(X_l)
 	loss_value = model.loss_function_f(Y_pred_l, Y_l)/X_l.shape[0]
 	print("FINAL Loss: \t\t\t {:.6E}".format(loss_value))
 	final_metrics['loss_value'] = "{:.6E}".format(loss_value)
-
+	'''
 	for error_name, error_func in error_metrics.items():
 		error_val = error_func(model)
 		print('FINAL Error/' + error_name + f":\t\t\t {error_val:.6E}")
 		final_metrics[error_name] = "{:.6E}".format(error_val)
+	'''
 
 	if "extrapolation" in configs.plots:
 		comparison_plots(model, figs_folder, configs)
+	'''
 
 	train_time = toc - tic 
 	final_metrics['training_time'] = "{:.2F} s".format(train_time)

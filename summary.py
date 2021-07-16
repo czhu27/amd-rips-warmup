@@ -12,6 +12,26 @@ def find(name, path):
 def avg(lst):
     return sum(lst)/len(lst)
 
+def create_run_summary_wave(run_path):
+    errorPaths = find("results.yaml", run_path)
+    error_past = []
+    #error_future1 = []
+    #error_future2 = []
+    for path in errorPaths:
+        with open(path) as f:
+            errorDict = yaml.safe_load(f)
+            error_past.append(float(errorDict["interpolation error (t <= 1)"]))
+            #error_future1.append()
+            #error_future2.append()
+    errorpastavg = avg(error_past)
+    #error2avg = avg(error2s)
+    #error3avg = avg(error3s)
+
+    with open(run_path + "/summary.txt", 'w') as f:
+        f.write("Avg Interpolation Error (t <= 1): " + str(errorpastavg) + "\n")
+        #f.write("Avg Extrapolation Error [-2, 2] x [-2, 2]: " + str(error2avg) + "\n")
+        #f.write("Avg Extrapolation Error [-3, 3] x [-3, 3]: " + str(error3avg) + "\n")
+
 '''
 Create a text file containing averages for errors across all
 trials in a run

@@ -258,7 +258,7 @@ def extrap_error(model, f, i_lb, i_ub, o_lb, o_ub, step_size=0.01):
 
 def compute_error_wave(model, x, y, t, p):
 	f_true = p
-	ml_input = np.concatenate((x,y,t))
+	ml_input = np.concatenate((x,y,t),axis=1)
 	ml_output = model.predict(ml_input)
 	f_ml = np.reshape(ml_output, (len(p), 1))
 	error = np.sqrt(np.mean(np.square(f_ml - f_true)))
@@ -333,10 +333,11 @@ def process_wave_data_sample(wave_data_dir, params):
 			num_test = int(params["data_percents"][2][0]*pts.shape[0])
 			indices_pts = np.random.randint(0,pts.shape[0], num_pts)
 			interior = np.append(interior, pts[indices_pts,:], axis=0)
-			indices_bound = np.random.randint(0,pts.shape[0], num_bound)
-			boundary = np.append(boundary, pts[indices_bound,:], axis=0)
+			indices_bound = np.random.randint(0,boundaries.shape[0], num_bound)
+			boundary = np.append(boundary, boundaries[indices_bound,:], axis=0)
 			indices_test = np.random.randint(0,pts.shape[0] + boundaries.shape[0], num_pts)
 			int_test = np.append(int_test, all_pts[indices_test,:], axis = 0)
+			string = "hi"
 		#If exterior
 		else:
 			#Separate boundary, interior points, test set

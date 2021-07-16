@@ -8,7 +8,7 @@ import yaml
 from helpers import Configs
 
 from train import train
-from summary import create_overall_summary, create_run_summary
+from summary import create_overall_summary, create_run_summary, create_run_summary_wave
 
 def make_configs(changes_configs, default_configs):
 	# Merge the two configs
@@ -37,7 +37,10 @@ def run_trials(configs):
 		# RUN TRIAL!
 		train(trial_configs)
 	
-	create_run_summary(parent_dir)
+	if configs.source == 'synthetic':
+		create_run_summary(parent_dir)
+	elif configs.source == 'wave':
+		create_run_summary_wave(parent_dir)
 
 def grid_search(search_file, default_configs):
 	print("Running a grid search.")

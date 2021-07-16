@@ -151,3 +151,6 @@ wave/forward/traces/*.npz
 wave/forward/figs/
 
 .vscode
+
+trials.py
+debug.yaml

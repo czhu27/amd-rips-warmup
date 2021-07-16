@@ -300,7 +300,7 @@ class KernelAcoustic:
 		pts = np.append(pts, np.array([np.delete(p, indices)]), axis=0)
 		pts = np.append(pts, np.array([np.delete(u, indices)]), axis=0)
 		pts = np.append(pts, np.array([np.delete(v, indices)]), axis=0)
-		pts = np.insert(pts, 2, self._KernelAcoustic__ml_dump_index*np.ones((1,pts.shape[1])), axis=0)
+		pts = np.insert(pts, 2, self.dt*self._KernelAcoustic__ml_dump_index*np.ones((1,pts.shape[1])), axis=0)
 		pts = pts.T #Make each variable a column (x,y,t,p,u,v)
 
 		return pts, boundaries

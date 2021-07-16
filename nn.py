@@ -35,7 +35,7 @@ class NN(keras.models.Model):
 		# Batch size should by user using the 'set_batch_size' function
 		batch_size = self.batch_size
 		
-		X_f, f, l_bools = dataset
+		X_f, f, l_bools, g_bools = dataset
 		
 		# Number of batches
 		m_f = X_f.shape[0]
@@ -84,7 +84,8 @@ class NN(keras.models.Model):
 		
 		# Loop over all mini-batches
 		for batch in mini_batches:
-			X_f, f, is_labeled = batch
+			X_f, f, l_bools, grad_bools = dataset
+			f = tf.reshape(f, [f.shape[0],1])
 			
 			# For gradient of loss w.r.t. trainable variables	
 			with tf.GradientTape(persistent=True) as tape:
@@ -103,7 +104,7 @@ class NN(keras.models.Model):
 				## Compute Loss
 				# Compute L_f: \sum_i |f_i - f_i*|^2
 				L_f = 0
-				L_f += self.loss_function_f(f[is_labeled], f_pred[is_labeled])
+				L_f += self.loss_function_f(f[l_bools], f_pred[l_bools])
 
 				if self.gradient_loss:
 					# Compute gradient condition (deviation from diff. eq.)
@@ -131,7 +132,8 @@ class NN(keras.models.Model):
 			self.optimizer.apply_gradients(zip(gradients, trainable_vars))
 		
 			# Increment total loss value by mini-batch-wise contribution
-			loss_value_f += L_f
+			num_batches = len(mini_batches)
+			loss_value_f += L_f / num_batches
 
 		# end for loop on mini batches
 

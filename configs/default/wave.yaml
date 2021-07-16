@@ -44,5 +44,5 @@ grad_reg_const: 1
 debug: false
 output_dir: null   # overridden in main.py
 output_root: output/wave
-plots: [extrapolation, data-distribution, tensorboard, extrapolation_wave]
+plots: [extrapolation, data-distribution, tensorboard, extrapolation_wave, heatmap]
 saves: [model]

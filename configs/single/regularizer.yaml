@@ -1,0 +1,10 @@
+batch_size: 4096
+# batch_size: 16384
+layers: [3,20, 20, 20, 1]
+# layers: [3, 100, 100, 100, 100, 100, 1]
+lr: 1.0e-3
+grad_reg_const: 1
+gradient_loss: none
+epochs: 10000
+cutoff_beginning: True
+activation: tanh

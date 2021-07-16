@@ -154,3 +154,8 @@ wave/forward/figs/
 
 trials.py
 debug.yaml
+test.yaml
+# exclude everything
+notebooks/*
+# exception to the rule
+!notebooks/.gitkeep

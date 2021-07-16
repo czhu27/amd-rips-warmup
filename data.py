@@ -216,10 +216,10 @@ def compute_error(model, f, lb, ub):
 
 	f_true = f(x0_g, x1_g)
 
-	ml_input = np.zeros((npts, 3))
+	ml_input = np.zeros((npts, 2))
 	ml_input[:,0] = x0_g.flatten()
 	ml_input[:,1] = x1_g.flatten()
-	ml_input[:,2] = t*np.ones((npts))
+	# ml_input[:,2] = t*np.ones((npts))
 	ml_output = model.predict(ml_input)
 	
 	f_ml = np.reshape(ml_output, (n1d, n1d), order = 'C')
@@ -313,10 +313,11 @@ def process_wave_data_sample(wave_data_dir, params):
 	p_all = None
 
 	#Read in files and sort
-	for i in range(0, int(tf/params["dt"]), int(params["sample_step"]/params['dt'])):
+	start_iter = 10*int(params["sample_step"]/params['dt'])
+	for i in range(start_iter, int(tf/params["dt"]), int(params["sample_step"]/params['dt'])):
 		pts, boundaries = load_data(wave_data_dir + "/dumps/dump{:03d}.npz".format(i))
 		#If interior
-		if i == 0:
+		if i == start_iter:
 			x_all = np.zeros((0,pts.shape[0]+boundaries.shape[0]))
 			y_all = np.zeros((0,pts.shape[0]+boundaries.shape[0]))
 			p_all = np.zeros((0,pts.shape[0]+boundaries.shape[0]))
@@ -382,7 +383,8 @@ def process_wave_data_sample(wave_data_dir, params):
 
 	np.savez(
 		wave_data_dir + '/processed_data.npz', 
-		int_label = int_label, int_unlabel = int_unlabel, bound = boundaries, int_test = int_test, ext_label = ext_label, ext_unlabel = ext_unlabel,
+		int_label = int_label, int_unlabel = int_unlabel, bound = boundaries, int_test = int_test, 
+		ext_label = ext_label, ext_unlabel = ext_unlabel, ext_test = ext_test
 	)
 
 	toc = time.time()

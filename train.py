@@ -11,8 +11,7 @@ from tensorflow.keras import optimizers
 from helpers import Configs
 from nn import create_nn
 from targets import get_target
-from wave_reg import get_wave_reg
-from plots import plot_data_2D, plot_gridded_functions, make_movie, wave_model_heatmap
+from plots import plot_data_2D, plot_gridded_functions, make_movie, make_wave_plot, wave_model_heatmap
 from data import data_creation, compute_error, extrap_error, data_wave
 
 
@@ -24,7 +23,7 @@ def general_error(model, X, Y):
 	return mse
 
 def get_data(configs):
-
+	grad_bools = None #Placeholder
 	if configs.source == "synthetic":
 
 		# Data for training NN based on L_f loss function
@@ -36,6 +35,9 @@ def get_data(configs):
 		# Apply target func to data
 		Y_l = f(X_l[:, 0:1], X_l[:, 1:2])
 
+		if grad_reg == 'zero' or grad_reg == 'const':
+			grad_bools = tf.fill(X_l.shape[0] + X_ul.shape[0], True)
+
 		error_metrics = {
 			"interpolation error (1x1 square)": lambda model : compute_error(model, f, -1.0, 1.0),
 			"extrapolation error (2x2 ring)": lambda model : extrap_error(model, f, -1.0, 1.0, -2.0, 2.0),
@@ -43,44 +45,67 @@ def get_data(configs):
 		}
 
 	elif configs.source == "wave":
-		data = np.load('data/wave/rough_mesh/processed_data.npz')
-		inputs, outputs, is_labeled = data['inputs'], data['outputs'], data['is_labeled']
-		is_interior, is_exterior_1, is_exterior_2 = data['is_interior'], data['is_exterior_1'], data['is_exterior_2']
-		N = -1
-		inputs, outputs, is_labeled, is_interior, is_exterior_1, is_exterior_2 = (
-			inputs[:N], outputs[:N], is_labeled[:N], is_interior[:N], is_exterior_1[:N], is_exterior_2[:N]
-		)
-		t = inputs[:,2]
-		cond = (t >= 0.3)
-		inputs, outputs, is_labeled, is_interior, is_exterior_1, is_exterior_2 = (
-			inputs[cond], outputs[cond], is_labeled[cond], is_interior[cond], is_exterior_1[cond], is_exterior_2[cond]
-		)
-		inputs = np.float32(inputs)
-		outputs = np.float32(outputs)
-		X_l = inputs[is_labeled]
-		X_ul = inputs[~is_labeled]
-		Y_l = outputs[is_labeled]
-		X, Y = inputs, outputs
+		data = np.load('data/wave/time_start_50/processed_data.npz')
+		int_label, int_unlabel, bound, int_test = data['int_label'], data['int_unlabel'], data['bound'], data['int_test']
+		ext_label, ext_unlabel, ext_test = data['ext_label'], data['ext_unlabel'], data['ext_test']
+		X_l = np.float32(np.concatenate((bound[:,0:3],int_label[:,0:3])))
+		X_ul = int_unlabel #int_ulabel
+		Y_l = np.float32(np.concatenate((bound[:,3], int_label[:,3])))
 
-		
-		#X_l, X_ul, Y_l, x_flat, y_flat, t_flat, p_flat  = data_wave([8000, 4000, 5000, 1.0, 1.0, 0.0])
-		
+		is_boundary = tf.fill(bound.shape[0], True)
+		is_not_boundary = tf.fill(int_label.shape[0] + int_unlabel.shape[0], False)
+		is_boundary_all = tf.concat([is_boundary, is_not_boundary], axis=0)
+
 		grad_reg = get_wave_reg(configs.gradient_loss, configs)
-		X_int, Y_int = X[is_interior], Y[is_interior]
-		X_ext_1, Y_ext_1 = X[is_exterior_1], Y[is_exterior_1]
-		X_ext_2, Y_ext_2 = X[is_exterior_2], Y[is_exterior_2]
+		#grad_reg = get_target(configs.target, configs.gradient_loss, configs)
+
+		if grad_reg == 'unknown':
+			grad_bools = tf.fill(X_l.shape[0] + X_ul.shape[0], True)
+		elif grad_reg == "TBD":
+			grad_bools = tf.fill(X_l.shape[0] + X_ul.shape[0], True)
+		elif grad_reg == "We'll figure it out":
+			grad_bools = tf.fill(X_l.shape[0] + X_ul.shape[0], True)
 
 		error_metrics = {
-			"interpolation error (t <= 1)" : lambda model : general_error(model, X_int, Y_int),
-			"extrapolation error (1 < t <= 2)" : lambda model : general_error(model, X_ext_1, Y_ext_1),
+			"interpolation error (t <= 1)" : lambda model : general_error(model, int_test[:,0:3], int_test[:,3]),
+			"extrapolation error (1 < t <= 2)" : lambda model : general_error(model, ext_test[:,0:3], ext_test[:,3]),
 			#"extrapolation error (2 < t)" : lambda model : general_error(model, X_ext_2, Y_ext_2),
 		}
 
-		print(f"Loaded wave eq. simulation inputs/outputs. Count: {len(inputs)}")
-	else:
-		raise ValueError("Unknown data source " + configs.source)
+	#Creates labels to pass through network
+	is_labeled_l = tf.fill(X_l.shape[0], True)
+	is_labeled_ul = tf.fill(X_ul.shape[0], False)
 
-	return X_l, Y_l, X_ul, grad_reg, error_metrics
+	if X_ul.shape[0] == 0:
+		label_bools = is_labeled_l
+	else:
+		label_bools = tf.concat([is_labeled_l, is_labeled_ul], axis=0)
+
+	Y_ul = tf.zeros((X_ul.shape[0], 1))
+
+	# Add noise to y-values
+	if configs.noise > 0:
+		Y_l += tf.random.normal(Y_l.shape, stddev=configs.noise)
+		Y_l += np.reshape(configs.noise*np.random.randn((len(Y_l))),(len(Y_l),1))
+
+	#Concat inputs, outputs, and bools
+	if X_ul.shape[0] == 0:
+		X_all = X_l
+		Y_all = Y_l
+	else:
+		X_all = tf.concat([X_l, X_ul], axis=0)
+		Y_all = tf.concat([Y_l, Y_ul], axis=0)
+	
+	
+
+		# if "data-distribution" in configs.plots:
+		# 	plot_data(X_l, X_ul, figs_folder, configs)
+
+	print(f"Loaded wave eq. simulation inputs/outputs. Count: {len(X_l)}")
+	# else:
+	# 	raise ValueError("Unknown data source " + configs.source)
+
+	return X_all, Y_all, label_bools, grad_bools, grad_reg#, error_metrics
 
 
 def plot_data(X_l, X_ul, figs_folder, configs):
@@ -120,6 +145,11 @@ def comparison_plots(model, figs_folder, configs):
 		if "heatmap" in configs.plots:
 			wave_model_heatmap(model, figs_folder)
 		make_movie(model, figs_folder)
+		make_wave_plot(model, t = 0, f_true = 0, figs_folder = figs_folder, tag='0')
+		make_wave_plot(model, t = .25, f_true = 0, figs_folder = figs_folder, tag='0.25')
+		make_wave_plot(model, t = .5, f_true = 0, figs_folder = figs_folder, tag='0.5')
+		make_wave_plot(model, t = .75, f_true = 0, figs_folder = figs_folder, tag='0.75')
+		make_wave_plot(model, t = 1, f_true = 0, figs_folder = figs_folder, tag='1')
 	
 	else:
 		raise ValueError("Unknown data source " + configs.source)
@@ -163,35 +193,18 @@ def train(configs: Configs):
 	# General setup
 	# ------------------------------------------------------------------------------
 	# Set seeds for reproducibility
-	np.random.seed(configs.seed)
-	tf.random.set_seed(configs.seed)
+	# np.random.seed(configs.seed)
+	# tf.random.set_seed(configs.seed)
 
 	# ------------------------------------------------------------------------------
 	# Data preparation
 	# ------------------------------------------------------------------------------
 
 	# Get the "interesting" data
-	X_l, Y_l, X_ul, grad_reg, error_metrics = get_data(configs)
-
-	Y_ul = tf.zeros((X_ul.shape[0], 1))
-
-	# Add noise to y-values
-	if configs.noise > 0:
-		Y_l += tf.random.normal(Y_l.shape, stddev=configs.noise)
-		#Y_l += np.reshape(configs.noise*np.random.randn((len(Y_l))),(len(Y_l),1))
-
-	is_labeled_l = tf.fill(Y_l.shape, True)
-	is_labeled_ul = tf.fill(Y_ul.shape, False)
-
-	X_all = tf.concat([X_l, X_ul], axis=0)
-	Y_all = tf.concat([Y_l, Y_ul], axis=0)
-	is_labeled_all = tf.concat([is_labeled_l, is_labeled_ul], axis=0)
-
-	if "data-distribution" in configs.plots:
-		plot_data(X_l, X_ul, figs_folder, configs)
+	X_all, Y_all, label_bools, grad_bools, grad_reg = get_data(configs)#, error_metrics = get_data(configs)
 
 	# Create TensorFlow dataset for passing to 'fit' function (below)
-	dataset = tf.data.Dataset.from_tensors((X_all, Y_all, is_labeled_all))
+	dataset = tf.data.Dataset.from_tensors((X_all, Y_all, label_bools, grad_bools))
 
 	# ------------------------------------------------------------------------------
 	# Create neural network (physics-inspired)
@@ -279,15 +292,15 @@ def train(configs: Configs):
 	# ------------------------------------------------------------------------------
 	final_metrics = {}
 
-	Y_pred_l = model.predict(X_l)
-	loss_value = model.loss_function_f(Y_pred_l, Y_l)/X_l.shape[0]
-	print("FINAL Loss: \t\t\t {:.6E}".format(loss_value))
-	final_metrics['loss_value'] = "{:.6E}".format(loss_value)
+	# Y_pred_l = model.predict(X_l)
+	# loss_value = model.loss_function_f(Y_pred_l, Y_l)/X_l.shape[0]
+	# print("FINAL Loss: \t\t\t {:.6E}".format(loss_value))
+	# final_metrics['loss_value'] = "{:.6E}".format(loss_value)
 
-	for error_name, error_func in error_metrics.items():
-		error_val = error_func(model)
-		print('FINAL Error/' + error_name + f":\t\t\t {error_val:.6E}")
-		final_metrics[error_name] = "{:.6E}".format(error_val)
+	# for error_name, error_func in error_metrics.items():
+	# 	error_val = error_func(model)
+	# 	print('FINAL Error/' + error_name + f":\t\t\t {error_val:.6E}")
+	# 	final_metrics[error_name] = "{:.6E}".format(error_val)
 
 	if "extrapolation" in configs.plots:
 		comparison_plots(model, figs_folder, configs)

@@ -59,7 +59,7 @@ def plot_gridded_functions(model, f, lb, ub, tag, folder="figs"):
     return buf
 
 
-def make_wave_plot(model, t, f_true, tag, folder="figs"):
+def make_wave_plot(model, t, f_true, figs_folder, tag):
     n1d = 101
     lb = 0
     ub = 1
@@ -69,10 +69,10 @@ def make_wave_plot(model, t, f_true, tag, folder="figs"):
     x0_g, x1_g = np.meshgrid(x0, x1)
 
     # Compute true function values
-    f_true = f(x0_g, x1_g)
+    #f_true = f(x0_g, x1_g)
 
     # Compute ML function values
-    ml_input = np.zeros((npts, 2))
+    ml_input = np.zeros((npts, 3))
     ml_input[:,0] = x0_g.flatten()
     ml_input[:,1] = x1_g.flatten()
     ml_input[:,2] = t*np.ones((npts))
@@ -83,56 +83,61 @@ def make_wave_plot(model, t, f_true, tag, folder="figs"):
     fig.set_figheight(8)
     fig.set_figwidth(8)
     fig.tight_layout()
-    ax = fig.add_subplot(221, projection='3d')
-    ax.plot_surface(x0_g, x1_g, f_true, cmap=cm.coolwarm)
-    ax.set_title('True')
+    # ax = fig.add_subplot(221, projection='3d')
+    # ax.plot_surface(x0_g, x1_g, f_true, cmap=cm.coolwarm)
+    # ax.set_title('True')
     #plt.savefig('figs/true' + str(tag) + '.png')
 
-    ax = fig.add_subplot(222, projection='3d')
+    ax = fig.add_subplot(111, projection='3d')
     ax.plot_surface(x0_g, x1_g, f_ml, cmap=cm.coolwarm)
     ax.set_title('ML')
     #plt.savefig('figs/ml' + str(tag) + '.png')
 
-    ax = fig.add_subplot(223, projection='3d')
-    ax.plot_surface(x0_g, x1_g, np.abs(f_ml - f_true), cmap=cm.coolwarm)
-    ax.set_title('|True - ML|')
+    # ax = fig.add_subplot(223, projection='3d')
+    # ax.plot_surface(x0_g, x1_g, np.abs(f_ml - f_true), cmap=cm.coolwarm)
+    # ax.set_title('|True - ML|')
     #plt.savefig('figs/diff' + str(tag) + '.png')
-    plt.savefig(folder + '/all' + str(tag) + '.png')
+    plt.savefig(figs_folder + '/all' + str(tag) + '.png')
     buf = io.BytesIO()
     plt.savefig(buf, format='png')
     buf.seek(0)
     return buf
 
 
-def make_movie(model, figs_folder, time_steps = 50, dx = .01, dt = .01):
+def make_movie(model, figs_folder, time_steps = 100, dx = .01, dt = .01):
+    #Create figure for movie and init constants
     fig = plt.figure()
     ax = fig.add_subplot(projection='3d')
     nx = ny = int(1 / dx)
-    dt = .02
+    dt = .01
 
     def update(frame, fig, dt, nx, ny):
+        #Creates inputs
         X = np.arange(0,1,1/nx)
         Y = np.arange(0,1,1/ny)
-        X, Y = np.meshgrid(X,Y)
-        grid_pts = np.reshape(np.concatenate((X,Y)), (nx*ny,2))
+        X_g, Y_g = np.meshgrid(X,Y)
+        grid_pts = np.reshape(np.concatenate((X_g,Y_g)), (nx*ny,2))
         time_vec = np.ones((len(grid_pts),1))*dt*frame
-
-        inputs = np.concatenate((grid_pts,time_vec), axis=1)
+        #Runs inputs through model for soln
+        X_t = np.reshape(X_g, (nx*ny,1))
+        Y_t = np.reshape(Y_g, (nx*ny,1))
+        inputs = np.concatenate((X_t, Y_t,time_vec), axis=1)
         soln = model.predict(inputs)
+        print(soln)
         soln = np.reshape(soln, (nx,ny))
-
+        #Clears current fig and draws surface
         if len(fig.axes[0].collections) != 0:
             fig.axes[0].collections = []
-            surf = fig.axes[0].plot_surface(X, Y, soln, cmap=cm.coolwarm, linewidth=0, antialiased=False)
+            surf = fig.axes[0].plot_surface(X_g, Y_g, soln, cmap=cm.coolwarm, linewidth=0, antialiased=False)
         else:
-            surf = fig.axes[0].plot_surface(X, Y, soln, cmap=cm.coolwarm, linewidth=0, antialiased=False)
-        ax.set_zlim(-.04, .04)
+            surf = fig.axes[0].plot_surface(X_g, Y_g, soln, cmap=cm.coolwarm, linewidth=0, antialiased=False)
+        ax.set_zlim(-.75,.75)
 
         fig.canvas.draw()
         return surf,
-
+    #Loops through update to create animation
     ani = FuncAnimation(fig, update, fargs=[fig, dt, nx, ny], frames=time_steps, blit=True)
-    ani.save(figs_folder + '/wave_pred.gif', writer = 'PillowWriter', fps=5)
+    ani.save(figs_folder + '/wave_pred2.gif', writer = 'PillowWriter', fps=10)
 
 
 def plot_data_dist(x,y):

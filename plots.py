@@ -59,7 +59,7 @@ def plot_gridded_functions(model, f, lb, ub, tag, folder="figs"):
     return buf
 
 
-def make_wave_plot(mode, t, f_true, tag, folder="figs"):
+def make_wave_plot(model, t, f_true, tag, folder="figs"):
     n1d = 101
     lb = 0
     ub = 1
@@ -178,3 +178,34 @@ def make_heatmap_animation(mat_list, save_dir, R=None, fps = 10):
     savefile = save_dir + "/heatmap.gif"
     pillowwriter = animation.PillowWriter(fps=fps)
     anim.save(savefile, writer=pillowwriter)
+
+def wave_model_heatmap(model, figs_folder, x_min=0, x_max=1, dx = 0.05, t_min=0, t_max=1, dt=None):
+    print("Making model heatmap plot...")
+    nx = int((x_max - x_min) / dx)
+    if dt is None:
+        dt = dx
+    nt = int((t_max - t_min) / dt)
+    lb=0; ub=1
+    x_lin = np.linspace(lb, ub, nx)
+    y_lin = np.linspace(lb, ub, nx)
+    t_lin = np.linspace(0, 2, nt)
+    t_g, x_g, y_g = np.meshgrid(t_lin, x_lin, y_lin, indexing="ij")
+    def flatten_end(arr):
+        return arr.reshape(arr.shape[0], -1)
+
+    x = flatten_end(x_g)
+    y = flatten_end(y_g)
+    t = flatten_end(t_g)
+
+    X = np.stack([x,y,t], axis=-1)
+    p_mat_arr = np.zeros((len(t_lin), len(x_lin), len(y_lin)))
+    for i, t_min in enumerate(t):
+        Y_pred = model.predict(X[i])
+        Y_pred = Y_pred.reshape(len(x_lin), len(y_lin))
+        p_mat_arr[i] = Y_pred
+    
+    from plots import make_heatmap_animation
+    make_heatmap_animation(p_mat_arr, figs_folder, fps = 2)
+
+    print("Finished model heatmap plot")
+

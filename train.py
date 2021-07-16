@@ -11,7 +11,8 @@ from tensorflow.keras import optimizers
 from helpers import Configs
 from nn import create_nn
 from targets import get_target
-from plots import plot_data_2D, plot_gridded_functions, make_movie
+from wave_reg import get_wave_reg
+from plots import plot_data_2D, plot_gridded_functions, make_movie, wave_model_heatmap
 from data import data_creation, compute_error, extrap_error, data_wave
 
 
@@ -42,17 +43,29 @@ def get_data(configs):
 		}
 
 	elif configs.source == "wave":
-		data = np.load('data/wave/20210712-161608/processed_data.npz')
+		data = np.load('data/wave/rough_mesh/processed_data.npz')
 		inputs, outputs, is_labeled = data['inputs'], data['outputs'], data['is_labeled']
 		is_interior, is_exterior_1, is_exterior_2 = data['is_interior'], data['is_exterior_1'], data['is_exterior_2']
+		N = -1
+		inputs, outputs, is_labeled, is_interior, is_exterior_1, is_exterior_2 = (
+			inputs[:N], outputs[:N], is_labeled[:N], is_interior[:N], is_exterior_1[:N], is_exterior_2[:N]
+		)
+		t = inputs[:,2]
+		cond = (t >= 0.3)
+		inputs, outputs, is_labeled, is_interior, is_exterior_1, is_exterior_2 = (
+			inputs[cond], outputs[cond], is_labeled[cond], is_interior[cond], is_exterior_1[cond], is_exterior_2[cond]
+		)
+		inputs = np.float32(inputs)
+		outputs = np.float32(outputs)
 		X_l = inputs[is_labeled]
 		X_ul = inputs[~is_labeled]
 		Y_l = outputs[is_labeled]
 		X, Y = inputs, outputs
+
 		
 		#X_l, X_ul, Y_l, x_flat, y_flat, t_flat, p_flat  = data_wave([8000, 4000, 5000, 1.0, 1.0, 0.0])
 		
-		grad_reg = None
+		grad_reg = get_wave_reg(configs.gradient_loss, configs)
 		X_int, Y_int = X[is_interior], Y[is_interior]
 		X_ext_1, Y_ext_1 = X[is_exterior_1], Y[is_exterior_1]
 		X_ext_2, Y_ext_2 = X[is_exterior_2], Y[is_exterior_2]
@@ -60,7 +73,7 @@ def get_data(configs):
 		error_metrics = {
 			"interpolation error (t <= 1)" : lambda model : general_error(model, X_int, Y_int),
 			"extrapolation error (1 < t <= 2)" : lambda model : general_error(model, X_ext_1, Y_ext_1),
-			"extrapolation error (2 < t)" : lambda model : general_error(model, X_ext_2, Y_ext_2),
+			#"extrapolation error (2 < t)" : lambda model : general_error(model, X_ext_2, Y_ext_2),
 		}
 
 		print(f"Loaded wave eq. simulation inputs/outputs. Count: {len(inputs)}")
@@ -77,6 +90,7 @@ def plot_data(X_l, X_ul, figs_folder, configs):
 		plot_data_2D(X_l, X_ul, figs_folder)
 	elif X_l.shape[1] == 3:
 		# TODO: 3d plots here
+		#plot_data_3D(X_l, X_ul, figs_folder)
 		for i in range(7):
 			print("PLOT PLOT PLOT")
 
@@ -94,7 +108,7 @@ def comparison_plots(model, figs_folder, configs):
 		buf = plot_gridded_functions(model, f, -3.0, 3.0, "300", folder=figs_folder)
 
 	elif configs.source == "wave":
-		for t in tf.range(0, 2 + 1e-3, 0.1):
+		for t in tf.range(0, 2 + 1e-3, 0.5):
 			class m:
 				@staticmethod
 				def predict(X):
@@ -102,7 +116,9 @@ def comparison_plots(model, figs_folder, configs):
 					return model.predict(ml_input)
 			f = lambda x, y: tf.zeros_like(x)
 			buf = plot_gridded_functions(m, f, 0, 1, f"_t={t:.3f}", folder=figs_folder)
-			# 3D Plotting
+		# 3D Plotting
+		if "heatmap" in configs.plots:
+			wave_model_heatmap(model, figs_folder)
 		make_movie(model, figs_folder)
 	
 	else:

@@ -131,7 +131,8 @@ class NN(keras.models.Model):
 			self.optimizer.apply_gradients(zip(gradients, trainable_vars))
 		
 			# Increment total loss value by mini-batch-wise contribution
-			loss_value_f += L_f
+			num_batches = len(mini_batches)
+			loss_value_f += L_f / num_batches
 
 		# end for loop on mini batches
 

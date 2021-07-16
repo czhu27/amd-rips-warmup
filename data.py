@@ -313,7 +313,7 @@ def process_wave_data_sample(wave_data_dir, params):
 	p_all = None
 
 	#Read in files and sort
-	for i in range(0, int(tf/params["dt"]), int(params["sample_step"]/params['dt'])):
+	for i in range(10*int(params["sample_step"]/params['dt']), int(tf/params["dt"]), int(params["sample_step"]/params['dt'])):
 		pts, boundaries = load_data(wave_data_dir + "/dumps/dump{:03d}.npz".format(i))
 		#If interior
 		if i == 0:
@@ -333,8 +333,8 @@ def process_wave_data_sample(wave_data_dir, params):
 			num_test = int(params["data_percents"][2][0]*pts.shape[0])
 			indices_pts = np.random.randint(0,pts.shape[0], num_pts)
 			interior = np.append(interior, pts[indices_pts,:], axis=0)
-			indices_bound = np.random.randint(0,pts.shape[0], num_bound)
-			boundary = np.append(boundary, pts[indices_bound,:], axis=0)
+			indices_bound = np.random.randint(0,boundaries.shape[0], num_bound)
+			boundary = np.append(boundary, boundaries[indices_bound,:], axis=0)
 			indices_test = np.random.randint(0,pts.shape[0] + boundaries.shape[0], num_pts)
 			int_test = np.append(int_test, all_pts[indices_test,:], axis = 0)
 		#If exterior
@@ -381,7 +381,8 @@ def process_wave_data_sample(wave_data_dir, params):
 
 	np.savez(
 		wave_data_dir + '/processed_data.npz', 
-		int_label = int_label, int_unlabel = int_unlabel, bound = boundaries, int_test = int_test, ext_label = ext_label, ext_unlabel = ext_unlabel,
+		int_label = int_label, int_unlabel = int_unlabel, bound = boundaries, int_test = int_test, 
+		ext_label = ext_label, ext_unlabel = ext_unlabel, ext_test = ext_test
 	)
 
 	toc = time.time()

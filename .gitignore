@@ -151,3 +151,8 @@ wave/forward/traces/*.npz
 wave/forward/figs/
 
 .vscode
+
+# exclude everything
+notebooks/*
+# exception to the rule
+!notebooks/.gitkeep

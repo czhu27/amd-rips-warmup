@@ -13,6 +13,7 @@ from nn import create_nn
 from targets import get_target
 from plots import plot_data_2D, plot_gridded_functions, make_movie, make_wave_plot, wave_model_heatmap
 from data import data_creation, compute_error, extrap_error, data_wave
+from wave_reg import get_wave_reg
 
 
 #tf.debugging.set_log_device_placement(True)

@@ -313,10 +313,11 @@ def process_wave_data_sample(wave_data_dir, params):
 	p_all = None
 
 	#Read in files and sort
-	for i in range(10*int(params["sample_step"]/params['dt']), int(tf/params["dt"]), int(params["sample_step"]/params['dt'])):
+	start_iter = 10*int(params["sample_step"]/params['dt'])
+	for i in range(start_iter, int(tf/params["dt"]), int(params["sample_step"]/params['dt'])):
 		pts, boundaries = load_data(wave_data_dir + "/dumps/dump{:03d}.npz".format(i))
 		#If interior
-		if i == 0:
+		if i == start_iter:
 			x_all = np.zeros((0,pts.shape[0]+boundaries.shape[0]))
 			y_all = np.zeros((0,pts.shape[0]+boundaries.shape[0]))
 			p_all = np.zeros((0,pts.shape[0]+boundaries.shape[0]))

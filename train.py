@@ -49,7 +49,7 @@ def get_data(configs, figs_folder):
 		if configs.data_run: 
 			data_run = data_run + configs.data_run
 		else:
-			data_run = data_run + next(os.walk('./data/wave'))[1][0]
+			data_run = data_run + next(os.walk('./data/wave'))[1][-1]
 		data = np.load(data_run + '/processed_data.npz')
 
 		int_label, int_unlabel, bound, int_test = data['int_label'], data['int_unlabel'], data['bound'], data['int_test']

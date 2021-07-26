@@ -3,6 +3,8 @@ from plots import make_heatmap_animation
 import numpy as np
 import glob
 import time
+import matplotlib.pyplot as plt
+import io
 
 from helpers import get_p_mat_list, unstack
 
@@ -256,13 +258,75 @@ def extrap_error(model, f, i_lb, i_ub, o_lb, o_ub, step_size=0.01):
 	error = np.sqrt(np.mean(np.square(f_ml - f_true)))
 	return error
 
-def compute_error_wave(model, x, y, t, p):
-	f_true = p
-	ml_input = np.concatenate((x,y,t))
+def compute_error_wave(model, test_set):
+	#test_set can be int_test or ext_test
+	#formatting
+	f_true = np.reshape(test_set[:,3],(len(test_set[:,3]),1))
+	x = np.reshape(test_set[:,0],(len(test_set[:,0]),1))
+	y = np.reshape(test_set[:,1],(len(test_set[:,1]),1))
+	t = np.reshape(test_set[:,2],(len(test_set[:,2]),1))
+
+	#Computes model and finds difference with sim
+	ml_input = np.concatenate((x,y,t),axis=1)
 	ml_output = model.predict(ml_input)
-	f_ml = np.reshape(ml_output, (len(p), 1))
+	f_ml = np.reshape(ml_output, (len(f_true), 1))
 	error = np.sqrt(np.mean(np.square(f_ml - f_true)))
 	return error
+
+def error_time(model, int_test, ext_test, figs_folder, tag):
+	#Takes all data, int and ext
+	"""Hard-coded, need to fix"""
+	num_int = 219 #Number of interior points per timestep
+	num_bound_int = 5 #Number of boundary points per timestep
+	num_ext = 5 #Number of exterior points per timestep
+	num_bound_ext = 29
+	fig, ax = plt.subplots()
+	sample_step = .01
+	dt = .002
+	starter_iter = 10*int(sample_step/dt)
+	tf = 2
+	total_int = 2190
+	total_ext = 2190
+	"""Hard-coding end"""
+	all_test = np.concatenate((int_test, ext_test))
+	times = np.arange(1/starter_iter,tf,sample_step)
+	errors = []
+	for i in range(0,int((tf/dt - starter_iter)/(sample_step/dt))):
+		if i > tf/sample_step:
+			#formatting
+			f_true = np.reshape(all_test[i*total_int:(i+1)*total_int,3],(total_int,1))
+			x = np.reshape(all_test[i*total_int:(i+1)*total_int,0],(total_int,1))
+			y = np.reshape(all_test[i*total_int:(i+1)*total_int,1],(total_int,1))
+			t = np.reshape(all_test[i*total_int:(i+1)*total_int,2],(total_int,1))
+
+			#Computes model and finds difference with sim
+			ml_input = np.concatenate((x,y,t),axis=1)
+			ml_output = model.predict(ml_input)
+			f_ml = np.reshape(ml_output, (len(f_true), 1))
+			error = np.sqrt(np.mean(np.square(f_ml - f_true)))
+			errors.append(error)
+
+		else:
+			#formatting
+			f_true = np.reshape(all_test[i*total_ext:(i+1)*total_ext,3],(total_ext,1))
+			x = np.reshape(all_test[i*total_ext:(i+1)*total_ext,0],(total_ext,1))
+			y = np.reshape(all_test[i*total_ext:(i+1)*total_ext,1],(total_ext,1))
+			t = np.reshape(all_test[i*total_ext:(i+1)*total_ext,2],(total_ext,1))
+
+			#Computes model and finds difference with sim
+			ml_input = np.concatenate((x,y,t),axis=1)
+			ml_output = model.predict(ml_input)
+			f_ml = np.reshape(ml_output, (len(f_true), 1))
+			error = np.sqrt(np.mean(np.square(f_ml - f_true)))
+			errors.append(error)
+
+	ax.plot(times, errors)
+	ax.set_xlim(.25,2)
+
+	plt.savefig(figs_folder + '/all' + str(tag) + '.png')
+	buf = io.BytesIO()
+	plt.savefig(buf, format='png')
+	return -10
 
 def load_data(dump_file):
 	'''
@@ -332,24 +396,27 @@ def process_wave_data_sample(wave_data_dir, params):
 			num_pts = int(params["data_percents"][0][0]*pts.shape[0])
 			num_bound = int(params["data_percents"][0][1]*boundaries.shape[0])
 			num_test = int(params["data_percents"][2][0]*pts.shape[0])
+			print("int",num_pts, num_bound, num_test)
 			indices_pts = np.random.randint(0,pts.shape[0], num_pts)
 			interior = np.append(interior, pts[indices_pts,:], axis=0)
 			indices_bound = np.random.randint(0,boundaries.shape[0], num_bound)
 			boundary = np.append(boundary, boundaries[indices_bound,:], axis=0)
-			indices_test = np.random.randint(0,pts.shape[0] + boundaries.shape[0], num_pts)
+			indices_test = np.random.randint(0,pts.shape[0] + boundaries.shape[0], num_test)
 			int_test = np.append(int_test, all_pts[indices_test,:], axis = 0)
+			string = "hi"
 		#If exterior
 		else:
 			#Separate boundary, interior points, test set
 			num_pts = int(params["data_percents"][1][0]*pts.shape[0])
 			num_bound = int(params["data_percents"][1][1]*boundaries.shape[0])
 			num_test = int(params["data_percents"][2][1]*pts.shape[0])
+			print("ext",num_pts, num_bound, num_test)
 			indices_pts = np.random.randint(0,pts.shape[0], num_pts)
 			exterior = np.append(exterior, pts[indices_pts,:], axis=0)
-			indices_bound = np.random.randint(0,pts.shape[0], num_bound)
-			boundary = np.append(boundary, pts[indices_bound,:], axis=0)
-			indices_test = np.random.randint(0,pts.shape[0] + boundaries.shape[0], num_pts)
-			ext_test = np.append(int_test, all_pts[indices_test,:], axis = 0)
+			indices_bound = np.random.randint(0,boundaries.shape[0], num_bound)
+			boundary = np.append(boundary, boundaries[indices_bound,:], axis=0)
+			indices_test = np.random.randint(0,pts.shape[0] + boundaries.shape[0], num_test)
+			ext_test = np.append(ext_test, all_pts[indices_test,:], axis = 0)
 
 	#Randomly sample labeled and unlabeled data on interior
 	num_int_label = int(interior.shape[0]*label_int)

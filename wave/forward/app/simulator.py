@@ -9,6 +9,7 @@ from field import Field
 from integrator import IntegratorRK2, IntegratorRK3
 from kernel import KernelAcoustic
 import sys
+import yaml
 sys.path.append(sys.path[0] + "/../..")
 from data import process_wave_data_sample
 from plots import make_heatmap_animation
@@ -164,6 +165,7 @@ class Simulator:
 
 		# Process data
 		process_wave_data_sample(self.__params["data_dir"], self.__params)
+		yaml.safe_dump(self.__params, open(self.__params["data_dir"] + "/sim_configs.yaml", "w"))
 
 		return min_max
 	# def finalize

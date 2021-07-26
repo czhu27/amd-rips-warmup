@@ -152,6 +152,9 @@ wave/forward/figs/
 
 .vscode
 
+trials.py
+debug.yaml
+test.yaml
 # exclude everything
 notebooks/*
 # exception to the rule

@@ -137,8 +137,49 @@ def make_movie(model, figs_folder, time_steps = 100, dx = .01, dt = .01):
         return surf,
     #Loops through update to create animation
     ani = FuncAnimation(fig, update, fargs=[fig, dt, nx, ny], frames=time_steps, blit=True)
-    ani.save(figs_folder + '/wave_pred2.gif', writer = 'PillowWriter', fps=10)
+    ani.save(figs_folder + '/wave_pred.gif', writer = 'PillowWriter', fps=10)
 
+def make_heatmap_movie(model, figs_folder, time_steps = 100, dx = .01, sample_step = .01):
+    #Create figure for movie and init constants
+    fig, ax = plt.subplots()
+    nx = ny = int(1 / dx)
+    dt = sample_step
+
+    #Initialize heatmap
+    #Creates inputs
+    X = np.arange(0,1,1/nx)
+    Y = np.arange(0,1,1/ny)
+    X_g, Y_g = np.meshgrid(X,Y)
+    time_vec = np.ones((nx*ny,1))*0
+    #Runs inputs through model for soln
+    X_t = np.reshape(X_g, (nx*ny,1))
+    Y_t = np.reshape(Y_g, (nx*ny,1))
+    inputs = np.concatenate((X_t, Y_t,time_vec), axis=1)
+    soln = model.predict(inputs)
+    soln = np.reshape(soln, (nx,ny))
+    #End init for heatmap
+
+    ax = sns.heatmap(soln, cmap=cm.coolwarm, vmin = -5, vmax = 5, xticklabels = False, yticklabels = False, cbar = True)
+
+    def update(frame, fig, dt, nx, ny):
+        #Creates inputs
+        X = np.arange(0,1,1/nx)
+        Y = np.arange(0,1,1/ny)
+        X_g, Y_g = np.meshgrid(X,Y)
+        time_vec = np.ones((nx*ny,1))*dt*frame
+        #Runs inputs through model for soln
+        X_t = np.reshape(X_g, (nx*ny,1))
+        Y_t = np.reshape(Y_g, (nx*ny,1))
+        inputs = np.concatenate((X_t, Y_t,time_vec), axis=1)
+        soln = model.predict(inputs)
+        soln = np.reshape(soln, (nx,ny))
+        #Clears current fig and draws surface
+        sns.heatmap(soln, cmap=cm.coolwarm, xticklabels = False, yticklabels = False, cbar = False)
+        ax.set_title('t = {:.2f}'.format(frame*dt))
+        return fig.axes[0].collections
+    #Loops through update to create animation
+    ani = FuncAnimation(fig, update, fargs=[fig, dt, nx, ny], frames=time_steps)
+    ani.save(figs_folder + '/heatmap.gif', writer = 'PillowWriter', fps=10)
 
 def plot_data_dist(x,y):
     '''

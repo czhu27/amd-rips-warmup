@@ -11,10 +11,9 @@ from tensorflow.keras import optimizers
 from helpers import Configs
 from nn import create_nn
 from targets import get_target
-from plots import plot_data_2D, plot_gridded_functions, make_movie, make_wave_plot, wave_model_heatmap
-from data import data_creation, compute_error, extrap_error, data_wave
+from plots import plot_data_2D, plot_gridded_functions, make_movie, make_wave_plot, make_heatmap_movie
+from data import data_creation, compute_error, extrap_error, data_wave, compute_error_wave, error_time
 from wave_reg import get_wave_reg
-
 
 #tf.debugging.set_log_device_placement(True)
 def general_error(model, X, Y):
@@ -23,7 +22,7 @@ def general_error(model, X, Y):
 	mse = np.sqrt(np.mean(np.square(Y_diff)))
 	return mse
 
-def get_data(configs):
+def get_data(configs, figs_folder):
 	grad_bools = None #Placeholder
 	if configs.source == "synthetic":
 
@@ -46,7 +45,13 @@ def get_data(configs):
 		}
 
 	elif configs.source == "wave":
-		data = np.load('data/wave/20210726-101903/processed_data.npz')
+		data_run = configs.data_dir
+		if configs.data_run: 
+			data_run = data_run + configs.data_run
+		else:
+			data_run = data_run + next(os.walk('./data/wave'))[1][0]
+		data = np.load(data_run + '/processed_data.npz')
+
 		int_label, int_unlabel, bound, int_test = data['int_label'], data['int_unlabel'], data['bound'], data['int_test']
 		ext_label, ext_unlabel, ext_test = data['ext_label'], data['ext_unlabel'], data['ext_test']
 		X_l = np.float32(np.concatenate((bound[:,0:3],int_label[:,0:3])))
@@ -73,11 +78,19 @@ def get_data(configs):
 		# else:
 		# 	raise ValueError("Unknown gradient regularizer ", grad_reg)
 
+				
+		test_x = np.reshape(int_test[:,0],(len(int_test[:,0]),1))
+		test_y = np.reshape(int_test[:,1],(len(int_test[:,1]),1))
+		test_t = np.reshape(int_test[:,2],(len(int_test[:,2]),1))
+		test_p = np.reshape(int_test[:,3],(len(int_test[:,3]),1))
+
 		error_metrics = {
-			"interpolation error (t <= 1)" : lambda model : general_error(model, int_test[:,0:3], int_test[:,3]),
-			"extrapolation error (1 < t <= 2)" : lambda model : general_error(model, ext_test[:,0:3], ext_test[:,3]),
-			#"extrapolation error (2 < t)" : lambda model : general_error(model, X_ext_2, Y_ext_2),
+			"interpolation error (t <= 1)" : lambda model : compute_error_wave(model, int_test),
+			"extrapolation error (1 < t)" : lambda model : compute_error_wave(model, ext_test),
+			"Error vs. time" : lambda model : error_time(model, int_test, ext_test, figs_folder, 'ET')
 		}
+		
+		print(f"Loaded wave eq. simulation inputs/outputs. Count: {len(X_l)}")
 
 	#Creates labels to pass through network
 	is_labeled_l = tf.fill(X_l.shape[0], True)
@@ -112,8 +125,7 @@ def get_data(configs):
 	# else:
 	# 	raise ValueError("Unknown data source " + configs.source)
 
-	return X_all, Y_all, label_bools, grad_bools, grad_reg#, error_metrics
-
+	return X_all, Y_all, label_bools, grad_bools, grad_reg, error_metrics
 
 def plot_data(X_l, X_ul, figs_folder, configs):
 	
@@ -150,7 +162,7 @@ def comparison_plots(model, figs_folder, configs):
 			buf = plot_gridded_functions(m, f, 0, 1, f"_t={t:.3f}", folder=figs_folder)
 		# 3D Plotting
 		if "heatmap" in configs.plots:
-			wave_model_heatmap(model, figs_folder)
+			make_heatmap_movie(model, figs_folder, time_steps = 100, dx = .01, sample_step = .01)
 		make_movie(model, figs_folder)
 		make_wave_plot(model, t = 0, f_true = 0, figs_folder = figs_folder, tag='0')
 		make_wave_plot(model, t = .25, f_true = 0, figs_folder = figs_folder, tag='0.25')
@@ -160,7 +172,6 @@ def comparison_plots(model, figs_folder, configs):
 	
 	else:
 		raise ValueError("Unknown data source " + configs.source)
-
 
 def train(configs: Configs):
 
@@ -208,7 +219,7 @@ def train(configs: Configs):
 	# ------------------------------------------------------------------------------
 
 	# Get the "interesting" data
-	X_all, Y_all, label_bools, grad_bools, grad_reg = get_data(configs)#, error_metrics = get_data(configs)
+	X_all, Y_all, label_bools, grad_bools, grad_reg, error_metrics = get_data(configs, figs_folder)#, error_metrics = get_data(configs)
 
 	# Create TensorFlow dataset for passing to 'fit' function (below)
 	if configs.from_tensor_slices:
@@ -277,7 +288,9 @@ def train(configs: Configs):
 			if epoch % self.test_every == self.test_every - 10:
 				for error_name, error_func in error_metrics.items():
 					error_val = error_func(model)
-					tf.summary.scalar('Error/' + error_name, data=error_val, step=epoch)
+					if error_val >= 0:
+						tf.summary.scalar('Error/' + error_name, data=error_val, step=epoch)
+					
 
 	tensorboard_callback = keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
 	logging_callbacks = [TimeLogger(), StressTestLogger(), tensorboard_callback]
@@ -307,18 +320,22 @@ def train(configs: Configs):
 	# ------------------------------------------------------------------------------
 	final_metrics = {}
 
-	# Y_pred_l = model.predict(X_l)
-	# loss_value = model.loss_function_f(Y_pred_l, Y_l)/X_l.shape[0]
-	# print("FINAL Loss: \t\t\t {:.6E}".format(loss_value))
-	# final_metrics['loss_value'] = "{:.6E}".format(loss_value)
-
-	# for error_name, error_func in error_metrics.items():
-	# 	error_val = error_func(model)
-	# 	print('FINAL Error/' + error_name + f":\t\t\t {error_val:.6E}")
-	# 	final_metrics[error_name] = "{:.6E}".format(error_val)
+	'''
+	Y_pred_l = model.predict(X_l)
+	loss_value = model.loss_function_f(Y_pred_l, Y_l)/X_l.shape[0]
+	print("FINAL Loss: \t\t\t {:.6E}".format(loss_value))
+	final_metrics['loss_value'] = "{:.6E}".format(loss_value)
+	'''
+	for error_name, error_func in error_metrics.items():
+		error_val = error_func(model)
+		if error_val >= 0 :
+			print('FINAL Error/' + error_name + f":\t\t\t {error_val:.6E}")
+			final_metrics[error_name] = "{:.6E}".format(error_val)
+	'''
 
 	if "extrapolation" in configs.plots:
 		comparison_plots(model, figs_folder, configs)
+	'''
 
 	train_time = toc - tic 
 	final_metrics['training_time'] = "{:.2F} s".format(train_time)

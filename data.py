@@ -5,6 +5,7 @@ import glob
 import time
 import matplotlib.pyplot as plt
 import io
+import shutil
 
 from helpers import get_p_mat_list, unstack
 
@@ -417,6 +418,9 @@ def process_wave_data_sample(wave_data_dir, params):
 			boundary = np.append(boundary, boundaries[indices_bound,:], axis=0)
 			indices_test = np.random.randint(0,pts.shape[0] + boundaries.shape[0], num_test)
 			ext_test = np.append(ext_test, all_pts[indices_test,:], axis = 0)
+
+	#Delete dump files
+	shutil.rmtree(wave_data_dir + "/dumps/")
 
 	#Randomly sample labeled and unlabeled data on interior
 	num_int_label = int(interior.shape[0]*label_int)

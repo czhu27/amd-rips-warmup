@@ -5,6 +5,13 @@ from tensorflow.python.ops.gen_array_ops import zeros_like
 
 import yaml
 import tensorflow as tf
+
+#MUST BE BETWEEN THESE TWO#
+physical_devices = tf.config.list_physical_devices('GPU')
+for gpu in physical_devices:
+	tf.config.experimental.set_memory_growth(gpu, True)
+#DO NOT MOVE#
+
 from tensorflow import keras
 from tensorflow.keras import optimizers
 
@@ -14,6 +21,7 @@ from targets import get_target
 from plots import plot_data_2D, plot_gridded_functions, make_movie, make_wave_plot, make_heatmap_movie
 from data import data_creation, compute_error, extrap_error, data_wave, compute_error_wave, error_time
 from wave_reg import get_wave_reg
+
 
 #tf.debugging.set_log_device_placement(True)
 def general_error(model, X, Y):
@@ -72,7 +80,7 @@ def get_data(configs, figs_folder):
 
 		grad_bools = tf.fill(X_l.shape[0] + X_ul.shape[0], True)
 
-		# if grad_reg == 'unknown':
+		# if grad_reg == 'second_explicit':
 		# 	grad_bools = tf.fill(X_l.shape[0] + X_ul.shape[0], True)
 		# elif grad_reg == "TBD":
 		# 	grad_bools = tf.fill(X_l.shape[0] + X_ul.shape[0], True)

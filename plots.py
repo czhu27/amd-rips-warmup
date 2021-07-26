@@ -130,7 +130,7 @@ def make_movie(model, figs_folder, time_steps = 100, dx = .01, dt = .01):
             surf = fig.axes[0].plot_surface(X_g, Y_g, soln, cmap=cm.coolwarm, linewidth=0, antialiased=False)
         else:
             surf = fig.axes[0].plot_surface(X_g, Y_g, soln, cmap=cm.coolwarm, linewidth=0, antialiased=False)
-        ax.set_zlim(-.75,.75)
+        ax.set_zlim(-.25,.5)
 
         fig.canvas.draw()
         return surf,

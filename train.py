@@ -6,10 +6,15 @@ from tensorflow.python.ops.gen_array_ops import zeros_like
 import yaml
 import tensorflow as tf
 
-#MUST BE BETWEEN THESE TWO#
-physical_devices = tf.config.list_physical_devices('GPU')
-for gpu in physical_devices:
-	tf.config.experimental.set_memory_growth(gpu, True)
+#MUST BE BETWEEN THESE TWO IMPORTS#
+BE_GREEDY = False
+if BE_GREEDY:
+	for i in range(5):
+		print("I'M GREEDY. SHHHHH DON'T TELL MOM...")
+else:
+	physical_devices = tf.config.list_physical_devices('GPU')
+	for gpu in physical_devices:
+		tf.config.experimental.set_memory_growth(gpu, True)
 #DO NOT MOVE#
 
 from tensorflow import keras
@@ -195,18 +200,6 @@ def train(configs: Configs):
 		os.environ["CUDA_VISIBLE_DEVICES"]= ""
 	else:
 		raise ValueError("Unknown device " + configs.device)
-
-	# Memory allocation
-	if configs.be_greedy:
-		for i in range(5):
-			print("I'M GREEDY. SHHHHH DON'T TELL MOM...")
-	else:
-		physical_devices = tf.config.list_physical_devices('GPU')
-		try:
-			tf.config.experimental.set_memory_growth(physical_devices[0], True)
-		except:
-			# Invalid device or cannot modify virtual devices once initialized.
-			pass
 
 	# Setup folder structure vars
 	output_dir = configs.output_dir

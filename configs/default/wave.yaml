@@ -48,5 +48,3 @@ output_dir: null   # overridden in main.py
 output_root: output/wave
 plots: [extrapolation, data-distribution, tensorboard, extrapolation_wave, heatmap]
 saves: [model]
-
-be_greedy: false

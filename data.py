@@ -347,6 +347,9 @@ def load_slices(dump_file):
 	return pts, bound
 
 def process_wave_data_sample(wave_data_dir, params):
+	# Seed for reproducibility
+	np.random.seed(params["seed"])
+
 	tic = time.time()
 
 	# TODO: This is bad
@@ -396,7 +399,6 @@ def process_wave_data_sample(wave_data_dir, params):
 			num_pts = int(params["data_percents"][0][0]*pts.shape[0])
 			num_bound = int(params["data_percents"][0][1]*boundaries.shape[0])
 			num_test = int(params["data_percents"][2][0]*pts.shape[0])
-			print("int",num_pts, num_bound, num_test)
 			indices_pts = np.random.randint(0,pts.shape[0], num_pts)
 			interior = np.append(interior, pts[indices_pts,:], axis=0)
 			indices_bound = np.random.randint(0,boundaries.shape[0], num_bound)
@@ -410,7 +412,6 @@ def process_wave_data_sample(wave_data_dir, params):
 			num_pts = int(params["data_percents"][1][0]*pts.shape[0])
 			num_bound = int(params["data_percents"][1][1]*boundaries.shape[0])
 			num_test = int(params["data_percents"][2][1]*pts.shape[0])
-			print("ext",num_pts, num_bound, num_test)
 			indices_pts = np.random.randint(0,pts.shape[0], num_pts)
 			exterior = np.append(exterior, pts[indices_pts,:], axis=0)
 			indices_bound = np.random.randint(0,boundaries.shape[0], num_bound)
@@ -430,6 +431,9 @@ def process_wave_data_sample(wave_data_dir, params):
 		perm_ext = np.random.permutation(exterior)
 		ext_label = perm_ext[0:num_ext_label,:]
 		ext_unlabel = perm_ext[num_ext_label:,:]
+	else:
+		ext_label = np.array([])
+		ext_unlabel = np.array([])
 	
 	if params["heatmap"]:
 		# Make crude heatmap

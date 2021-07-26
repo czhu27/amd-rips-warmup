@@ -33,6 +33,17 @@
             "request": "launch",
             "program": "main.py",
             "console": "integratedTerminal"
-        }
+        },
+        {
+            "name": "wave simulation",
+            "type": "python",
+            "args": [
+                "-c",
+                "wave/params/coarse_mesh.yaml"
+            ],
+            "request": "launch",
+            "program": "wave/forward/main.py",
+            "console": "integratedTerminal"
+        },
     ]
 }

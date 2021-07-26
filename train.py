@@ -15,7 +15,6 @@ from plots import plot_data_2D, plot_gridded_functions, make_movie, make_wave_pl
 from data import data_creation, compute_error, extrap_error, data_wave, compute_error_wave, error_time
 from wave_reg import get_wave_reg
 
-
 #tf.debugging.set_log_device_placement(True)
 def general_error(model, X, Y):
 	Y_pred = model.predict(X)
@@ -46,7 +45,13 @@ def get_data(configs, figs_folder):
 		}
 
 	elif configs.source == "wave":
-		data = np.load('data/wave/attempt1/processed_data.npz')
+		data_run = configs.data_dir
+		if configs.data_run: 
+			data_run = data_run + configs.data_run
+		else:
+			data_run = data_run + next(os.walk('./data/wave'))[1][0]
+		data = np.load(data_run + '/processed_data.npz')
+
 		int_label, int_unlabel, bound, int_test = data['int_label'], data['int_unlabel'], data['bound'], data['int_test']
 		ext_label, ext_unlabel, ext_test = data['ext_label'], data['ext_unlabel'], data['ext_test']
 		X_l = np.float32(np.concatenate((bound[:,0:3],int_label[:,0:3])))
@@ -116,7 +121,6 @@ def get_data(configs, figs_folder):
 
 	return X_all, Y_all, label_bools, grad_bools, grad_reg, error_metrics
 
-
 def plot_data(X_l, X_ul, figs_folder, configs):
 	
 	if X_l.shape[1] == 2:
@@ -162,7 +166,6 @@ def comparison_plots(model, figs_folder, configs):
 	
 	else:
 		raise ValueError("Unknown data source " + configs.source)
-
 
 def train(configs: Configs):
 

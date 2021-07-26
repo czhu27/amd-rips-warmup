@@ -66,15 +66,14 @@ def get_data(configs, figs_folder):
 		grad_reg = get_wave_reg(configs.gradient_loss, configs)
 		#grad_reg = get_target(configs.target, configs.gradient_loss, configs)
 
-		if grad_reg is None:
-			grad_bools = tf.fill(X_l.shape[0] + X_ul.shape[0], True)
+		grad_bools = tf.fill(X_l.shape[0] + X_ul.shape[0], True)
 
-		if grad_reg == 'unknown':
-			grad_bools = tf.fill(X_l.shape[0] + X_ul.shape[0], True)
-		elif grad_reg == "TBD":
-			grad_bools = tf.fill(X_l.shape[0] + X_ul.shape[0], True)
-		elif grad_reg == "We'll figure it out":
-			grad_bools = tf.fill(X_l.shape[0] + X_ul.shape[0], True)
+		# if grad_reg == 'second_explicit':
+		# 	grad_bools = tf.fill(X_l.shape[0] + X_ul.shape[0], True)
+		# elif grad_reg == "TBD":
+		# 	grad_bools = tf.fill(X_l.shape[0] + X_ul.shape[0], True)
+		# elif grad_reg == "We'll figure it out":
+		# 	grad_bools = tf.fill(X_l.shape[0] + X_ul.shape[0], True)
 		# else:
 		# 	raise ValueError("Unknown gradient regularizer ", grad_reg)
 

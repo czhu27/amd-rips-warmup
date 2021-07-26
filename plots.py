@@ -123,7 +123,6 @@ def make_movie(model, figs_folder, time_steps = 100, dx = .01, dt = .01):
         Y_t = np.reshape(Y_g, (nx*ny,1))
         inputs = np.concatenate((X_t, Y_t,time_vec), axis=1)
         soln = model.predict(inputs)
-        print(soln)
         soln = np.reshape(soln, (nx,ny))
         #Clears current fig and draws surface
         if len(fig.axes[0].collections) != 0:

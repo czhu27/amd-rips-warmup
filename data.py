@@ -276,23 +276,19 @@ def compute_error_wave(model, test_set):
 
 def error_time(model, int_test, ext_test, figs_folder, tag):
 	#Takes all data, int and ext
-	"""Hard-coded, need to fix"""
-	num_int = 219 #Number of interior points per timestep
-	num_bound_int = 5 #Number of boundary points per timestep
-	num_ext = 5 #Number of exterior points per timestep
-	num_bound_ext = 29
 	fig, ax = plt.subplots()
-	sample_step = .01
-	dt = .002
-	starter_iter = 10*int(sample_step/dt)
-	tf = 2
-	total_int = 2190
-	total_ext = 2190
-	"""Hard-coding end"""
+	starter_iter = int_test[0,2]
+	int_times, total_int = np.unique(int_test[:,2], return_counts=True)
+	ext_times, total_ext = np.unique(ext_test[:,2], return_counts=True)
+	tf = ext_test[-1,2]
+	total_int = total_int[0]
+	total_ext = total_ext[0]
+	sample_step = int_times[1] - int_times[0]
 	all_test = np.concatenate((int_test, ext_test))
-	times = np.arange(1/starter_iter,tf,sample_step)
-	errors = []
-	for i in range(0,int((tf/dt - starter_iter)/(sample_step/dt))):
+	time_axis = np.concatenate((int_times, ext_times))
+	time_steps = len(time_axis)
+	error_axis = []
+	for i in range(0,time_steps):
 		if i > tf/sample_step:
 			#formatting
 			f_true = np.reshape(all_test[i*total_int:(i+1)*total_int,3],(total_int,1))
@@ -305,7 +301,7 @@ def error_time(model, int_test, ext_test, figs_folder, tag):
 			ml_output = model.predict(ml_input)
 			f_ml = np.reshape(ml_output, (len(f_true), 1))
 			error = np.sqrt(np.mean(np.square(f_ml - f_true)))
-			errors.append(error)
+			error_axis.append(error)
 
 		else:
 			#formatting
@@ -319,12 +315,12 @@ def error_time(model, int_test, ext_test, figs_folder, tag):
 			ml_output = model.predict(ml_input)
 			f_ml = np.reshape(ml_output, (len(f_true), 1))
 			error = np.sqrt(np.mean(np.square(f_ml - f_true)))
-			errors.append(error)
+			error_axis.append(error)
 
-	ax.plot(times, errors)
+	ax.plot(time_axis, error_axis)
 	ax.set_xlim(.25,2)
 
-	plt.savefig(figs_folder + '/all' + str(tag) + '.png')
+	plt.savefig(figs_folder + str(tag) + '.png')
 	buf = io.BytesIO()
 	plt.savefig(buf, format='png')
 	return -10
@@ -404,7 +400,6 @@ def process_wave_data_sample(wave_data_dir, params):
 			boundary = np.append(boundary, boundaries[indices_bound,:], axis=0)
 			indices_test = np.random.randint(0,pts.shape[0] + boundaries.shape[0], num_test)
 			int_test = np.append(int_test, all_pts[indices_test,:], axis = 0)
-			string = "hi"
 		#If exterior
 		else:
 			#Separate boundary, interior points, test set

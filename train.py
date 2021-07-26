@@ -57,7 +57,7 @@ def get_data(configs, figs_folder):
 		X_l = np.float32(np.concatenate((bound[:,0:3],int_label[:,0:3])))
 		X_ul = int_unlabel #int_ulabel
 		Y_l = np.float32(np.concatenate((bound[:,3], int_label[:,3])))
-		# tf.reshape(Y_l
+		Y_l = np.reshape(Y_l, (len(Y_l),1))
 
 		is_boundary = tf.fill(bound.shape[0], True)
 		is_not_boundary = tf.fill(int_label.shape[0] + int_unlabel.shape[0], False)
@@ -78,16 +78,14 @@ def get_data(configs, figs_folder):
 		# else:
 		# 	raise ValueError("Unknown gradient regularizer ", grad_reg)
 
-				
-		test_x = np.reshape(int_test[:,0],(len(int_test[:,0]),1))
-		test_y = np.reshape(int_test[:,1],(len(int_test[:,1]),1))
-		test_t = np.reshape(int_test[:,2],(len(int_test[:,2]),1))
-		test_p = np.reshape(int_test[:,3],(len(int_test[:,3]),1))
 
 		error_metrics = {
 			"interpolation error (t <= 1)" : lambda model : compute_error_wave(model, int_test),
-			"extrapolation error (1 < t)" : lambda model : compute_error_wave(model, ext_test),
-			"Error vs. time" : lambda model : error_time(model, int_test, ext_test, figs_folder, 'ET')
+			"extrapolation error (1 < t)" : lambda model : compute_error_wave(model, ext_test)
+		}
+
+		error_plots = {
+			"Error vs. time" : lambda model : error_time(model, int_test, ext_test, figs_folder, '/error_time')
 		}
 		
 		print(f"Loaded wave eq. simulation inputs/outputs. Count: {len(X_l)}")
@@ -125,7 +123,7 @@ def get_data(configs, figs_folder):
 	# else:
 	# 	raise ValueError("Unknown data source " + configs.source)
 
-	return X_all, Y_all, label_bools, grad_bools, grad_reg, error_metrics
+	return X_all, Y_all, label_bools, grad_bools, grad_reg, error_metrics, error_plots
 
 def plot_data(X_l, X_ul, figs_folder, configs):
 	
@@ -219,7 +217,7 @@ def train(configs: Configs):
 	# ------------------------------------------------------------------------------
 
 	# Get the "interesting" data
-	X_all, Y_all, label_bools, grad_bools, grad_reg, error_metrics = get_data(configs, figs_folder)#, error_metrics = get_data(configs)
+	X_all, Y_all, label_bools, grad_bools, grad_reg, error_metrics, error_plots = get_data(configs, figs_folder)#, error_metrics = get_data(configs)
 
 	# Create TensorFlow dataset for passing to 'fit' function (below)
 	if configs.from_tensor_slices:
@@ -288,8 +286,7 @@ def train(configs: Configs):
 			if epoch % self.test_every == self.test_every - 10:
 				for error_name, error_func in error_metrics.items():
 					error_val = error_func(model)
-					if error_val >= 0:
-						tf.summary.scalar('Error/' + error_name, data=error_val, step=epoch)
+					tf.summary.scalar('Error/' + error_name, data=error_val, step=epoch)
 					
 
 	tensorboard_callback = keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
@@ -328,14 +325,17 @@ def train(configs: Configs):
 	'''
 	for error_name, error_func in error_metrics.items():
 		error_val = error_func(model)
-		if error_val >= 0 :
-			print('FINAL Error/' + error_name + f":\t\t\t {error_val:.6E}")
-			final_metrics[error_name] = "{:.6E}".format(error_val)
-	'''
+		print('FINAL Error/' + error_name + f":\t\t\t {error_val:.6E}")
+		final_metrics[error_name] = "{:.6E}".format(error_val)
+
+	if configs.source == 'wave':
+		for error_name, error_func in error_plots.items():
+			error_val = error_func(model)
+		print("Printing error over time")
 
 	if "extrapolation" in configs.plots:
 		comparison_plots(model, figs_folder, configs)
-	'''
+
 
 	train_time = toc - tic 
 	final_metrics['training_time'] = "{:.2F} s".format(train_time)

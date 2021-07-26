@@ -22,7 +22,7 @@ gd_noise: 0.0
 #  Dataset  #
 #############
 source: wave
-data_dir: data/wave
+data_dir: data/wave/
 data_run: '' # Leave blank to default to first run in data_dir
 
 corners: false

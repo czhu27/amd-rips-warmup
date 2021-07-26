@@ -84,7 +84,7 @@ class NN(keras.models.Model):
 		
 		# Loop over all mini-batches
 		for batch in mini_batches:
-			X_f, f, l_bools, grad_bools = dataset
+			X_f, f, l_bools, grad_bools = batch
 			f = tf.reshape(f, [f.shape[0],1])
 			
 			# For gradient of loss w.r.t. trainable variables	

@@ -292,6 +292,9 @@ def train(configs: Configs):
 		def on_epoch_end(self, epoch, logs=None):
 			train_dur = time.time() - self.train_start
 			epoch_dur = time.time() - self.epoch_start
+			# Ignore the 1st epoch
+			if epoch <= 1:
+				return
 			tf.summary.scalar('Time/Total', data=train_dur, step=epoch)
 			tf.summary.scalar('Time/Epoch', data=epoch_dur, step=epoch)
 

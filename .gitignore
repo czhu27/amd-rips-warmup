@@ -156,3 +156,5 @@ wave/forward/figs/
 notebooks/*
 # exception to the rule
 !notebooks/.gitkeep
+
+state_space.ipynb

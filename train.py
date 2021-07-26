@@ -46,12 +46,13 @@ def get_data(configs):
 		}
 
 	elif configs.source == "wave":
-		data = np.load('data/wave/time_start_50/processed_data.npz')
+		data = np.load('data/wave/20210726-101903/processed_data.npz')
 		int_label, int_unlabel, bound, int_test = data['int_label'], data['int_unlabel'], data['bound'], data['int_test']
 		ext_label, ext_unlabel, ext_test = data['ext_label'], data['ext_unlabel'], data['ext_test']
 		X_l = np.float32(np.concatenate((bound[:,0:3],int_label[:,0:3])))
 		X_ul = int_unlabel #int_ulabel
 		Y_l = np.float32(np.concatenate((bound[:,3], int_label[:,3])))
+		# tf.reshape(Y_l
 
 		is_boundary = tf.fill(bound.shape[0], True)
 		is_not_boundary = tf.fill(int_label.shape[0] + int_unlabel.shape[0], False)
@@ -60,12 +61,17 @@ def get_data(configs):
 		grad_reg = get_wave_reg(configs.gradient_loss, configs)
 		#grad_reg = get_target(configs.target, configs.gradient_loss, configs)
 
+		if grad_reg is None:
+			grad_bools = tf.fill(X_l.shape[0] + X_ul.shape[0], True)
+
 		if grad_reg == 'unknown':
 			grad_bools = tf.fill(X_l.shape[0] + X_ul.shape[0], True)
 		elif grad_reg == "TBD":
 			grad_bools = tf.fill(X_l.shape[0] + X_ul.shape[0], True)
 		elif grad_reg == "We'll figure it out":
 			grad_bools = tf.fill(X_l.shape[0] + X_ul.shape[0], True)
+		# else:
+		# 	raise ValueError("Unknown gradient regularizer ", grad_reg)
 
 		error_metrics = {
 			"interpolation error (t <= 1)" : lambda model : general_error(model, int_test[:,0:3], int_test[:,3]),
@@ -205,7 +211,10 @@ def train(configs: Configs):
 	X_all, Y_all, label_bools, grad_bools, grad_reg = get_data(configs)#, error_metrics = get_data(configs)
 
 	# Create TensorFlow dataset for passing to 'fit' function (below)
-	dataset = tf.data.Dataset.from_tensors((X_all, Y_all, label_bools, grad_bools))
+	if configs.from_tensor_slices:
+		dataset = tf.data.Dataset.from_tensor_slices((X_all, Y_all, label_bools, grad_bools))
+	else:
+		dataset = tf.data.Dataset.from_tensors((X_all, Y_all, label_bools, grad_bools))
 
 	# ------------------------------------------------------------------------------
 	# Create neural network (physics-inspired)
@@ -237,6 +246,11 @@ def train(configs: Configs):
 	opt_num_its = configs.epochs		# number of iterations
 
 	model.set_batch_size(opt_batch_size)
+	if configs.from_tensor_slices:
+		dataset = dataset.batch(opt_batch_size)
+		model.is_dataset_prebatched = True
+	else:
+		model.is_dataset_prebatched = False
 	model.set_gd_noise(configs.gd_noise)
 
 	optimizer = optimizers.Adam(learning_rate = opt_step)

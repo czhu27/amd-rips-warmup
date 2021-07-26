@@ -1,8 +1,9 @@
 import sys
 import datetime
+sys.path.append(sys.path[0] + "/app")
 sys.path.append(sys.path[0] + "/../..")
 from data import process_wave_data
-sys.path.append(sys.path[0] + "/app")
+
 from simulator import Simulator
 
 timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -18,35 +19,24 @@ params = {
 	"nx": 16,			# number of mesh elements (x)
 	"ny": 16,			# number of mesh elements (y)
 	# Time-related parameters
-	"tf": 2,			# final time
-	"dt": 0.002,		# time step
-	"sample_step": .01,  # amount of time between samples, should be multiple of dt
-	"show_every": 50,	# interval between two time steps reports
+	"tf": 1.0,			# final time
+	"dt": 0.01,			# time step
+    "sample_step": 0.01,# amount of time between samples, should be multiple of dt
+	"show_every": 10,	# interval between two time steps reports
 	"integrator": 'rk2',# time integrator 
 	# Discretization-related parameters
-	"ps": 2,			# polynomial degree for state variables
+	"ps": 1,			# polynomial degree for state variables
 	"pm": 0,			# polynomial degree for material properties	
 	"int_diag": 3,		# integration used for diagnostics (num 1D Gauss)  
 	# Initialization function
 	"initializer": 'gaussian',
-	# Source characteristics (locations given as [[x0, y0], [x1, y1], ...)
-	#"src_loc": [[0.25, 0.25], [0.75, 0.75]],
-	"src_loc": [ [0.5, 0.5] ],
-	"src_f": 5.0,		# source frequency (Hz)
-	"src_a": 1.0,		# source magnitude (set to 0 to disable source)
-	# Receivers coordinates (x0, y0, x1, y1, ...) 
-	"rcv_loc": [ [0.25, 0.25], [0.60, 0.50] ],
-	# Where to save this run
-	"data_dir": data_dir,
-	# Save percentages of [[interior, int bound], [exterior,ext bound], test points]
+    "data_dir": "data/wave/" + timestamp,
+    # Save percentages of [[interior, int bound], [exterior,ext bound], test points]
 	"data_percents": [[.1, .05], [.5, .25], [.25,.5]],
-	"heatmap": False
+    "heatmap": False
 }	
 
 # Create simulator and run
 simulator = Simulator(params)
 simulator.run()
 simulator.finalize()
-
-# Process data here
-# process_wave_data(data_dir, params)

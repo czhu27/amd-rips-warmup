@@ -165,7 +165,10 @@ class Simulator:
 
 		# Process data
 		process_wave_data_sample(self.__params["data_dir"], self.__params)
-		yaml.safe_dump(self.__params, open(self.__params["data_dir"] + "/sim_configs.yaml", "w"))
+		sim_configs_params = self.__params
+		sim_configs_params["p_range"] = (math.floor(min_max[0, 0]), math.ceil(min_max[0, 1]))
+
+		yaml.safe_dump(sim_configs_params, open(sim_configs_params["data_dir"] + "/sim_configs.yaml", "w"))
 
 		return min_max
 	# def finalize

@@ -22,7 +22,8 @@ gd_noise: 0.0
 #  Dataset  #
 #############
 source: wave
-
+data_dir: data/wave/
+data_run: '' #Leave blank to default to last run in data_sir folder
 
 corners: false
 dataset: [2500, 7500, 0, 1.0, 0.0] #[interior, exterior, border, labeled_int%, labeled_ext%]

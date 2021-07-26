@@ -5,6 +5,7 @@ import glob
 import time
 import matplotlib.pyplot as plt
 import io
+import shutil
 
 from helpers import get_p_mat_list, unstack
 
@@ -343,6 +344,9 @@ def load_slices(dump_file):
 	return pts, bound
 
 def process_wave_data_sample(wave_data_dir, params):
+	# Seed for reproducibility
+	np.random.seed(params["seed"])
+
 	tic = time.time()
 
 	# TODO: This is bad
@@ -411,6 +415,9 @@ def process_wave_data_sample(wave_data_dir, params):
 			indices_test = np.random.randint(0,pts.shape[0] + boundaries.shape[0], num_test)
 			ext_test = np.append(ext_test, all_pts[indices_test,:], axis = 0)
 
+	#Delete dump files
+	shutil.rmtree(wave_data_dir + "/dumps/")
+
 	#Randomly sample labeled and unlabeled data on interior
 	num_int_label = int(interior.shape[0]*label_int)
 	perm_int = np.random.permutation(interior)
@@ -423,6 +430,9 @@ def process_wave_data_sample(wave_data_dir, params):
 		perm_ext = np.random.permutation(exterior)
 		ext_label = perm_ext[0:num_ext_label,:]
 		ext_unlabel = perm_ext[num_ext_label:,:]
+	else:
+		ext_label = np.array([])
+		ext_unlabel = np.array([])
 	
 	if params["heatmap"]:
 		# Make crude heatmap

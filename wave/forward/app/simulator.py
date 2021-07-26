@@ -10,6 +10,7 @@ from integrator import IntegratorRK2, IntegratorRK3
 from kernel import KernelAcoustic
 import sys
 import yaml
+import datetime
 sys.path.append(sys.path[0] + "/../..")
 from data import process_wave_data_sample
 from plots import make_heatmap_animation
@@ -19,11 +20,16 @@ from plots import make_heatmap_animation
 # ------------------------------------------------------------------------------
 class Simulator:
 	def __init__(self, params):
-		# Create save dir
-		os.makedirs(params["data_dir"])
 
 		# Save ref to parameters
 		self.__params = params
+
+		timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+		self.__params["data_dir"] = (self.__params["data_dir"] + 
+			"/" + timestamp)
+
+		# Create save dir
+		os.makedirs(self.__params["data_dir"])
 
 		# Create mesh and field
 		tic = time.time()
@@ -165,7 +171,10 @@ class Simulator:
 
 		# Process data
 		process_wave_data_sample(self.__params["data_dir"], self.__params)
-		yaml.safe_dump(self.__params, open(self.__params["data_dir"] + "/sim_configs.yaml", "w"))
+		sim_configs_params = self.__params
+		sim_configs_params["p_range"] = (math.floor(min_max[0, 0]), math.ceil(min_max[0, 1]))
+
+		yaml.safe_dump(sim_configs_params, open(sim_configs_params["data_dir"] + "/sim_configs.yaml", "w"))
 
 		return min_max
 	# def finalize

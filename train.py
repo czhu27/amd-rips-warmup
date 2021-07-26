@@ -46,11 +46,15 @@ def get_data(configs, figs_folder):
 
 	elif configs.source == "wave":
 		data_run = configs.data_dir
-		if configs.data_run: 
-			data_run = data_run + configs.data_run
-		else:
-			data_run = data_run + next(os.walk('./data/wave'))[1][0]
-		data = np.load(data_run + '/processed_data.npz')
+		data_run = data_run + "/" + configs.data_run
+		# Get the latest timestamp
+		subpaths = os.listdir(data_run)
+		assert len(subpaths) == 1, "Must have exactly one data timestamp"
+		data_run = data_run + "/" + subpaths[-1]
+
+		fpath = data_run + '/' + 'processed_data.npz'
+		assert os.path.exists(fpath)
+		data = np.load(fpath)
 
 		int_label, int_unlabel, bound, int_test = data['int_label'], data['int_unlabel'], data['bound'], data['int_test']
 		ext_label, ext_unlabel, ext_test = data['ext_label'], data['ext_unlabel'], data['ext_test']

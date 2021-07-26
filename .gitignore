@@ -159,3 +159,5 @@ test.yaml
 notebooks/*
 # exception to the rule
 !notebooks/.gitkeep
+
+state_space.ipynb

@@ -6,16 +6,11 @@ class Configs:
         self.__dict__.update(entries)
 
 def shuffle_in_parallel(mat_list):
-    '''
-    Shuffle dataset along first dimension
-    '''
-    mat = mat_list[0]
-    indices = tf.random.shuffle(np.arange(mat.shape[0]))
-    new_mat_list = []
-    for mat in mat_list:
-        new_mat = tf.gather(mat, indices)
-        new_mat_list.append(new_mat)
-    return new_mat_list
+    indices = tf.random.shuffle(np.arange(mat_list[0].shape[0]))
+    for i, mat in enumerate(mat_list):
+        mat_list[i] = tf.gather(mat, indices)
+    
+    return mat_list
 
 def get_delta(x):
     '''
@@ -67,7 +62,6 @@ def get_p_mat(p, x, y, dx, dy, x_min, y_min, N, M):
     p_mat = avg(p_mat)
 
     return p_mat
-
 
 def get_p_mat_simple(p, x, y):
 	'''

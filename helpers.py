@@ -1,8 +1,16 @@
 import numpy as np
+import tensorflow as tf
 
 class Configs:
     def __init__(self, **entries):
         self.__dict__.update(entries)
+
+def shuffle_dataset(mat_list):
+    indices = tf.random.shuffle(np.arange(mat_list[0].shape[0]))
+    for i, mat in enumerate(mat_list):
+        mat_list[i] = tf.gather(mat, indices)
+    
+    return mat_list
 
 def get_delta(x):
     '''
@@ -54,7 +62,6 @@ def get_p_mat(p, x, y, dx, dy, x_min, y_min, N, M):
     p_mat = avg(p_mat)
 
     return p_mat
-
 
 def get_p_mat_simple(p, x, y):
 	'''

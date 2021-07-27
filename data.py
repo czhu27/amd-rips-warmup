@@ -367,7 +367,8 @@ def process_wave_data_sample(wave_data_dir, params):
 	#Initialize datasets
 	interior = np.zeros((0,6), dtype = np.float32)
 	exterior = np.zeros((0,6), dtype = np.float32)
-	boundary = np.zeros((0,6), dtype = np.float32)
+	int_bound = np.zeros((0,6), dtype = np.float32)
+	ext_bound = np.zeros((0,6), dtype = np.float32)
 	int_test = np.zeros((0,6), dtype = np.float32)
 	ext_test = np.zeros((0,6), dtype = np.float32)
 
@@ -399,7 +400,7 @@ def process_wave_data_sample(wave_data_dir, params):
 			indices_pts = np.random.randint(0,pts.shape[0], num_pts)
 			interior = np.append(interior, pts[indices_pts,:], axis=0)
 			indices_bound = np.random.randint(0,boundaries.shape[0], num_bound)
-			boundary = np.append(boundary, boundaries[indices_bound,:], axis=0)
+			int_bound = np.append(int_bound, boundaries[indices_bound,:], axis=0)
 			indices_test = np.random.randint(0,pts.shape[0] + boundaries.shape[0], num_test)
 			int_test = np.append(int_test, all_pts[indices_test,:], axis = 0)
 		#If exterior
@@ -411,7 +412,7 @@ def process_wave_data_sample(wave_data_dir, params):
 			indices_pts = np.random.randint(0,pts.shape[0], num_pts)
 			exterior = np.append(exterior, pts[indices_pts,:], axis=0)
 			indices_bound = np.random.randint(0,boundaries.shape[0], num_bound)
-			boundary = np.append(boundary, boundaries[indices_bound,:], axis=0)
+			ext_bound = np.append(ext_bound, boundaries[indices_bound,:], axis=0)
 			indices_test = np.random.randint(0,pts.shape[0] + boundaries.shape[0], num_test)
 			ext_test = np.append(ext_test, all_pts[indices_test,:], axis = 0)
 
@@ -433,6 +434,7 @@ def process_wave_data_sample(wave_data_dir, params):
 	else:
 		ext_label = np.array([])
 		ext_unlabel = np.array([])
+		ext_bound = np.array([])
 	
 	if params["heatmap"]:
 		# Make crude heatmap
@@ -452,8 +454,8 @@ def process_wave_data_sample(wave_data_dir, params):
 
 	np.savez(
 		wave_data_dir + '/processed_data.npz', 
-		int_label = int_label, int_unlabel = int_unlabel, bound = boundaries, int_test = int_test, 
-		ext_label = ext_label, ext_unlabel = ext_unlabel, ext_test = ext_test
+		int_label = int_label, int_unlabel = int_unlabel, int_bound = int_bound, int_test = int_test, 
+		ext_label = ext_label, ext_unlabel = ext_unlabel, ext_bound = ext_bound, ext_test = ext_test
 	)
 
 	toc = time.time()

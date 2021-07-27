@@ -15,7 +15,7 @@ for gpu in physical_devices:
 from tensorflow import keras
 from tensorflow.keras import optimizers
 
-from helpers import Configs
+from helpers import Configs, shuffle_dataset
 from nn import create_nn
 from targets import get_target
 from plots import plot_data_2D, plot_gridded_functions, make_movie, make_wave_plot, make_heatmap_movie
@@ -64,30 +64,33 @@ def get_data(configs, figs_folder):
 		assert os.path.exists(fpath)
 		data = np.load(fpath)
 
-		int_label, int_unlabel, bound, int_test = data['int_label'], data['int_unlabel'], data['bound'], data['int_test']
-		ext_label, ext_unlabel, ext_test = data['ext_label'], data['ext_unlabel'], data['ext_test']
-		X_l = np.float32(np.concatenate((bound[:,0:3],int_label[:,0:3])))
-		X_ul = int_unlabel #int_ulabel
-		Y_l = np.float32(np.concatenate((bound[:,3], int_label[:,3])))
+		int_label, int_unlabel, int_bound, int_test = data['int_label'], data['int_unlabel'], data['int_bound'], data['int_test']
+		ext_label, ext_unlabel, ext_bound, ext_test = data['ext_label'], data['ext_unlabel'], data['int_bound'], data['ext_test']
+		X_l = np.float32(np.concatenate((int_bound[:,0:3],int_label[:,0:3])))
+		X_ul = np.float32(ext_unlabel[:,0:3]) #int_ulabel
+		Y_l = np.float32(np.concatenate((int_bound[:,3], int_label[:,3])))
 		Y_l = np.reshape(Y_l, (len(Y_l),1))
 
-		is_boundary = tf.fill(bound.shape[0], True)
+		is_boundary = tf.fill(int_bound.shape[0], True)
 		is_not_boundary = tf.fill(int_label.shape[0] + int_unlabel.shape[0], False)
 		is_boundary_all = tf.concat([is_boundary, is_not_boundary], axis=0)
 
 		grad_reg = get_wave_reg(configs.gradient_loss, configs)
 		#grad_reg = get_target(configs.target, configs.gradient_loss, configs)
 
-		grad_bools = tf.fill(X_l.shape[0] + X_ul.shape[0], True)
+		if grad_reg is None:
+			grad_bools = tf.fill(X_l.shape[0] + X_ul.shape[0], True)
 
-		# if grad_reg == 'second_explicit':
-		# 	grad_bools = tf.fill(X_l.shape[0] + X_ul.shape[0], True)
-		# elif grad_reg == "TBD":
-		# 	grad_bools = tf.fill(X_l.shape[0] + X_ul.shape[0], True)
-		# elif grad_reg == "We'll figure it out":
-		# 	grad_bools = tf.fill(X_l.shape[0] + X_ul.shape[0], True)
-		# else:
-		# 	raise ValueError("Unknown gradient regularizer ", grad_reg)
+		if grad_reg.__name__ == 'second_order_c_known':
+			grad_bools_bound = tf.fill(int_bound.shape[0], False)
+			grad_bools_int = tf.fill(int_label.shape[0] + X_ul.shape[0], True)
+			grad_bools = tf.concat([grad_bools_bound, grad_bools_int], axis = 0)
+		elif grad_reg == "TBD":
+			grad_bools = tf.fill(X_l.shape[0] + X_ul.shape[0], True)
+		elif grad_reg == "We'll figure it out":
+			grad_bools = tf.fill(X_l.shape[0] + X_ul.shape[0], True)
+		else:
+			raise ValueError("Unknown gradient regularizer ", grad_reg)
 
 
 		error_metrics = {
@@ -99,7 +102,7 @@ def get_data(configs, figs_folder):
 			"Error vs. time" : lambda model : error_time(model, int_test, ext_test, figs_folder, '/error_time')
 		}
 		
-		print(f"Loaded wave eq. simulation inputs/outputs. Count: {len(X_l)}")
+		print(f"Loaded wave eq. simulation inputs/outputs. Count: {len(X_l) + len(X_ul)}")
 
 	#Creates labels to pass through network
 	is_labeled_l = tf.fill(X_l.shape[0], True)
@@ -130,7 +133,7 @@ def get_data(configs, figs_folder):
 		# if "data-distribution" in configs.plots:
 		# 	plot_data(X_l, X_ul, figs_folder, configs)
 
-	print(f"Loaded wave eq. simulation inputs/outputs. Count: {len(X_l)}")
+	print(f"Loaded wave eq. simulation inputs/outputs. Count: {len(X_all)}")
 	# else:
 	# 	raise ValueError("Unknown data source " + configs.source)
 
@@ -234,7 +237,9 @@ def train(configs: Configs):
 	if configs.from_tensor_slices:
 		dataset = tf.data.Dataset.from_tensor_slices((X_all, Y_all, label_bools, grad_bools))
 	else:
-		dataset = tf.data.Dataset.from_tensors((X_all, Y_all, label_bools, grad_bools))
+		#HACKS#
+		mat_list = shuffle_dataset([X_all, Y_all, label_bools, grad_bools])
+		dataset = tf.data.Dataset.from_tensors(tuple(mat_list))
 
 	# ------------------------------------------------------------------------------
 	# Create neural network (physics-inspired)

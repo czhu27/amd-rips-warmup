@@ -1,8 +1,21 @@
 import numpy as np
+import tensorflow as tf
 
 class Configs:
     def __init__(self, **entries):
         self.__dict__.update(entries)
+
+def shuffle_in_parallel(mat_list):
+    '''
+    Shuffle dataset along first dimension
+    '''
+    mat = mat_list[0]
+    indices = tf.random.shuffle(np.arange(mat.shape[0]))
+    new_mat_list = []
+    for mat in mat_list:
+        new_mat = tf.gather(mat, indices)
+        new_mat_list.append(new_mat)
+    return new_mat_list
 
 def get_delta(x):
     '''

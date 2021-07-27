@@ -20,7 +20,7 @@ else:
 from tensorflow import keras
 from tensorflow.keras import optimizers
 
-from helpers import Configs
+from helpers import Configs, shuffle_in_parallel
 from nn import create_nn
 from targets import get_target
 from plots import plot_data_2D, plot_gridded_functions, make_movie, make_wave_plot, make_heatmap_movie
@@ -177,7 +177,8 @@ def comparison_plots(model, figs_folder, configs):
 		# 3D Plotting
 		if "heatmap" in configs.plots:
 			make_heatmap_movie(model, figs_folder, time_steps = 100, dx = .01, sample_step = .01)
-		make_movie(model, figs_folder)
+		make_movie(model, figs_folder, filename='wave_pred.gif', t0=0)
+		make_movie(model, figs_folder, filename='wave_pred_ext.gif', t0=1)
 		make_wave_plot(model, t = 0, f_true = 0, figs_folder = figs_folder, tag='0')
 		make_wave_plot(model, t = .25, f_true = 0, figs_folder = figs_folder, tag='0.25')
 		make_wave_plot(model, t = .5, f_true = 0, figs_folder = figs_folder, tag='0.5')
@@ -238,9 +239,10 @@ def train(configs: Configs):
 	# Create TensorFlow dataset for passing to 'fit' function (below)
 	if configs.from_tensor_slices:
 		dataset = tf.data.Dataset.from_tensor_slices((X_all, Y_all, label_bools, grad_bools))
+		dataset = dataset.shuffle(len(dataset))
 	else:
-		dataset = tf.data.Dataset.from_tensors((X_all, Y_all, label_bools, grad_bools))
-
+		mat_list = shuffle_in_parallel([X_all, Y_all, label_bools, grad_bools])
+		dataset = tf.data.Dataset.from_tensors(tuple(mat_list))
 	# ------------------------------------------------------------------------------
 	# Create neural network (physics-inspired)
 	# ------------------------------------------------------------------------------

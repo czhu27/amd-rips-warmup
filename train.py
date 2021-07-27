@@ -6,10 +6,15 @@ from tensorflow.python.ops.gen_array_ops import zeros_like
 import yaml
 import tensorflow as tf
 
-#MUST BE BETWEEN THESE TWO#
-physical_devices = tf.config.list_physical_devices('GPU')
-for gpu in physical_devices:
-	tf.config.experimental.set_memory_growth(gpu, True)
+#MUST BE BETWEEN THESE TWO IMPORTS#
+BE_GREEDY = False
+if BE_GREEDY:
+	for i in range(5):
+		print("I'M GREEDY. SHHHHH DON'T TELL MOM...")
+else:
+	physical_devices = tf.config.list_physical_devices('GPU')
+	for gpu in physical_devices:
+		tf.config.experimental.set_memory_growth(gpu, True)
 #DO NOT MOVE#
 
 from tensorflow import keras
@@ -293,6 +298,9 @@ def train(configs: Configs):
 		def on_epoch_end(self, epoch, logs=None):
 			train_dur = time.time() - self.train_start
 			epoch_dur = time.time() - self.epoch_start
+			# Ignore the 1st epoch
+			if epoch <= 1:
+				return
 			tf.summary.scalar('Time/Total', data=train_dur, step=epoch)
 			tf.summary.scalar('Time/Epoch', data=epoch_dur, step=epoch)
 

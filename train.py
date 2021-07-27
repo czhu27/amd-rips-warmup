@@ -85,17 +85,17 @@ def get_data(configs, figs_folder):
 
 		if grad_reg is None:
 			grad_bools = tf.fill(X_l.shape[0] + X_ul.shape[0], True)
-
-		if grad_reg.__name__ == 'second_order_c_known':
-			grad_bools_bound = tf.fill(int_bound.shape[0], False)
-			grad_bools_int = tf.fill(int_label.shape[0] + X_ul.shape[0], True)
-			grad_bools = tf.concat([grad_bools_bound, grad_bools_int], axis = 0)
-		elif grad_reg == "TBD":
-			grad_bools = tf.fill(X_l.shape[0] + X_ul.shape[0], True)
-		elif grad_reg == "We'll figure it out":
-			grad_bools = tf.fill(X_l.shape[0] + X_ul.shape[0], True)
 		else:
-			raise ValueError("Unknown gradient regularizer ", grad_reg)
+			if grad_reg.__name__ == 'second_order_c_known':
+				grad_bools_bound = tf.fill(int_bound.shape[0], False)
+				grad_bools_int = tf.fill(int_label.shape[0] + X_ul.shape[0], True)
+				grad_bools = tf.concat([grad_bools_bound, grad_bools_int], axis = 0)
+			elif grad_reg == "TBD":
+				grad_bools = tf.fill(X_l.shape[0] + X_ul.shape[0], True)
+			elif grad_reg == "We'll figure it out":
+				grad_bools = tf.fill(X_l.shape[0] + X_ul.shape[0], True)
+			else:
+				raise ValueError("Unknown gradient regularizer ", grad_reg)
 
 
 		error_metrics = {
@@ -306,12 +306,19 @@ def train(configs: Configs):
 
 	class StressTestLogger(keras.callbacks.Callback):
 		def on_epoch_end(self, epoch, logs):
-			self.test_every = 100
+			self.test_every = 25
 			if epoch % self.test_every == self.test_every - 10:
 				for error_name, error_func in error_metrics.items():
 					error_val = error_func(model)
 					tf.summary.scalar('Error/' + error_name, data=error_val, step=epoch)
 					
+	class LossSchedulerizer(keras.callbacks.Callback):
+		def on_epoch_begin(self, epoch, logs):
+			if epoch == 100:
+				self.model.condition_weight = configs.grad_reg_const
+
+		def on_train_begin(self, logs):
+			self.model.condition_weight = 0
 
 	tensorboard_callback = keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
 	logging_callbacks = [TimeLogger(), StressTestLogger(), tensorboard_callback]
@@ -321,6 +328,9 @@ def train(configs: Configs):
 		callbacks = logging_callbacks
 	else:
 		callbacks = []
+
+	callbacks.append(LossSchedulerizer())
+	print(callbacks)
 
 	model.fit(dataset, 
 			epochs=opt_num_its, 

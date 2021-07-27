@@ -29,6 +29,7 @@ corners: false
 dataset: [2500, 7500, 0, 1.0, 0.0] #[interior, exterior, border, labeled_int%, labeled_ext%]
 noise: 0.0
 from_tensor_slices: false
+model_outputs: all
 
 ##################
 #  Regularizers  #

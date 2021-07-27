@@ -311,7 +311,6 @@ def train(configs: Configs):
 				for error_name, error_func in error_metrics.items():
 					error_val = error_func(model)
 					tf.summary.scalar('Error/' + error_name, data=error_val, step=epoch)
-					
 
 	tensorboard_callback = keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
 	logging_callbacks = [TimeLogger(), StressTestLogger(), tensorboard_callback]

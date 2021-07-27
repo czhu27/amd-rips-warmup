@@ -259,7 +259,7 @@ def extrap_error(model, f, i_lb, i_ub, o_lb, o_ub, step_size=0.01):
 	error = np.sqrt(np.mean(np.square(f_ml - f_true)))
 	return error
 
-def compute_error_wave(model, test_set):
+def compute_error_wave(model, test_set, source_input=None):
 	#test_set can be int_test or ext_test
 	#formatting
 	f_true = np.reshape(test_set[:,3],(len(test_set[:,3]),1))
@@ -268,7 +268,12 @@ def compute_error_wave(model, test_set):
 	t = np.reshape(test_set[:,2],(len(test_set[:,2]),1))
 
 	#Computes model and finds difference with sim
-	ml_input = np.concatenate((x,y,t),axis=1)
+	if source_input is not None:
+		source_x_col = np.full((x.shape[0], 1), source_input[0])
+		source_y_col = np.full((x.shape[0], 1), source_input[1])		
+		ml_input = np.concatenate((source_x_col, source_y_col, x,y,t),axis=1)
+	else:
+		ml_input = np.concatenate((x,y,t), axis=1)
 	ml_output = model.predict(ml_input)
 	f_ml = np.reshape(ml_output, (len(f_true), 1))
 	error = np.sqrt(np.mean(np.square(f_ml - f_true)))

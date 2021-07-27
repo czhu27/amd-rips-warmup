@@ -17,7 +17,7 @@ def plot_data_2D(X_l, X_ul, save_dir):
     plt.savefig(save_dir + "/data")
     plt.clf()
 
-def plot_gridded_functions(model, f, lb, ub, tag, folder="figs"):
+def plot_gridded_functions(model, f, lb, ub, tag, folder="figs", test_source=None):
     n1d = 101
     npts = n1d*n1d
     x0 = np.linspace(lb, ub, n1d)
@@ -31,7 +31,7 @@ def plot_gridded_functions(model, f, lb, ub, tag, folder="figs"):
     ml_input = np.zeros((npts, 2))
     ml_input[:,0] = x0_g.flatten()
     ml_input[:,1] = x1_g.flatten()
-    ml_output = model.predict(ml_input)
+    ml_output = model.predict(ml_input, test_source)
     f_ml = np.reshape(ml_output, (n1d, n1d), order = 'C')
 
     fig = plt.figure()
@@ -104,7 +104,7 @@ def make_wave_plot(model, t, f_true, figs_folder, tag):
     return buf
 
 
-def make_movie(model, figs_folder, time_steps = 100, dx = .01, dt = .01):
+def make_movie(model, figs_folder, time_steps = 100, dx = .01, dt = .01, test_source=None):
     #Create figure for movie and init constants
     fig = plt.figure()
     ax = fig.add_subplot(projection='3d')
@@ -122,7 +122,10 @@ def make_movie(model, figs_folder, time_steps = 100, dx = .01, dt = .01):
         X_t = np.reshape(X_g, (nx*ny,1))
         Y_t = np.reshape(Y_g, (nx*ny,1))
         inputs = np.concatenate((X_t, Y_t,time_vec), axis=1)
-        soln = model.predict(inputs)
+        if test_source is not None:
+            soln = model.predict(inputs, test_source)
+        else:
+            soln = model.predict(inputs)
         soln = np.reshape(soln, (nx,ny))
         #Clears current fig and draws surface
         if len(fig.axes[0].collections) != 0:

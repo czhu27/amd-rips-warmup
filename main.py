@@ -25,7 +25,7 @@ def get_filename(path):
 
 def run_trials(configs):
 	run_name = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-	parent_dir = configs.output_dir
+	#parent_dir = configs.output_dir
 	configs.output_dir = configs.output_dir + "/" + "run_" + run_name
 
 	# For each run, update output directory and seed
@@ -38,9 +38,9 @@ def run_trials(configs):
 		train(trial_configs)
 	
 	if configs.source == 'synthetic':
-		create_run_summary(parent_dir)
+		create_run_summary(configs.output_dir)
 	elif configs.source == 'wave':
-		create_run_summary_wave(parent_dir)
+		create_run_summary_wave(configs.output_dir)
 
 def grid_search(search_file, default_configs):
 	print("Running a grid search.")

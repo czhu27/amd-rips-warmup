@@ -6,7 +6,8 @@ sys.path.append(sys.path[0] + "/app")
 from simulator import Simulator
 
 timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-data_dir = "data/wave/" + timestamp
+#data_dir = "data/wave/" + timestamp
+data_dir = "data/wave/025-075"
 
 # Create all parameters
 params = {
@@ -15,10 +16,10 @@ params = {
 	"x1": 1.0,			# domain dimension (x1)
 	"y0": 0.0,			# domain dimension (y0)
 	"y1": 1.0,			# domain dimension (y1)
-	"nx": 16,			# number of mesh elements (x)
-	"ny": 16,			# number of mesh elements (y)
+	"nx": 50,			# number of mesh elements (x)
+	"ny": 50,			# number of mesh elements (y)
 	# Time-related parameters
-	"tf": 2,			# final time
+	"tf": 2.0,			# final time
 	"dt": 0.002,		# time step
 	"sample_step": .01,  # amount of time between samples, should be multiple of dt
 	"show_every": 50,	# interval between two time steps reports
@@ -31,7 +32,7 @@ params = {
 	"initializer": 'zero',
 	# Source characteristics (locations given as [[x0, y0], [x1, y1], ...)
 	#"src_loc": [[0.25, 0.25], [0.75, 0.75]],
-	"src_loc": [ [0.5, 0.5] ],
+	"src_loc": [ [0.25, 0.75] ],
 	"src_f": 5.0,		# source frequency (Hz)
 	"src_a": 1.0,		# source magnitude (set to 0 to disable source)
 	# Receivers coordinates (x0, y0, x1, y1, ...) 
@@ -39,7 +40,7 @@ params = {
 	# Where to save this run
 	"data_dir": data_dir,
 	# Save percentages of [[interior, int bound], [exterior,ext bound], test points]
-	"data_percents": [[.01, .01], [.05, .05], [.1,.1]],
+	"data_percents": [[.01, .01], [.05, .05], [.05,.05]],
 	"heatmap": False
 }	
 

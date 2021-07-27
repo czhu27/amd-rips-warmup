@@ -44,6 +44,100 @@ def get_data(configs, figs_folder):
 			"extrapolation error (3x3 ring)": lambda model : extrap_error(model, f, -2.0, 2.0, -3.0, 3.0),
 		}
 
+	elif configs.source == "multiwave":
+		data_run = configs.data_dir
+		tot_X_all = np.zeros((0,5), dtype = np.float32)
+		tot_Y_all = tf.zeros((0,1))
+		tot_label_bools = tf.Variable(np.array([], dtype=bool))
+		for i, data_run_name in enumerate(configs.data_run):
+			data_run_x = data_run + data_run_name
+			data = np.load(data_run_x + '/processed_data.npz')
+
+			int_label, int_unlabel, bound = data['int_label'], data['int_unlabel'], data['bound']
+			ext_label, ext_unlabel = data['ext_label'], data['ext_unlabel']
+			X_l = np.float32(np.concatenate((bound[:,0:3],int_label[:,0:3])))
+			X_ul = int_unlabel #int_ulabel
+			Y_l = np.float32(np.concatenate((bound[:,3], int_label[:,3])))
+			Y_l = np.reshape(Y_l, (len(Y_l),1))
+
+			is_boundary = tf.fill(bound.shape[0], True)
+			is_not_boundary = tf.fill(int_label.shape[0] + int_unlabel.shape[0], False)
+			is_boundary_all = tf.concat([is_boundary, is_not_boundary], axis=0)
+
+
+
+			#Creates labels to pass through network
+			is_labeled_l = tf.fill(X_l.shape[0], True)
+			is_labeled_ul = tf.fill(X_ul.shape[0], False)
+
+			if X_ul.shape[0] == 0:
+				label_bools = is_labeled_l
+			else:
+				label_bools = tf.concat([is_labeled_l, is_labeled_ul], axis=0)
+
+			Y_ul = tf.zeros((X_ul.shape[0], 1))
+
+			# Add noise to y-values
+			if configs.noise > 0:
+				Y_l += tf.random.normal(Y_l.shape, stddev=configs.noise)
+				Y_l += np.reshape(configs.noise*np.random.randn((len(Y_l))),(len(Y_l),1))
+
+			#Concat inputs, outputs, and bools
+			if X_ul.shape[0] == 0:
+				X_all = X_l
+				Y_all = Y_l
+			else:
+				X_all = tf.concat([X_l, X_ul], axis=0)
+				Y_all = tf.concat([Y_l, Y_ul], axis=0)
+
+			source_x = configs.data_sources[i][0]
+			source_y = configs.data_sources[i][1]
+			source_x_col = np.full((X_all.shape[0],1), source_x)
+			source_y_col = np.full((X_all.shape[0],1), source_y)
+			X_all = np.concatenate((source_x_col, source_y_col, X_all), axis=1)
+			tot_X_all = np.concatenate((tot_X_all, X_all), axis=0)
+			tot_Y_all = tf.concat([tot_Y_all, Y_all], axis=0)
+			tot_label_bools = tf.concat([tot_label_bools, label_bools], axis=0)
+
+
+
+				
+		grad_reg = get_wave_reg(configs.gradient_loss, configs)
+		#grad_reg = get_target(configs.target, configs.gradient_loss, configs)
+
+		if grad_reg is None:
+			grad_bools = tf.fill(tot_X_all.shape[0], True)
+
+		if grad_reg == 'unknown':
+			grad_bools = tf.fill(tot_X_all.shape[0], True)
+		elif grad_reg == 'none':
+			grad_bools = tf.fill(tot_X_all.shape[0], True)
+		elif grad_reg == "TBD":
+			grad_bools = tf.fill(tot_X_all.shape[0], True)
+		elif grad_reg == "We'll figure it out":
+			grad_bools = tf.fill(tot_X_all.shape[0], True)
+		# 	raise ValueError("Unknown gradient regularizer ", grad_reg)
+			
+		test_data = np.load(configs.test_data_dir + '/processed_data.npz')
+		int_test = test_data['int_test']
+		ext_test = test_data['ext_test']
+
+		test_source = configs.test_source
+
+		error_metrics = {
+			"interpolation error (t <= 1)" : lambda model : compute_error_wave(model, int_test, source_input=test_source),
+			"extrapolation error (1 < t)" : lambda model : compute_error_wave(model, ext_test, source_input=test_source)
+		}
+
+		error_plots = {
+			"Error vs. time" : lambda model : error_time(model, int_test, ext_test, figs_folder, '/error_time')
+		}
+		
+		print(f"Loaded wave eq. simulation inputs/outputs. Count: {len(X_l)}")
+
+		return tot_X_all, tot_Y_all, tot_label_bools, grad_bools, grad_reg, error_metrics, error_plots
+
+
 	elif configs.source == "wave":
 		data_run = configs.data_dir
 		if configs.data_run: 
@@ -168,6 +262,26 @@ def comparison_plots(model, figs_folder, configs):
 		make_wave_plot(model, t = .75, f_true = 0, figs_folder = figs_folder, tag='0.75')
 		make_wave_plot(model, t = 1, f_true = 0, figs_folder = figs_folder, tag='1')
 	
+	elif configs.source == "multiwave":
+		for t in tf.range(0, 2 + 1e-3, 0.5):
+			class m:
+				@staticmethod
+				def predict(X, test_source):
+					test_source_cols = np.full((len(X), 2), test_source)
+					ml_input = tf.concat([test_source_cols, X, tf.fill((len(X), 1), t)], axis=1)
+					return model.predict(ml_input)
+			f = lambda x, y: tf.zeros_like(x)
+			buf = plot_gridded_functions(m, f, 0, 1, f"_t={t:.3f}", folder=figs_folder, test_source=configs.test_source)
+		# 3D Plotting
+		if "heatmap" in configs.plots:
+			make_heatmap_movie(model, figs_folder, time_steps = 100, dx = .01, sample_step = .01)
+		make_movie(model, figs_folder, test_source=configs.test_source)
+		make_wave_plot(model, t = 0, f_true = 0, figs_folder = figs_folder, tag='0')
+		make_wave_plot(model, t = .25, f_true = 0, figs_folder = figs_folder, tag='0.25')
+		make_wave_plot(model, t = .5, f_true = 0, figs_folder = figs_folder, tag='0.5')
+		make_wave_plot(model, t = .75, f_true = 0, figs_folder = figs_folder, tag='0.75')
+		make_wave_plot(model, t = 1, f_true = 0, figs_folder = figs_folder, tag='1')
+
 	else:
 		raise ValueError("Unknown data source " + configs.source)
 

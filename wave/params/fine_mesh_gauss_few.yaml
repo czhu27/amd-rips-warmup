@@ -31,8 +31,10 @@ rcv_loc: [ [0.25, 0.25], [0.60, 0.50] ]
 
 # Save percentages of [[interior, int bound, % labeled], [exterior, ext bound, % labeled], [int_test, ext_test]]
 seed: 0
-data_percents: [[.01, .01, 1.0], [.00, .00, 0.0], [.05, .05]]
+data_percents: [[.01, .01, 1.0], [.01, .01, 0.0], [.05, .05]]
 heatmap: False
+data_plot: True
+int_ext_time: 1
 
 # Where to save this run
 data_dir: data/wave

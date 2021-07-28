@@ -29,9 +29,9 @@ src_a: 0.0 # source magnitude (set to 0 to disable source)
 # Receivers coordinates (x0, y0, x1, y1, ...) 
 rcv_loc: [ [0.25, 0.25], [0.60, 0.50] ]
 
-# Save percentages of [[interior, int bound], [exterior,ext bound], test points]
+# Save percentages of [[interior, int bound, % labeled], [exterior, ext bound, % labeled], [int_test, ext_test]]
 seed: 0
-data_percents: [[.01, .01, 1], [.01, .01, 0], [.05, .05]]
+data_percents: [[.01, .01, 1.0], [.01, .01, 0.0], [.05, .05]]
 heatmap: False
 data_plot: True
 int_ext_time: 1

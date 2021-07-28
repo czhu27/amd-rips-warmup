@@ -20,13 +20,21 @@ else:
 from tensorflow import keras
 from tensorflow.keras import optimizers
 
-from helpers import Configs, shuffle_in_parallel
+from helpers import Configs, shuffle_in_parallel, np_unstack
 from nn import create_nn
 from targets import get_target
 from plots import plot_data_2D, plot_gridded_functions, make_movie, make_wave_plot, make_heatmap_movie
 from data import data_creation, compute_error, extrap_error, data_wave, compute_error_wave, error_time
 from wave_reg import get_wave_reg
 
+
+class FakeModel:
+	def __init__(self, model):
+		self.model = model
+	def predict(self, x):
+		puv = self.model.predict(x)
+		p, u, v = np_unstack(puv, axis=1)
+		return p
 
 #tf.debugging.set_log_device_placement(True)
 def general_error(model, X, Y):
@@ -73,8 +81,19 @@ def get_data(configs, figs_folder):
 		ext_label, ext_unlabel, ext_bound, ext_test = data['ext_label'], data['ext_unlabel'], data['int_bound'], data['ext_test']
 		X_l = np.float32(np.concatenate((int_bound[:,0:3],int_label[:,0:3], ext_label[:,0:3])))
 		X_ul = np.float32(np.concatenate((int_unlabel[:,0:3],ext_unlabel[:,0:3])))
-		Y_l = np.float32(np.concatenate((int_bound[:,3], int_label[:,3], ext_label[:,3])))
-		Y_l = np.reshape(Y_l, (len(Y_l),1))
+
+		if configs.model_outputs == "all":
+			# (p, u, v)
+			assert configs.layers[-1] == 3
+			Y_l = np.float32(np.concatenate((int_bound[:,3:], int_label[:,3:], ext_label[:,3:])))	
+
+		elif configs.model_outputs == "pressure":
+			# (p)
+			assert configs.layers[-1] == 1
+			Y_l = np.float32(np.concatenate((int_bound[:,3], int_label[:,3], ext_label[:,3])))
+			Y_l = Y_l[:, None]
+		else:
+			raise ValueError("Unknown model_outputs ", configs.model_outputs)
 
 		is_boundary = tf.fill(int_bound.shape[0], True)
 		is_not_boundary = tf.fill(int_label.shape[0] + int_unlabel.shape[0], False)
@@ -85,26 +104,25 @@ def get_data(configs, figs_folder):
 
 		if grad_reg is None:
 			grad_bools = tf.fill(X_l.shape[0] + X_ul.shape[0], True)
-		else:
-			if grad_reg.__name__ == 'second_order_c_known':
-				grad_bools_bound = tf.fill(int_bound.shape[0], False)
-				grad_bools_int = tf.fill(int_label.shape[0] + X_ul.shape[0], True)
-				grad_bools = tf.concat([grad_bools_bound, grad_bools_int], axis = 0)
-			elif grad_reg == "TBD":
-				grad_bools = tf.fill(X_l.shape[0] + X_ul.shape[0], True)
-			elif grad_reg == "We'll figure it out":
-				grad_bools = tf.fill(X_l.shape[0] + X_ul.shape[0], True)
-			else:
-				raise ValueError("Unknown gradient regularizer ", grad_reg)
 
+		# TODO: Should be handled in get_wave_reg?
+		if configs.gradient_loss == 'second_explicit':
+			grad_bools_bound = tf.fill(int_bound.shape[0], False)
+			grad_bools_int = tf.fill(int_label.shape[0] + X_ul.shape[0], True)
+			grad_bools = tf.concat([grad_bools_bound, grad_bools_int], axis = 0)
+
+		# Remove the other outputs in the model (hack)
+		if configs.model_outputs == "all":
+			simplify = lambda model : FakeModel(model)
+		else:
+			simplify = lambda model : model
 
 		error_metrics = {
-			"interpolation error (t <= 1)" : lambda model : compute_error_wave(model, int_test),
-			"extrapolation error (1 < t)" : lambda model : compute_error_wave(model, ext_test)
+			"interpolation error (t <= 1)" : lambda model : compute_error_wave(simplify(model), int_test),
+			"extrapolation error (1 < t)" : lambda model : compute_error_wave(simplify(model), ext_test)
 		}
-
 		error_plots = {
-			"Error vs. time" : lambda model : error_time(model, int_test, ext_test, figs_folder, '/error_time')
+			"Error vs. time" : lambda model : error_time(simplify(model), int_test, ext_test, figs_folder, '/error_time')
 		}
 		
 		print(f"Loaded wave eq. simulation inputs/outputs. Count: {len(X_l) + len(X_ul)}")
@@ -118,7 +136,10 @@ def get_data(configs, figs_folder):
 	else:
 		label_bools = tf.concat([is_labeled_l, is_labeled_ul], axis=0)
 
-	Y_ul = tf.zeros((X_ul.shape[0], 1))
+	if configs.layers[-1] == 3:
+		Y_ul = tf.zeros((X_ul.shape[0], 3))
+	else:
+		Y_ul = tf.zeros((X_ul.shape[0], 1))
 
 	# Add noise to y-values
 	if configs.noise > 0:
@@ -156,6 +177,9 @@ def plot_data(X_l, X_ul, figs_folder, configs):
 			print("PLOT PLOT PLOT")
 
 def comparison_plots(model, figs_folder, configs):
+
+	if configs.model_outputs == "all":
+		model = FakeModel(model)
 
 	if configs.source == "synthetic":
 		# 2D Plotting
@@ -306,7 +330,7 @@ def train(configs: Configs):
 
 	class StressTestLogger(keras.callbacks.Callback):
 		def on_epoch_end(self, epoch, logs):
-			self.test_every = 50
+			self.test_every = configs.tb_error_timestep
 			if epoch % self.test_every == self.test_every - 10:
 				for error_name, error_func in error_metrics.items():
 					error_val = error_func(model)
@@ -351,6 +375,7 @@ def train(configs: Configs):
 	# ------------------------------------------------------------------------------
 	# Stress set - Assess extrapolation capabilities
 	# ------------------------------------------------------------------------------
+
 	final_metrics = {}
 
 	'''

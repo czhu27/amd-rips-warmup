@@ -1,14 +1,13 @@
-batch_size: 256
+device: gpu
 activation: tanh
-# batch_size: 16384
-# layers: [3,20, 20, 20, 1]
+trials: 1
+epochs: 10000
 layers: [3, 100, 100, 100, 100, 100, 3]
+batch_size: 512
+epochs: 10000
 lr: 5.0e-5
 grad_reg_const: .1
 gradient_loss: first_explicit
-epochs: 10
-seed: 0
-
 be_greedy: true
 
 plots: [data-distribution, tensorboard]

@@ -7,7 +7,7 @@ import yaml
 import tensorflow as tf
 
 #MUST BE BETWEEN THESE TWO IMPORTS#
-BE_GREEDY = False
+BE_GREEDY = True
 if BE_GREEDY:
 	for i in range(5):
 		print("I'M GREEDY. SHHHHH DON'T TELL MOM...")
@@ -66,22 +66,29 @@ def get_data(configs, figs_folder):
 		data_run = data_run + "/" + subpaths[-1]
 
 		fpath = data_run + '/' + 'processed_data.npz'
-		assert os.path.exists(fpath)
+		assert os.path.exists(fpath)	
 		data = np.load(fpath)
 
 		int_label, int_unlabel, bound, int_test = data['int_label'], data['int_unlabel'], data['bound'], data['int_test']
 		ext_label, ext_unlabel, ext_test = data['ext_label'], data['ext_unlabel'], data['ext_test']
+		# (x, y, t)
 		X_l = np.float32(np.concatenate((bound[:,0:3],int_label[:,0:3])))
 		X_ul = int_unlabel #int_ulabel
-		Y_l = np.float32(np.concatenate((bound[:,3], int_label[:,3])))
-		Y_l = np.reshape(Y_l, (len(Y_l),1))
+
+		if 'single' in configs.gradient_loss or 'first' in configs.gradient_loss:
+			# (p, u, v)
+			Y_l = np.float32(np.concatenate((bound[:,3:], int_label[:,3:])))
+			Y_l = np.reshape(Y_l, (len(Y_l),3))
+		else:
+			# (p)
+			Y_l = np.float32(np.concatenate((bound[:,3], int_label[:,3])))
+			Y_l = np.reshape(Y_l, (len(Y_l),1))
 
 		is_boundary = tf.fill(bound.shape[0], True)
 		is_not_boundary = tf.fill(int_label.shape[0] + int_unlabel.shape[0], False)
 		is_boundary_all = tf.concat([is_boundary, is_not_boundary], axis=0)
 
 		grad_reg = get_wave_reg(configs.gradient_loss, configs)
-		#grad_reg = get_target(configs.target, configs.gradient_loss, configs)
 
 		grad_bools = tf.fill(X_l.shape[0] + X_ul.shape[0], True)
 
@@ -94,15 +101,22 @@ def get_data(configs, figs_folder):
 		# else:
 		# 	raise ValueError("Unknown gradient regularizer ", grad_reg)
 
-
-		error_metrics = {
-			"interpolation error (t <= 1)" : lambda model : compute_error_wave(model, int_test),
-			"extrapolation error (1 < t)" : lambda model : compute_error_wave(model, ext_test)
-		}
-
-		error_plots = {
-			"Error vs. time" : lambda model : error_time(model, int_test, ext_test, figs_folder, '/error_time')
-		}
+		if 'first_explicit' == configs.gradient_loss:
+			error_metrics = {
+				"interpolation error (t <= 1)" : lambda model : compute_error_wave(model, int_test, "first"),
+				"extrapolation error (1 < t)" : lambda model : compute_error_wave(model, ext_test, "first")
+			}
+			error_plots = {
+			"Error vs. time" : lambda model : error_time(model, int_test, ext_test, figs_folder, '/error_time', "first")
+			}
+		else:
+			error_metrics = {
+				"interpolation error (t <= 1)" : lambda model : compute_error_wave(model, int_test, "second"),
+				"extrapolation error (1 < t)" : lambda model : compute_error_wave(model, ext_test, "second")
+			}
+			error_plots = {
+			"Error vs. time" : lambda model : error_time(model, int_test, ext_test, figs_folder, '/error_time', "second")
+			}
 		
 		print(f"Loaded wave eq. simulation inputs/outputs. Count: {len(X_l)}")
 

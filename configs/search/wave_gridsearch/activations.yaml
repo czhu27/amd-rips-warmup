@@ -1,0 +1,15 @@
+independent_vars:
+  activation: [elu, tanh, swish, sigmoid, relu]
+
+device: gpu
+trials: 5
+epochs: 10000
+layers: [3, 100, 100, 100, 100, 100, 1]
+batch_size: 512
+lr: 5.0e-5
+grad_reg_const: .1
+gradient_loss: second_explicit
+be_greedy: true
+
+plots: [extrapolation, data-distribution, extrapolation_wave, heatmap]
+from_tensor_slices: true

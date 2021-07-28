@@ -1,0 +1,14 @@
+device: gpu
+trials: 1
+activation: tanh
+epochs: 10000
+layers: [3, 100, 100, 100, 100, 100, 1]
+batch_size: 512
+epochs: 10000
+lr: 5.0e-5
+grad_reg_const: .1
+gradient_loss: none
+be_greedy: true
+
+plots: [data-distribution, tensorboard]
+from_tensor_slices: true

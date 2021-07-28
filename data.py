@@ -259,22 +259,31 @@ def extrap_error(model, f, i_lb, i_ub, o_lb, o_ub, step_size=0.01):
 	error = np.sqrt(np.mean(np.square(f_ml - f_true)))
 	return error
 
-def compute_error_wave(model, test_set):
+def compute_error_wave(model, test_set, eq_type):
 	#test_set can be int_test or ext_test
 	#formatting
-	f_true = np.reshape(test_set[:,3],(len(test_set[:,3]),1))
+	f_true = np.reshape(test_set[:,3], (len(test_set[:,3]), 1))
+	if eq_type == "first":
+		f_true = np.reshape(test_set[:,3:6], (len(test_set[:,3]), 3))
+		
 	x = np.reshape(test_set[:,0],(len(test_set[:,0]),1))
 	y = np.reshape(test_set[:,1],(len(test_set[:,1]),1))
 	t = np.reshape(test_set[:,2],(len(test_set[:,2]),1))
 
 	#Computes model and finds difference with sim
-	ml_input = np.concatenate((x,y,t),axis=1)
+	ml_input = np.concatenate((x,y,t), axis=1)
 	ml_output = model.predict(ml_input)
-	f_ml = np.reshape(ml_output, (len(f_true), 1))
+	#f_ml = np.reshape(ml_output, (len(f_true), 1))
+	
+	if eq_type == "first":
+		f_ml = np.reshape(ml_output, (len(f_true), 3))
+	else:
+		f_ml = np.reshape(ml_output, (len(f_true), 1))
+	
 	error = np.sqrt(np.mean(np.square(f_ml - f_true)))
 	return error
 
-def error_time(model, int_test, ext_test, figs_folder, tag):
+def error_time(model, int_test, ext_test, figs_folder, tag, eq_type):
 	#Takes all data, int and ext
 	fig, ax = plt.subplots()
 	starter_iter = int_test[0,2]
@@ -291,29 +300,47 @@ def error_time(model, int_test, ext_test, figs_folder, tag):
 	for i in range(0,time_steps):
 		if i > tf/sample_step:
 			#formatting
-			f_true = np.reshape(all_test[i*total_int:(i+1)*total_int,3],(total_int,1))
-			x = np.reshape(all_test[i*total_int:(i+1)*total_int,0],(total_int,1))
-			y = np.reshape(all_test[i*total_int:(i+1)*total_int,1],(total_int,1))
-			t = np.reshape(all_test[i*total_int:(i+1)*total_int,2],(total_int,1))
+			if eq_type == "first":
+				f_true = np.reshape(all_test[i*total_int:(i+1)*total_int, 3:6], (total_int, 3))
+			else:
+				f_true = np.reshape(all_test[i*total_int:(i+1)*total_int, 3], (total_int, 1))
+			x = np.reshape(all_test[i*total_int:(i+1)*total_int, 0], (total_int, 1))
+			y = np.reshape(all_test[i*total_int:(i+1)*total_int, 1], (total_int, 1))
+			t = np.reshape(all_test[i*total_int:(i+1)*total_int, 2], (total_int, 1))
 
 			#Computes model and finds difference with sim
 			ml_input = np.concatenate((x,y,t),axis=1)
 			ml_output = model.predict(ml_input)
-			f_ml = np.reshape(ml_output, (len(f_true), 1))
+			#f_ml = np.reshape(ml_output, (len(f_true), 1))
+
+			if eq_type == "first":
+				f_ml = np.reshape(ml_output, (len(f_true), 3))
+			else:
+				f_ml = np.reshape(ml_output, (len(f_true), 1))
+
 			error = np.sqrt(np.mean(np.square(f_ml - f_true)))
 			error_axis.append(error)
 
 		else:
 			#formatting
-			f_true = np.reshape(all_test[i*total_ext:(i+1)*total_ext,3],(total_ext,1))
-			x = np.reshape(all_test[i*total_ext:(i+1)*total_ext,0],(total_ext,1))
-			y = np.reshape(all_test[i*total_ext:(i+1)*total_ext,1],(total_ext,1))
-			t = np.reshape(all_test[i*total_ext:(i+1)*total_ext,2],(total_ext,1))
+			if eq_type == "first":
+				f_true = np.reshape(all_test[i*total_ext:(i+1)*total_ext, 3:6], (total_ext, 3))
+			else:
+				f_true = np.reshape(all_test[i*total_ext:(i+1)*total_ext, 3], (total_ext, 1))
+			x = np.reshape(all_test[i*total_ext:(i+1)*total_ext, 0], (total_ext, 1))
+			y = np.reshape(all_test[i*total_ext:(i+1)*total_ext, 1], (total_ext, 1))
+			t = np.reshape(all_test[i*total_ext:(i+1)*total_ext, 2], (total_ext, 1))
 
 			#Computes model and finds difference with sim
 			ml_input = np.concatenate((x,y,t),axis=1)
 			ml_output = model.predict(ml_input)
-			f_ml = np.reshape(ml_output, (len(f_true), 1))
+			#f_ml = np.reshape(ml_output, (len(f_true), 1))
+
+			if eq_type == "first":
+				f_ml = np.reshape(ml_output, (len(f_true), 3))
+			else:
+				f_ml = np.reshape(ml_output, (len(f_true), 1))
+
 			error = np.sqrt(np.mean(np.square(f_ml - f_true)))
 			error_axis.append(error)
 

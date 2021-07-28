@@ -7,7 +7,7 @@ import yaml
 import tensorflow as tf
 
 #MUST BE BETWEEN THESE TWO IMPORTS#
-BE_GREEDY = True
+BE_GREEDY = False
 if BE_GREEDY:
 	for i in range(5):
 		print("I'M GREEDY. SHHHHH DON'T TELL MOM...")
@@ -78,7 +78,7 @@ def get_data(configs, figs_folder):
 		data = np.load(fpath)
 
 		int_label, int_unlabel, int_bound, int_test = data['int_label'], data['int_unlabel'], data['int_bound'], data['int_test']
-		ext_label, ext_unlabel, ext_bound, ext_test = data['ext_label'], data['ext_unlabel'], data['int_bound'], data['ext_test']
+		ext_label, ext_unlabel, ext_bound, ext_test = data['ext_label'], data['ext_unlabel'], data['ext_bound'], data['ext_test']
 		X_l = np.float32(np.concatenate((int_bound[:,0:3],int_label[:,0:3])))
 		X_ul = np.float32(ext_unlabel[:,0:3]) #int_ulabel
 		if configs.model_outputs == "all":

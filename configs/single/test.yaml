@@ -1,15 +1,13 @@
-batch_size: 256
-activation: tanh
-# batch_size: 16384
-# layers: [3,20, 20, 20, 1]
+batch_size: 512
 layers: [3, 100, 100, 100, 100, 100, 3]
-lr: 5.0e-5
-grad_reg_const: .1
-gradient_loss: first_explicit
-epochs: 10
-seed: 0
+lr: 1.0e-3
+grad_reg_const: 0.01     # !!!
+activation: tanh
+model_outputs: all
+gradient_loss: none
+epochs: 5000
+lr_scheduler: true
+lr_scheduler_params: [1.0e-3, 1.0e-5, 500, 1.0] #[initial, final, decay_steps, power]
 
-be_greedy: true
 
-plots: [data-distribution, tensorboard]
 from_tensor_slices: true

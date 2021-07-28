@@ -3,7 +3,7 @@
 # ------------------------------------------------------------------------------
 import numpy as np
 import math
-
+import time
 import tensorflow as tf
 from tensorflow import keras
 from keras import backend as K
@@ -20,7 +20,8 @@ class NN(keras.models.Model):
 	# Custom loss for function value
 	def loss_function_f(self, f, f_pred):
 		sq_diff = tf.math.squared_difference(f, f_pred)
-		loss_value = tf.math.reduce_mean(sq_diff)
+		loss_val = tf.math.reduce_mean(sq_diff)
+		loss_value = tf.where(tf.math.is_nan(loss_val), tf.zeros_like(loss_val), loss_val)
 		return loss_value			 
 	# def loss_function_f
 	
@@ -94,6 +95,7 @@ class NN(keras.models.Model):
 	
 	def do_one_batch(self, batch):
 		X_f, f, l_bools, grad_bools = batch
+
 		# f = tf.reshape(f, [f.shape[0],1])
 		
 		# For gradient of loss w.r.t. trainable variables	

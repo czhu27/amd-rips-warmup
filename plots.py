@@ -107,20 +107,21 @@ def make_wave_plot(model, t, f_true, figs_folder, tag):
     return buf
 
 
-def make_movie(model, figs_folder, time_steps = 100, dx = .01, dt = .01):
+def make_movie(model, figs_folder, filename = 'wave_pred.gif', 
+        time_steps = 100, t0 = 0, dx = .01, dt = .01):
     #Create figure for movie and init constants
     fig = plt.figure()
     ax = fig.add_subplot(projection='3d')
     nx = ny = int(1 / dx)
     dt = .01
 
-    def update(frame, fig, dt, nx, ny):
+    def update(frame, fig, dt, t0, nx, ny):
         #Creates inputs
         X = np.arange(0,1,1/nx)
         Y = np.arange(0,1,1/ny)
         X_g, Y_g = np.meshgrid(X,Y)
         grid_pts = np.reshape(np.concatenate((X_g,Y_g)), (nx*ny,2))
-        time_vec = np.ones((len(grid_pts),1))*dt*frame
+        time_vec = np.ones((len(grid_pts),1))*(t0 + dt*frame)
         #Runs inputs through model for soln
         X_t = np.reshape(X_g, (nx*ny,1))
         Y_t = np.reshape(Y_g, (nx*ny,1))
@@ -138,8 +139,8 @@ def make_movie(model, figs_folder, time_steps = 100, dx = .01, dt = .01):
         fig.canvas.draw()
         return surf,
     #Loops through update to create animation
-    ani = FuncAnimation(fig, update, fargs=[fig, dt, nx, ny], frames=time_steps, blit=True)
-    ani.save(figs_folder + '/wave_pred.gif', writer = 'PillowWriter', fps=10)
+    ani = FuncAnimation(fig, update, fargs=[fig, dt, t0, nx, ny], frames=time_steps, blit=True)
+    ani.save(figs_folder + '/' + filename, writer = 'PillowWriter', fps=10)
 
 def make_heatmap_movie(model, figs_folder, time_steps = 100, dx = .01, sample_step = .01):
     #Create figure for movie and init constants

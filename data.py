@@ -294,10 +294,7 @@ def error_time(model, int_test, ext_test, figs_folder, tag):
 	for i in range(0,time_steps):
 		if i > tf/sample_step:
 			#formatting
-			if eq_type == "first":
-				f_true = np.reshape(all_test[i*total_int:(i+1)*total_int, 3:6], (total_int, 3))
-			else:
-				f_true = np.reshape(all_test[i*total_int:(i+1)*total_int, 3], (total_int, 1))
+			f_true = np.reshape(all_test[i*total_int:(i+1)*total_int, 3], (total_int, 1))
 			x = np.reshape(all_test[i*total_int:(i+1)*total_int, 0], (total_int, 1))
 			y = np.reshape(all_test[i*total_int:(i+1)*total_int, 1], (total_int, 1))
 			t = np.reshape(all_test[i*total_int:(i+1)*total_int, 2], (total_int, 1))
@@ -313,10 +310,7 @@ def error_time(model, int_test, ext_test, figs_folder, tag):
 
 		else:
 			#formatting
-			if eq_type == "first":
-				f_true = np.reshape(all_test[i*total_ext:(i+1)*total_ext, 3:6], (total_ext, 3))
-			else:
-				f_true = np.reshape(all_test[i*total_ext:(i+1)*total_ext, 3], (total_ext, 1))
+			f_true = np.reshape(all_test[i*total_ext:(i+1)*total_ext, 3], (total_ext, 1))
 			x = np.reshape(all_test[i*total_ext:(i+1)*total_ext, 0], (total_ext, 1))
 			y = np.reshape(all_test[i*total_ext:(i+1)*total_ext, 1], (total_ext, 1))
 			t = np.reshape(all_test[i*total_ext:(i+1)*total_ext, 2], (total_ext, 1))

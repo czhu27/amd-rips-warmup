@@ -71,9 +71,9 @@ def get_data(configs, figs_folder):
 
 		int_label, int_unlabel, int_bound, int_test = data['int_label'], data['int_unlabel'], data['int_bound'], data['int_test']
 		ext_label, ext_unlabel, ext_bound, ext_test = data['ext_label'], data['ext_unlabel'], data['int_bound'], data['ext_test']
-		X_l = np.float32(np.concatenate((int_bound[:,0:3],int_label[:,0:3])))
-		X_ul = np.float32(ext_unlabel[:,0:3]) #int_ulabel
-		Y_l = np.float32(np.concatenate((int_bound[:,3], int_label[:,3])))
+		X_l = np.float32(np.concatenate((int_bound[:,0:3],int_label[:,0:3], ext_label[:,0:3])))
+		X_ul = np.float32(np.concatenate((int_unlabel[:,0:3],ext_unlabel[:,0:3])))
+		Y_l = np.float32(np.concatenate((int_bound[:,3], int_label[:,3], ext_label[:,3])))
 		Y_l = np.reshape(Y_l, (len(Y_l),1))
 
 		is_boundary = tf.fill(int_bound.shape[0], True)
@@ -176,17 +176,17 @@ def comparison_plots(model, figs_folder, configs):
 					ml_input = tf.concat([X, tf.fill((len(X), 1), t)], axis=1)
 					return model.predict(ml_input)
 			f = lambda x, y: tf.zeros_like(x)
-			buf = plot_gridded_functions(m, f, 0, 1, f"_t={t:.3f}", folder=figs_folder)
+			#buf = plot_gridded_functions(m, f, 0, 1, f"_t={t:.3f}", folder=figs_folder)
 		# 3D Plotting
 		if "heatmap" in configs.plots:
 			make_heatmap_movie(model, figs_folder, time_steps = 100, dx = .01, sample_step = .01)
 		make_movie(model, figs_folder, filename='wave_pred.gif', t0=0)
 		make_movie(model, figs_folder, filename='wave_pred_ext.gif', t0=1)
-		make_wave_plot(model, t = 0, f_true = 0, figs_folder = figs_folder, tag='0')
-		make_wave_plot(model, t = .25, f_true = 0, figs_folder = figs_folder, tag='0.25')
-		make_wave_plot(model, t = .5, f_true = 0, figs_folder = figs_folder, tag='0.5')
-		make_wave_plot(model, t = .75, f_true = 0, figs_folder = figs_folder, tag='0.75')
-		make_wave_plot(model, t = 1, f_true = 0, figs_folder = figs_folder, tag='1')
+		make_wave_plot(model, t = 0, figs_folder = figs_folder, tag='0')
+		make_wave_plot(model, t = .25, figs_folder = figs_folder, tag='0.25')
+		make_wave_plot(model, t = .5, figs_folder = figs_folder, tag='0.5')
+		make_wave_plot(model, t = .75, figs_folder = figs_folder, tag='0.75')
+		make_wave_plot(model, t = 1, figs_folder = figs_folder, tag='1')
 	
 	else:
 		raise ValueError("Unknown data source " + configs.source)
@@ -306,19 +306,21 @@ def train(configs: Configs):
 
 	class StressTestLogger(keras.callbacks.Callback):
 		def on_epoch_end(self, epoch, logs):
-			self.test_every = 25
+			self.test_every = 50
 			if epoch % self.test_every == self.test_every - 10:
 				for error_name, error_func in error_metrics.items():
 					error_val = error_func(model)
 					tf.summary.scalar('Error/' + error_name, data=error_val, step=epoch)
 					
 	class LossSchedulerizer(keras.callbacks.Callback):
+		def on_train_begin(self, epoch):
+			if epoch == 0:
+				self.model.grad_condition_weight.assign(0)
+				
 		def on_epoch_begin(self, epoch, logs):
-			if epoch == 100:
-				self.model.condition_weight = configs.grad_reg_const
-
-		def on_train_begin(self, logs):
-			self.model.condition_weight = 0
+			if configs.loss_schedulerizer_params[0] < epoch < configs.loss_schedulerizer_params[1]:
+				grad_weight = configs.grad_reg_const * ((epoch-configs.loss_schedulerizer_params[0])/configs.loss_schedulerizer_params[0])
+				self.model.grad_condition_weight.assign(grad_weight)
 
 	tensorboard_callback = keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
 	logging_callbacks = [TimeLogger(), StressTestLogger(), tensorboard_callback]
@@ -329,8 +331,8 @@ def train(configs: Configs):
 	else:
 		callbacks = []
 
-	callbacks.append(LossSchedulerizer())
-	print(callbacks)
+	if configs.loss_schedulerizer:
+		callbacks.append(LossSchedulerizer())
 
 	model.fit(dataset, 
 			epochs=opt_num_its, 

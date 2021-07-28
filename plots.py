@@ -132,6 +132,7 @@ def make_movie(model, figs_folder, filename = 'wave_pred.gif',
         else:
             surf = fig.axes[0].plot_surface(X_g, Y_g, soln, cmap=cm.coolwarm, linewidth=0, antialiased=False)
         ax.set_zlim(-.25,.5)
+        ax.set_title('t = {:.2f}'.format(t0 + frame*dt))
 
         fig.canvas.draw()
         return surf,

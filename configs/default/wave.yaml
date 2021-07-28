@@ -29,7 +29,6 @@ corners: false
 dataset: [2500, 7500, 0, 1.0, 0.0] #[interior, exterior, border, labeled_int%, labeled_ext%]
 noise: 0.0
 from_tensor_slices: false
-model_outputs: all
 
 ##################
 #  Regularizers  #
@@ -37,9 +36,12 @@ model_outputs: all
 regularizer: none
 reg_const: 0.1
 # none, const, zero, first
+model_outputs: pressure
 gradient_loss: none
 #grad_reg_norm: l1 l2
 grad_reg_const: 1
+# grad_reg_scheduler: late_start
+# grad_reg_start: 
 
 #############
 #  Logging  #
@@ -49,3 +51,4 @@ output_dir: null   # overridden in main.py
 output_root: output/wave
 plots: [extrapolation, data-distribution, tensorboard, extrapolation_wave, heatmap]
 saves: [model]
+tb_error_timestep: 100

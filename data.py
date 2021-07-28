@@ -349,10 +349,8 @@ def process_wave_data_sample(wave_data_dir, params):
 
 	tic = time.time()
 
-	# TODO: This is bad
-	label_int = 1
-	label_ext = 0
-	# End bad stuff
+	label_int = params["data_percents"][0][2]
+	label_ext = params["data_percents"][1][2]
 	tf = params["tf"]
 	dt = params["dt"]
 	T = int(tf / dt) + 1

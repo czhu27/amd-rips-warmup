@@ -203,7 +203,7 @@ def get_wave_reg(regularizer, configs):
     if regularizer == "first_explicit":
         return first_order_c_known
     elif regularizer == "first_curl_explicit":
-        return first_order_c_known
+        return first_order_curl_c_known
     if regularizer in ["second_explicit", "second_c_known"]:
         return second_order_c_known
     elif regularizer == "second_explicit_L2":

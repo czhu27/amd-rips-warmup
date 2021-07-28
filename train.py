@@ -105,10 +105,9 @@ def get_data(configs, figs_folder):
 			grad_bools = tf.fill(X_l.shape[0] + X_ul.shape[0], True)
 
 		# TODO: Should be handled in get_wave_reg?
-		if configs.gradient_loss == 'second_explicit':
-			grad_bools_bound = tf.fill(int_bound.shape[0], False)
-			grad_bools_int = tf.fill(int_label.shape[0] + X_ul.shape[0], True)
-			grad_bools = tf.concat([grad_bools_bound, grad_bools_int], axis = 0)
+		grad_bools_bound = tf.fill(int_bound.shape[0], False)
+		grad_bools_int = tf.fill(int_label.shape[0] + X_ul.shape[0], True)
+		grad_bools = tf.concat([grad_bools_bound, grad_bools_int], axis = 0)
 
 		# Remove the other outputs in the model (hack)
 		if configs.model_outputs == "all":
@@ -135,7 +134,7 @@ def get_data(configs, figs_folder):
 	else:
 		label_bools = tf.concat([is_labeled_l, is_labeled_ul], axis=0)
 
-	Y_ul = tf.zeros((X_ul.shape[0], 1))
+	Y_ul = tf.zeros((X_ul.shape[0], Y_l.shape[1]))
 
 	# Add noise to y-values
 	if configs.noise > 0:
@@ -271,6 +270,10 @@ def train(configs: Configs):
 	# ------------------------------------------------------------------------------
 	layers = configs.layers
 	model = create_nn(layers, configs)
+
+	# Hack on the model
+	#model = tf.keras.models.load_model('output/wave/single/first_grad_tests/lr_1E-4/trial_0/model')
+
 	model.summary()
 
 	# TODO: Hacky add...
@@ -295,13 +298,13 @@ def train(configs: Configs):
 	opt_batch_size = configs.batch_size	# batch size
 	opt_num_its = configs.epochs		# number of iterations
 
-	model.set_batch_size(opt_batch_size)
+	model.batch_size = opt_batch_size
 	if configs.from_tensor_slices:
 		dataset = dataset.batch(opt_batch_size)
 		model.is_dataset_prebatched = True
 	else:
 		model.is_dataset_prebatched = False
-	model.set_gd_noise(configs.gd_noise)
+	model.gd_noise = configs.gd_noise
 
 	optimizer = optimizers.Adam(learning_rate = opt_step)
 	model.compile(optimizer = optimizer, run_eagerly=configs.debug)		# DEBUG

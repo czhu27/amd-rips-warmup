@@ -1,13 +1,14 @@
 batch_size: 512
 layers: [3, 100, 100, 100, 100, 100, 3]
 lr: 1.0e-3
-grad_reg_const: 0.01     # !!!
+grad_reg_const: 0.001     # !!!
 activation: tanh
 model_outputs: all
-gradient_loss: none
+gradient_loss: first_explicit
 epochs: 5000
 lr_scheduler: true
-lr_scheduler_params: [1.0e-3, 1.0e-5, 500, 1.0] #[initial, final, decay_steps, power]
+                    #[initial,  final,  decay_steps,  power]
+lr_scheduler_params: [1.0e-3,   3.0e-5, 50000,        1.0] 
 
 
-from_tensor_slices: true
+from_tensor_slices: false

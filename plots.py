@@ -17,7 +17,7 @@ def plot_data_2D(X_l, X_ul, save_dir):
     plt.savefig(save_dir + "/data")
     plt.clf()
 
-def plot_gridded_functions(model, f, lb, ub, tag, folder="figs", eq_type="second"):
+def plot_gridded_functions(model, f, lb, ub, tag, folder="figs"):
     n1d = 101
     npts = n1d*n1d
     x0 = np.linspace(lb, ub, n1d)
@@ -32,10 +32,7 @@ def plot_gridded_functions(model, f, lb, ub, tag, folder="figs", eq_type="second
     ml_input[:,0] = x0_g.flatten()
     ml_input[:,1] = x1_g.flatten()
     ml_output = model.predict(ml_input)
-    if eq_type == "first":
-        f_ml = np.reshape(ml_output, (n1d, n1d, 3), order = 'C')
-    else:
-        f_ml = np.reshape(ml_output, (n1d, n1d), order = 'C')
+    f_ml = np.reshape(ml_output, (n1d, n1d), order = 'C')
 
     fig = plt.figure()
     fig.set_figheight(8)
@@ -60,7 +57,6 @@ def plot_gridded_functions(model, f, lb, ub, tag, folder="figs", eq_type="second
     plt.savefig(buf, format='png')
     buf.seek(0)
     return buf
-
 
 def make_wave_plot(model, t, f_true, figs_folder, tag):
     n1d = 101

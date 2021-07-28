@@ -86,16 +86,17 @@ def get_data(configs, figs_folder):
 		if grad_reg is None:
 			grad_bools = tf.fill(X_l.shape[0] + X_ul.shape[0], True)
 
-		if grad_reg.__name__ == 'second_order_c_known':
+		# TODO: Should be handled in get_wave_reg?
+		if configs.gradient_loss == 'second_explicit':
 			grad_bools_bound = tf.fill(int_bound.shape[0], False)
 			grad_bools_int = tf.fill(int_label.shape[0] + X_ul.shape[0], True)
 			grad_bools = tf.concat([grad_bools_bound, grad_bools_int], axis = 0)
-		elif grad_reg == "TBD":
-			grad_bools = tf.fill(X_l.shape[0] + X_ul.shape[0], True)
-		elif grad_reg == "We'll figure it out":
-			grad_bools = tf.fill(X_l.shape[0] + X_ul.shape[0], True)
-		else:
-			raise ValueError("Unknown gradient regularizer ", grad_reg)
+		# elif grad_reg == "TBD":
+		# 	grad_bools = tf.fill(X_l.shape[0] + X_ul.shape[0], True)
+		# elif grad_reg == "We'll figure it out":
+		# 	grad_bools = tf.fill(X_l.shape[0] + X_ul.shape[0], True)
+		# else:
+		# 	raise ValueError("Unknown gradient regularizer ", grad_reg)
 
 
 		error_metrics = {

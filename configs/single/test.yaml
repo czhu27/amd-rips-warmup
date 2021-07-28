@@ -1,7 +1,16 @@
-batch_size: 4096
+batch_size: 128
 # batch_size: 16384
 # layers: [3,20, 20, 20, 1]
-layers: [5, 10, 10, 10, 1]
-epochs: 10
-data_run: ["05-05", "09-01", "025-075"]
-plots: [extrapolation, data-distribution, tensorboard, extrapolation_wave]
+layers: [5, 150, 150, 150, 150, 1]
+epochs: 500
+#data_run: ["05-05", "09-01", "025-075"]
+plots: [extrapolation, data-distribution, tensorboard, extrapolation_wave, movie]
+lr: 1.0e-4
+#data_run: fine_mesh_gauss_few/20210727-093118
+#data_run: 05-05
+data_run: [05-05, 09-01, 025-075]
+from_tensor_slices: true
+source: multiwave
+test_source: [0.5, 0.5]
+activation: elu
+test_data_dir: data/wave/05-05/

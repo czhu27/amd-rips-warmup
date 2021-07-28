@@ -130,7 +130,7 @@ def get_data(configs, figs_folder):
 		}
 
 		error_plots = {
-			"Error vs. time" : lambda model : error_time(model, int_test, ext_test, figs_folder, '/error_time')
+			"Error vs. time" : lambda model : error_time(model, int_test, ext_test, figs_folder, '/error_time', test_source=test_source)
 		}
 		
 		print(f"Loaded wave eq. simulation inputs/outputs. Count: {len(X_l)}")
@@ -202,8 +202,8 @@ def get_data(configs, figs_folder):
 
 	#Concat inputs, outputs, and bools
 	if X_ul.shape[0] == 0:
-		X_all = X_l
-		Y_all = Y_l
+		X_all = tf.convert_to_tensor(X_l)
+		Y_all = tf.convert_to_tensor(Y_l)
 	else:
 		X_all = tf.concat([X_l, X_ul], axis=0)
 		Y_all = tf.concat([Y_l, Y_ul], axis=0)
@@ -243,7 +243,11 @@ def comparison_plots(model, figs_folder, configs):
 		buf = plot_gridded_functions(model, f, -2.0, 2.0, "200", folder=figs_folder)
 		buf = plot_gridded_functions(model, f, -3.0, 3.0, "300", folder=figs_folder)
 
-	elif configs.source == "wave":
+	elif configs.source == "wave" or configs.source == "multiwave":
+		if configs.source == "wave":
+			test_source = None
+		if configs.source == "multiwave":
+			test_source = configs.test_source
 		for t in tf.range(0, 2 + 1e-3, 0.5):
 			class m:
 				@staticmethod
@@ -251,39 +255,18 @@ def comparison_plots(model, figs_folder, configs):
 					ml_input = tf.concat([X, tf.fill((len(X), 1), t)], axis=1)
 					return model.predict(ml_input)
 			f = lambda x, y: tf.zeros_like(x)
-			buf = plot_gridded_functions(m, f, 0, 1, f"_t={t:.3f}", folder=figs_folder)
-		# 3D Plotting
-		if "heatmap" in configs.plots:
-			make_heatmap_movie(model, figs_folder, time_steps = 100, dx = .01, sample_step = .01)
-		make_movie(model, figs_folder)
-		make_wave_plot(model, t = 0, f_true = 0, figs_folder = figs_folder, tag='0')
-		make_wave_plot(model, t = .25, f_true = 0, figs_folder = figs_folder, tag='0.25')
-		make_wave_plot(model, t = .5, f_true = 0, figs_folder = figs_folder, tag='0.5')
-		make_wave_plot(model, t = .75, f_true = 0, figs_folder = figs_folder, tag='0.75')
-		make_wave_plot(model, t = 1, f_true = 0, figs_folder = figs_folder, tag='1')
-	
-	elif configs.source == "multiwave":
-		for t in tf.range(0, 2 + 1e-3, 0.5):
-			class m:
-				@staticmethod
-				def predict(X, test_source):
-					test_source_cols = np.full((len(X), 2), test_source)
-					ml_input = tf.concat([test_source_cols, X, tf.fill((len(X), 1), t)], axis=1)
-					return model.predict(ml_input)
-			f = lambda x, y: tf.zeros_like(x)
-			buf = plot_gridded_functions(m, f, 0, 1, f"_t={t:.3f}", folder=figs_folder, test_source=configs.test_source)
-		# 3D Plotting
-		if "heatmap" in configs.plots:
-			make_heatmap_movie(model, figs_folder, time_steps = 100, dx = .01, sample_step = .01)
-		make_movie(model, figs_folder, test_source=configs.test_source)
-		make_wave_plot(model, t = 0, f_true = 0, figs_folder = figs_folder, tag='0')
-		make_wave_plot(model, t = .25, f_true = 0, figs_folder = figs_folder, tag='0.25')
-		make_wave_plot(model, t = .5, f_true = 0, figs_folder = figs_folder, tag='0.5')
-		make_wave_plot(model, t = .75, f_true = 0, figs_folder = figs_folder, tag='0.75')
-		make_wave_plot(model, t = 1, f_true = 0, figs_folder = figs_folder, tag='1')
+			buf = plot_gridded_functions(m, f, 0, 1, f"_t={t:.3f}", folder=figs_folder, test_source=test_source)
 
-	else:
-		raise ValueError("Unknown data source " + configs.source)
+		# 3D Plotting
+		if "heatmap" in configs.plots:
+			make_heatmap_movie(model, figs_folder, time_steps = 100, dx = .01, sample_step = .01, test_source=test_source)
+		if "movie" in configs.plots:
+			make_movie(model, figs_folder, test_source=test_source)
+		make_wave_plot(model, t = 0, f_true = 0, figs_folder = figs_folder, tag='0', test_source=test_source)
+		make_wave_plot(model, t = .25, f_true = 0, figs_folder = figs_folder, tag='0.25', test_source=test_source)
+		make_wave_plot(model, t = .5, f_true = 0, figs_folder = figs_folder, tag='0.5', test_source=test_source)
+		make_wave_plot(model, t = .75, f_true = 0, figs_folder = figs_folder, tag='0.75', test_source=test_source)
+		make_wave_plot(model, t = 1, f_true = 0, figs_folder = figs_folder, tag='1', test_source=test_source)
 
 def train(configs: Configs):
 
@@ -336,6 +319,7 @@ def train(configs: Configs):
 	# Create TensorFlow dataset for passing to 'fit' function (below)
 	if configs.from_tensor_slices:
 		dataset = tf.data.Dataset.from_tensor_slices((X_all, Y_all, label_bools, grad_bools))
+		dataset = dataset.shuffle(len(dataset))
 	else:
 		dataset = tf.data.Dataset.from_tensors((X_all, Y_all, label_bools, grad_bools))
 
@@ -442,7 +426,7 @@ def train(configs: Configs):
 		print('FINAL Error/' + error_name + f":\t\t\t {error_val:.6E}")
 		final_metrics[error_name] = "{:.6E}".format(error_val)
 
-	if configs.source == 'wave':
+	if configs.source == 'wave' or configs.source == 'multiwave':
 		for error_name, error_func in error_plots.items():
 			error_val = error_func(model)
 		print("Printing error over time")

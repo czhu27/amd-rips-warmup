@@ -279,7 +279,7 @@ def compute_error_wave(model, test_set, source_input=None):
 	error = np.sqrt(np.mean(np.square(f_ml - f_true)))
 	return error
 
-def error_time(model, int_test, ext_test, figs_folder, tag):
+def error_time(model, int_test, ext_test, figs_folder, tag, test_source=None):
 	#Takes all data, int and ext
 	fig, ax = plt.subplots()
 	starter_iter = int_test[0,2]
@@ -303,6 +303,8 @@ def error_time(model, int_test, ext_test, figs_folder, tag):
 
 			#Computes model and finds difference with sim
 			ml_input = np.concatenate((x,y,t),axis=1)
+			if test_source is not None:
+				ml_input = np.concatenate((np.full((len(f_true),2), test_source), ml_input), axis=1)
 			ml_output = model.predict(ml_input)
 			f_ml = np.reshape(ml_output, (len(f_true), 1))
 			error = np.sqrt(np.mean(np.square(f_ml - f_true)))
@@ -317,6 +319,8 @@ def error_time(model, int_test, ext_test, figs_folder, tag):
 
 			#Computes model and finds difference with sim
 			ml_input = np.concatenate((x,y,t),axis=1)
+			if test_source is not None:
+				ml_input = np.concatenate((np.full((len(f_true),2), test_source), ml_input), axis=1)
 			ml_output = model.predict(ml_input)
 			f_ml = np.reshape(ml_output, (len(f_true), 1))
 			error = np.sqrt(np.mean(np.square(f_ml - f_true)))
@@ -379,7 +383,8 @@ def process_wave_data_sample(wave_data_dir, params):
 	p_all = None
 
 	#Read in files and sort
-	start_iter = 10*int(params["sample_step"]/params['dt'])
+	#start_iter = 10*int(params["sample_step"]/params['dt'])
+	start_iter = 0*int(params["sample_step"]/params['dt'])
 	for i in range(start_iter, int(tf/params["dt"]), int(params["sample_step"]/params['dt'])):
 		pts, boundaries = load_data(wave_data_dir + "/dumps/dump{:03d}.npz".format(i))
 		#If interior
@@ -398,7 +403,6 @@ def process_wave_data_sample(wave_data_dir, params):
 			num_pts = int(params["data_percents"][0][0]*pts.shape[0])
 			num_bound = int(params["data_percents"][0][1]*boundaries.shape[0])
 			num_test = int(params["data_percents"][2][0]*pts.shape[0])
-			print("int",num_pts, num_bound, num_test)
 			indices_pts = np.random.randint(0,pts.shape[0], num_pts)
 			interior = np.append(interior, pts[indices_pts,:], axis=0)
 			indices_bound = np.random.randint(0,boundaries.shape[0], num_bound)
@@ -411,7 +415,6 @@ def process_wave_data_sample(wave_data_dir, params):
 			num_pts = int(params["data_percents"][1][0]*pts.shape[0])
 			num_bound = int(params["data_percents"][1][1]*boundaries.shape[0])
 			num_test = int(params["data_percents"][2][1]*pts.shape[0])
-			print("ext",num_pts, num_bound, num_test)
 			indices_pts = np.random.randint(0,pts.shape[0], num_pts)
 			exterior = np.append(exterior, pts[indices_pts,:], axis=0)
 			indices_bound = np.random.randint(0,boundaries.shape[0], num_bound)

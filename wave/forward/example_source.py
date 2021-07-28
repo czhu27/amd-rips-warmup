@@ -7,7 +7,7 @@ from simulator import Simulator
 
 timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 #data_dir = "data/wave/" + timestamp
-data_dir = "data/wave/025-075"
+data_dir = "data/wave/05-05"
 
 # Create all parameters
 params = {
@@ -29,19 +29,19 @@ params = {
 	"pm": 0,			# polynomial degree for material properties	
 	"int_diag": 3,		# integration used for diagnostics (num 1D Gauss)  
 	# Initialization function
-	"initializer": 'zero',
+	"initializer": 'gaussian',
 	# Source characteristics (locations given as [[x0, y0], [x1, y1], ...)
 	#"src_loc": [[0.25, 0.25], [0.75, 0.75]],
-	"src_loc": [ [0.25, 0.75] ],
+	"src_loc": [ [0.9, 0.1] ],
 	"src_f": 5.0,		# source frequency (Hz)
-	"src_a": 1.0,		# source magnitude (set to 0 to disable source)
+	"src_a": 0.0,		# source magnitude (set to 0 to disable source)
 	# Receivers coordinates (x0, y0, x1, y1, ...) 
 	"rcv_loc": [ [0.25, 0.25], [0.60, 0.50] ],
 	# Where to save this run
 	"data_dir": data_dir,
 	# Save percentages of [[interior, int bound], [exterior,ext bound], test points]
 	"data_percents": [[.01, .01], [.05, .05], [.05,.05]],
-	"heatmap": False
+	"heatmap": True
 }	
 
 # Create simulator and run

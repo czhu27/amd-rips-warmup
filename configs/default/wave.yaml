@@ -1,7 +1,7 @@
 ###########
 #  Model  #
 ###########
-activation: elu
+activation: tanh
 dropout_rates: 0.0
 layers: [3, 20, 20, 20, 1]
 
@@ -21,8 +21,8 @@ gd_noise: 0.0
 #############
 #  Dataset  #
 #############
-source: multiwave
-#source: wave
+#source: multiwave
+source: wave
 data_dir: data/wave/
 data_run: '' #Leave blank to default to last run in data_sir folder
 
@@ -34,7 +34,7 @@ from_tensor_slices: true
 
 data_sources: [[0.5, 0.5], [0.9, 0.1], [0.25, 0.75]]
 test_source: [0.6, 0.6]
-test_data_dir: data/wave/06-06
+test_data_dir: data/wave/06-06/
 
 ##################
 #  Regularizers  #
@@ -52,5 +52,5 @@ grad_reg_const: 1
 debug: false
 output_dir: null   # overridden in main.py
 output_root: output/wave
-plots: [extrapolation, data-distribution, tensorboard, extrapolation_wave, heatmap]
+plots: [extrapolation, data-distribution, tensorboard, extrapolation_wave, heatmap, movie]
 saves: [model]

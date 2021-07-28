@@ -205,6 +205,7 @@ class Field:
 	# def __expression_cos
 
 	def __expression_gaussian(self, x, y, t):
+		#r2 = (x - 0.5)**2 + (y - 0.5)**2
 		r2 = (x - 0.5)**2 + (y - 0.5)**2
 		p = np.exp(-30.0*r2)
 		u = np.zeros(x.shape)

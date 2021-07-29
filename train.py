@@ -347,6 +347,19 @@ def train(configs: Configs):
 				grad_weight = max_val * ((epoch-start)/(finish-start))
 				self.model.grad_condition_weight.assign(grad_weight)
 
+	class LossLogger(keras.callbacks.Callback):
+		def on_epoch_end(self, epoch, logs):
+			tf.summary.scalar('Loss/Base (weighted)', 
+				data=self.model.weighted_base_loss, step=epoch
+			)
+			tf.summary.scalar('Loss/Gradient (weighted)', 
+				data=self.model.weighted_grad_loss, step=epoch
+			)
+			tf.summary.scalar('Loss/Regularizer (weighted)', 
+				data=self.model.weighted_reg_loss, step=epoch
+			)
+			
+
 	tensorboard_callback = keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
 	logging_callbacks = [TimeLogger(), StressTestLogger(), tensorboard_callback]
 

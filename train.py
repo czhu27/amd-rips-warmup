@@ -24,7 +24,7 @@ from helpers import Configs, shuffle_in_parallel, np_unstack
 from nn import create_nn
 from targets import get_target
 from plots import plot_data_2D, plot_gridded_functions, make_movie, make_wave_plot, make_heatmap_movie
-from data import data_creation, compute_error, extrap_error, data_wave, compute_error_wave, error_time
+from data import data_creation, compute_error, extrap_error, data_wave, compute_error_wave, error_time, get_boundary
 from wave_reg import get_wave_reg
 
 
@@ -79,26 +79,25 @@ def get_data(configs, figs_folder):
 
 		int_label, int_unlabel, int_bound, int_test = data['int_label'], data['int_unlabel'], data['int_bound'], data['int_test']
 		ext_label, ext_unlabel, ext_bound, ext_test = data['ext_label'], data['ext_unlabel'], data['int_bound'], data['ext_test']
-		X_l = np.float32(np.concatenate((int_bound[:,0:3],int_label[:,0:3], ext_label[:,0:3])))
+		X_l = np.float32(np.concatenate((int_bound[:,0:3], ext_bound[:,0:3], int_label[:,0:3], ext_label[:,0:3])))
 		X_ul = np.float32(np.concatenate((int_unlabel[:,0:3],ext_unlabel[:,0:3])))
+		total_size = X_l.shape[0] + X_ul.shape[0]
 
 		if configs.model_outputs == "all":
 			# (p, u, v)
 			assert configs.layers[-1] == 3
-			Y_l = np.float32(np.concatenate((int_bound[:,3:], int_label[:,3:], ext_label[:,3:])))	
+			Y_l = np.float32(np.concatenate((int_bound[:,3:], ext_bound[:,3:], int_label[:,3:], ext_label[:,3:])))	
 
 		elif configs.model_outputs == "pressure":
 			# (p)
 			assert configs.layers[-1] == 1
-			Y_l = np.float32(np.concatenate((int_bound[:,3], int_label[:,3], ext_label[:,3])))
+			Y_l = np.float32(np.concatenate((int_bound[:,3], ext_bound[:,3], int_label[:,3], ext_label[:,3])))
 			Y_l = Y_l[:, None]
 		else:
 			raise ValueError("Unknown model_outputs ", configs.model_outputs)
 
-		is_boundary = tf.fill(int_bound.shape[0], True)
-		is_not_boundary = tf.fill(int_label.shape[0] + int_unlabel.shape[0], False)
-		is_boundary_all = tf.concat([is_boundary, is_not_boundary], axis=0)
-
+		bound_horizontal, bound_vertical = get_boundary(int_bound, ext_bound, total_size)
+				
 		grad_reg = get_wave_reg(configs.gradient_loss, configs)
 		#grad_reg = get_target(configs.target, configs.gradient_loss, configs)
 
@@ -106,8 +105,8 @@ def get_data(configs, figs_folder):
 			grad_bools = tf.fill(X_l.shape[0] + X_ul.shape[0], True)
 
 		# TODO: Should be handled in get_wave_reg?
-		grad_bools_bound = tf.fill(int_bound.shape[0], False)
-		grad_bools_int = tf.fill(int_label.shape[0] + X_ul.shape[0], True)
+		grad_bools_bound = tf.fill(int_bound.shape[0] + ext_bound.shape[0], False)
+		grad_bools_int = tf.fill(int_label.shape[0] + ext_label.shape[0] + X_ul.shape[0], True)
 		grad_bools = tf.concat([grad_bools_bound, grad_bools_int], axis = 0)
 
 		# Remove the other outputs in the model (hack)
@@ -159,7 +158,7 @@ def get_data(configs, figs_folder):
 	# else:
 	# 	raise ValueError("Unknown data source " + configs.source)
 
-	return X_all, Y_all, label_bools, grad_bools, grad_reg, error_metrics, error_plots
+	return X_all, Y_all, label_bools, grad_bools, bound_horizontal, bound_vertical, grad_reg, error_metrics, error_plots
 
 def plot_data(X_l, X_ul, figs_folder, configs):
 	
@@ -257,7 +256,7 @@ def train(configs: Configs):
 	# ------------------------------------------------------------------------------
 
 	# Get the "interesting" data
-	X_all, Y_all, label_bools, grad_bools, grad_reg, error_metrics, error_plots = get_data(configs, figs_folder)#, error_metrics = get_data(configs)
+	X_all, Y_all, label_bools, grad_bools, bound_horizontal, bound_vertical, grad_reg, error_metrics, error_plots = get_data(configs, figs_folder)#, error_metrics = get_data(configs)
 
 	# Create TensorFlow dataset for passing to 'fit' function (below)
 	if configs.from_tensor_slices:
@@ -337,13 +336,15 @@ def train(configs: Configs):
 					tf.summary.scalar('Error/' + error_name, data=error_val, step=epoch)
 					
 	class LossSchedulerizer(keras.callbacks.Callback):
-		def on_train_begin(self, epoch):
-			if epoch == 0:
-				self.model.grad_condition_weight.assign(0)
-				
+		def on_train_begin(self, logs):
+			self.model.grad_condition_weight.assign(0)
+
 		def on_epoch_begin(self, epoch, logs):
-			if configs.loss_schedulerizer_params[0] < epoch < configs.loss_schedulerizer_params[1]:
-				grad_weight = configs.grad_reg_const * ((epoch-configs.loss_schedulerizer_params[0])/configs.loss_schedulerizer_params[0])
+			max_val = configs.grad_reg_const
+			start = configs.loss_schedulerizer_params[0]
+			finish = configs.loss_schedulerizer_params[1]
+			if start <= epoch and epoch <= finish:
+				grad_weight = max_val * ((epoch-start)/(finish-start))
 				self.model.grad_condition_weight.assign(grad_weight)
 
 	tensorboard_callback = keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)

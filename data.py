@@ -414,8 +414,6 @@ def process_wave_data_sample(wave_data_dir, params):
 
 	tic = time.time()
 
-	label_int = params["data_percents"][0][2]
-	label_ext = params["data_percents"][1][2]
 	tf = params["tf"]
 	dt = params["dt"]
 	T = int(tf / dt) + 1
@@ -445,16 +443,7 @@ def process_wave_data_sample(wave_data_dir, params):
 	for i in range(start_iter, int(tf/params["dt"]), int(params["sample_step"]/params['dt'])):
 		pts, boundaries = load_data(wave_data_dir + "/dumps/dump{:03d}.npz".format(i))
 		#If interior
-		if i == start_iter:
-			x_all = np.zeros((0,pts.shape[0]+boundaries.shape[0]))
-			y_all = np.zeros((0,pts.shape[0]+boundaries.shape[0]))
-			p_all = np.zeros((0,pts.shape[0]+boundaries.shape[0]))
-			#u_all
-			#v_all
 		all_pts = np.concatenate((pts, boundaries))
-		x_all = np.append(x_all, np.array([all_pts[:,0]]), axis=0)
-		y_all = np.append(y_all, np.array([all_pts[:,1]]), axis=0)
-		p_all = np.append(p_all, np.array([all_pts[:,3]]), axis=0)
 		if i <= params["int_ext_time"]/params["dt"]:
 			#Separate boundary, interior points, test set
 			num_pts = int(params["data_percents"][0][0]*pts.shape[0])
@@ -529,6 +518,19 @@ def process_wave_data_sample(wave_data_dir, params):
 
 	toc = time.time()
 	print("Time elapsed: ", toc - tic)
+
+def get_boundary(int_bound, ext_bound, total_size):
+	int_bound_horizontal = (int_bound[:,0] == 0) | (int_bound[:,0] == 1)
+	ext_bound_horizontal = (ext_bound[:,0] == 0) | (ext_bound[:,0] == 1)
+	bound_horizontal = np.concatenate((int_bound_horizontal, ext_bound_horizontal))
+	int_bound_vertical = (int_bound[:,1] == 0) | (int_bound[:,1] == 1)
+	ext_bound_vertical = (ext_bound[:,1] == 0) | (ext_bound[:,1] == 1)
+	bound_vertical = np.concatenate((int_bound_vertical, ext_bound_vertical))
+	others_horizontal = np.full((total_size - bound_horizontal.shape[0]), False)
+	others_vertical = np.full((total_size - bound_vertical.shape[0]), False)
+	bound_horizontal = np.concatenate((bound_horizontal, others_horizontal))
+	bound_vertical = np.concatenate((bound_vertical, others_vertical))
+	return bound_horizontal, bound_vertical
 
 def process_wave_data(wave_data_dir, params):
 	print("Processing wave data...")

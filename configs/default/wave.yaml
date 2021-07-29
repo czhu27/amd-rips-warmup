@@ -21,7 +21,7 @@ gd_noise: 0.0
 #############
 #  Dataset  #
 #############
-#source: multiwave
+#source: wave_with_source
 source: wave
 data_dir: data/wave/
 data_run: '' #Leave blank to default to last run in data_sir folder

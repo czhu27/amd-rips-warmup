@@ -44,7 +44,7 @@ def get_data(configs, figs_folder):
 			"extrapolation error (3x3 ring)": lambda model : extrap_error(model, f, -2.0, 2.0, -3.0, 3.0),
 		}
 
-	elif configs.source == "multiwave":
+	elif configs.source == "wave_with_source":
 		data_run = configs.data_dir
 		tot_X_all = np.zeros((0,5), dtype = np.float32)
 		tot_Y_all = tf.zeros((0,1))
@@ -243,10 +243,10 @@ def comparison_plots(model, figs_folder, configs):
 		buf = plot_gridded_functions(model, f, -2.0, 2.0, "200", folder=figs_folder)
 		buf = plot_gridded_functions(model, f, -3.0, 3.0, "300", folder=figs_folder)
 
-	elif configs.source == "wave" or configs.source == "multiwave":
+	elif configs.source == "wave" or configs.source == "wave_with_source":
 		if configs.source == "wave":
 			test_source = None
-		if configs.source == "multiwave":
+		if configs.source == "wave_with_source":
 			test_source = configs.test_source
 		for t in tf.range(0, 2 + 1e-3, 0.5):
 			class m:
@@ -426,7 +426,7 @@ def train(configs: Configs):
 		print('FINAL Error/' + error_name + f":\t\t\t {error_val:.6E}")
 		final_metrics[error_name] = "{:.6E}".format(error_val)
 
-	if configs.source == 'wave' or configs.source == 'multiwave':
+	if configs.source == 'wave' or configs.source == 'wave_with_source':
 		for error_name, error_func in error_plots.items():
 			error_val = error_func(model)
 		print("Printing error over time")

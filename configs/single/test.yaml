@@ -10,7 +10,7 @@ lr: 1.0e-4
 #data_run: 05-05
 data_run: [05-05, 09-01, 025-075]
 from_tensor_slices: true
-source: multiwave
+source: wave_with_source
 test_source: [0.6, 0.6]
 activation: elu
 test_data_dir: data/wave/06-06/

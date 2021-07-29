@@ -473,16 +473,25 @@ def process_wave_data_sample(wave_data_dir, params):
 
 	#Randomly sample labeled and unlabeled data on interior
 	num_int_label = int(interior.shape[0]*params["data_percents"][0][2])
-	perm_int = np.random.permutation(interior)
-	int_label = perm_int[0:num_int_label,:]
-	int_unlabel = perm_int[num_int_label:,:]
+	int_perm = np.random.permutation(interior)
+	int_label = int_perm[0:num_int_label,:]
+	int_unlabel = int_perm[num_int_label:,:]
+	num_int_bound_l = int(int_bound.shape[0]*params["data_percents"][0][3])
+	int_bound_perm = np.random.permutation(int_bound)
+	int_bound_l = int_bound_perm[0:num_int_bound_l,:]
+	int_bound_ul = int_bound_perm[num_int_bound_l:,:]
 
 	#Randomly sample labeled and unlabeled data on exterior
 	if tf > params["int_ext_time"]:
 		num_ext_label = int(exterior.shape[0]*params["data_percents"][1][2])
-		perm_ext = np.random.permutation(exterior)
-		ext_label = perm_ext[0:num_ext_label,:]
-		ext_unlabel = perm_ext[num_ext_label:,:]
+		ext_perm = np.random.permutation(exterior)
+		ext_label = ext_perm[0:num_ext_label,:]
+		ext_unlabel = ext_perm[num_ext_label:,:]
+		num_ext_bound_l = int(int_bound.shape[0]*params["data_percents"][1][3])
+		ext_bound_perm = np.random.permutation(ext_bound)
+		ext_bound_l = ext_bound_perm[0:num_ext_bound_l,:]
+		ext_bound_ul = ext_bound_perm[num_ext_bound_l:,:]
+
 	else:
 		ext_label = np.zeros((0,6))
 		ext_unlabel = np.zeros((0,6))
@@ -512,8 +521,10 @@ def process_wave_data_sample(wave_data_dir, params):
 
 	np.savez(
 		wave_data_dir + '/processed_data.npz', 
-		int_label = int_label, int_unlabel = int_unlabel, int_bound = int_bound, int_test = int_test, 
-		ext_label = ext_label, ext_unlabel = ext_unlabel, ext_bound = ext_bound, ext_test = ext_test
+		int_label = int_label, int_unlabel = int_unlabel, int_bound_l = int_bound_l, 
+		int_bound_ul = int_bound_ul , int_test = int_test, 
+		ext_label = ext_label, ext_unlabel = ext_unlabel, ext_bound_l = ext_bound_l,
+		ext_bound_ul = ext_bound_ul, ext_test = ext_test
 	)
 
 	toc = time.time()

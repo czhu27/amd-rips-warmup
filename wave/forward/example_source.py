@@ -7,7 +7,7 @@ from simulator import Simulator
 
 timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 #data_dir = "data/wave/" + timestamp
-data_dir = "data/wave/05-05"
+data_dir = "data/wave/triple"
 
 # Create all parameters
 params = {
@@ -35,6 +35,7 @@ params = {
 	"src_loc": [ [0.9, 0.1] ],
 	"src_f": 5.0,		# source frequency (Hz)
 	"src_a": 0.0,		# source magnitude (set to 0 to disable source)
+	#"src_gauss": [[0.5, 0.5], [0.7, 0.1], [0.4, 0.8]], (default is [[0.5, 0.5]])
 	# Receivers coordinates (x0, y0, x1, y1, ...) 
 	"rcv_loc": [ [0.25, 0.25], [0.60, 0.50] ],
 	# Where to save this run

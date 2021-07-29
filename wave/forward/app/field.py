@@ -41,6 +41,13 @@ class Field:
 			self.src_a = 0.0
 		self.setup_sources()
 
+		# Source of gaussian
+		if "src_gauss" in params:
+			self.src_gauss = np.array(params["src_gauss"])
+		# Default one point in center
+		else:
+			self.src_gauss = np.array([[0.5, 0.5]])
+
 		# Handle receivers
 		if "rcv_loc" in params:
 			self.has_receivers = True
@@ -205,9 +212,11 @@ class Field:
 	# def __expression_cos
 
 	def __expression_gaussian(self, x, y, t):
-		#r2 = (x - 0.5)**2 + (y - 0.5)**2
-		r2 = (x - 0.5)**2 + (y - 0.5)**2
-		p = np.exp(-30.0*r2)
+		p = 0
+		for point in self.src_gauss:
+			r2 = (x - point[0])**2 + (y - point[1])**2
+			p = p + np.exp(-30.0*r2)
+
 		u = np.zeros(x.shape)
 		v = np.zeros(x.shape)
 		return p, u, v

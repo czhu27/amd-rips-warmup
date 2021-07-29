@@ -126,11 +126,21 @@ def make_movie(model, figs_folder, time_steps = 100, dx = .01, dt = .01, test_so
         X_t = np.reshape(X_g, (nx*ny,1))
         Y_t = np.reshape(Y_g, (nx*ny,1))
         if test_source is not None:
-            inputs = np.concatenate((np.full((len(X_t),2), test_source), X_t, Y_t, time_vec), axis=1)
+            inputs = np.concatenate((np.full((len(X_t),2), test_source[0]), X_t, Y_t, time_vec), axis=1)
         else:
             inputs = np.concatenate((X_t, Y_t,time_vec), axis=1)
         soln = model.predict(inputs)
         soln = np.reshape(soln, (nx,ny))
+
+        #Add two predictions together
+        #inputs1 = np.concatenate((np.full((len(X_t),2), [0.25, 0.25]), X_t, Y_t, time_vec), axis=1)
+        #inputs2 = np.concatenate((np.full((len(X_t),2), [0.75, 0.75]), X_t, Y_t, time_vec), axis=1)
+        #soln1 = model.predict(inputs1)
+        #soln1 = np.reshape(soln1, (nx,ny))
+        #soln2 = model.predict(inputs2)
+        #soln2 = np.reshape(soln2, (nx,ny))  
+        #soln = soln1 + soln2 
+
         #Clears current fig and draws surface
         if len(fig.axes[0].collections) != 0:
             fig.axes[0].collections = []

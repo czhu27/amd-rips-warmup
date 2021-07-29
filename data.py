@@ -363,6 +363,12 @@ def process_wave_data_sample(wave_data_dir, params):
 	dt = params["dt"]
 	T = int(tf / dt) + 1
 
+	# Check heatmap
+	if "heatmap" in params:
+		heatmap = True
+	else:
+		heatmap = False
+
 	#Determine step_size
 	if "sample_step" in params:
 		step_size = int(params["sample_step"]/dt)
@@ -438,7 +444,7 @@ def process_wave_data_sample(wave_data_dir, params):
 		ext_label = perm_ext[0:num_ext_label,:]
 		ext_unlabel = perm_ext[num_ext_label:,:]
 	
-	if params["heatmap"]:
+	if heatmap:
 		# Make crude heatmap
 		print("Making p_mat_list (for heatmap animation)...")
 		heatmap_dt = 0.02

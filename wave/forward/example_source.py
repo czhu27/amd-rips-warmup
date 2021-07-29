@@ -6,7 +6,7 @@ sys.path.append(sys.path[0] + "/app")
 from simulator import Simulator
 
 timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-data_dir = "data/wave/" + timestamp
+data_dir = "data/wave"
 
 # Create all parameters
 params = {
@@ -39,7 +39,7 @@ params = {
 	# Where to save this run
 	"data_dir": data_dir,
 	# Save percentages of [[interior, int bound, labeled], [exterior,ext bound, labeled], [int_test, ext_test]]
-	"data_percents": [[.01, .01, 1.0, 1.0], [.01, .01, 0.0, 0.0], [.05, .05]],
+	"data_percents": [[.01, .01, 1.0, 1.0], [.01, .01, 0.0, 1.0], [.025, .025]],
 	"heatmap": False,
 	"data_plot": True,
 	"seed": 0, 

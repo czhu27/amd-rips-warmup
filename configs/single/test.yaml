@@ -1,18 +1,18 @@
 batch_size: 512
 layers: [3, 100, 100, 100, 100, 100, 3]
 lr: 1.0e-3
-grad_reg_const: 0.001     # !!!
+grad_reg_const: 0.0001    # !!!
 activation: tanh
 model_outputs: all
 gradient_loss: first_explicit
-epochs: 2000
+epochs: 3000
 lr_scheduler: true
                     #[initial,  final,  decay_steps,  power]
 lr_scheduler_params: [1.0e-3,   3.0e-5, 1000,        1.0] 
 
 loss_schedulerizer: true
-loss_schedulerizer_params: [10,100] #[Begin adding grad, fully added]
+loss_schedulerizer_params: [500,2000] #[Begin adding grad, fully added]
 
 # false -> slow graph, fast epoch
 # true -> fast graph, slower epoch
-from_tensor_slices: true 
+from_tensor_slices: false 

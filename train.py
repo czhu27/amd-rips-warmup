@@ -223,12 +223,9 @@ def comparison_plots(model, figs_folder, configs):
 			make_heatmap_movie(model, figs_folder, time_steps = 100, dx = .01, sample_step = .01)
 		make_movie(model, figs_folder, filename='wave_pred.gif', t0=0)
 		make_movie(model, figs_folder, filename='wave_pred_ext.gif', t0=1)
-		make_wave_plot(model, t = 0, figs_folder = figs_folder, tag='0')
-		make_wave_plot(model, t = .25, figs_folder = figs_folder, tag='0.25')
-		make_wave_plot(model, t = .5, figs_folder = figs_folder, tag='0.5')
-		make_wave_plot(model, t = .75, figs_folder = figs_folder, tag='0.75')
-		make_wave_plot(model, t = 1, figs_folder = figs_folder, tag='1')
-	
+		for i in range(11):
+			make_wave_plot(model, t = i*.2, figs_folder = figs_folder, tag='{:.02f}'.format(i*.2))
+		
 	else:
 		raise ValueError("Unknown data source " + configs.source)
 

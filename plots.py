@@ -59,7 +59,7 @@ def plot_gridded_functions(model, f, lb, ub, tag, folder="figs"):
     return buf
 
 
-def make_wave_plot(model, t, f_true, figs_folder, tag):
+def make_wave_plot(model, t, figs_folder, tag):
     n1d = 101
     lb = 0
     ub = 1

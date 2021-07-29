@@ -136,10 +136,7 @@ def get_data(configs, figs_folder):
 	else:
 		label_bools = tf.concat([is_labeled_l, is_labeled_ul], axis=0)
 
-	if configs.layers[-1] == 3:
-		Y_ul = tf.zeros((X_ul.shape[0], 3))
-	else:
-		Y_ul = tf.zeros((X_ul.shape[0], 1))
+	Y_ul = tf.zeros((X_ul.shape[0], Y_l.shape[1]))
 
 	# Add noise to y-values
 	if configs.noise > 0:
@@ -349,6 +346,19 @@ def train(configs: Configs):
 			if start <= epoch and epoch <= finish:
 				grad_weight = max_val * ((epoch-start)/(finish-start))
 				self.model.grad_condition_weight.assign(grad_weight)
+
+	class LossLogger(keras.callbacks.Callback):
+		def on_epoch_end(self, epoch, logs):
+			tf.summary.scalar('Loss/Base (weighted)', 
+				data=self.model.weighted_base_loss, step=epoch
+			)
+			tf.summary.scalar('Loss/Gradient (weighted)', 
+				data=self.model.weighted_grad_loss, step=epoch
+			)
+			tf.summary.scalar('Loss/Regularizer (weighted)', 
+				data=self.model.weighted_reg_loss, step=epoch
+			)
+			
 
 	tensorboard_callback = keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
 	logging_callbacks = [TimeLogger(), StressTestLogger(), tensorboard_callback]

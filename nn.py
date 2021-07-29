@@ -11,6 +11,9 @@ from tensorflow.python.ops.gen_math_ops import lgamma
 from tensorflow.python.types.core import Value
 
 loss_tracker = tf.keras.metrics.Mean(name='loss')
+base_loss_tracker = tf.keras.metrics.Mean(name='base_loss')
+grad_reg_loss_tracker = tf.keras.metrics.Mean(name='grad_reg_loss')
+w_reg_loss_tracker = tf.keras.metrics.Mean(name='w_reg_loss')
 
 # ------------------------------------------------------------------------------
 # Custom model based on Keras Model.
@@ -116,15 +119,22 @@ class NN(keras.models.Model):
 			# Compute L_f: \sum_i |f_i - f_i*|^2
 			L_f = 0
 			base_loss = self.loss_function_f(f[l_bools], f_pred[l_bools])
-			L_f += self.base_condition_weight.value() * base_loss
+			base_loss_tracker.update_state(base_loss)
+			# Hacky silent add
+			weighted_base_loss = self.base_condition_weight.value() * base_loss
+			L_f += weighted_base_loss
 
 			if self.gradient_loss:
 				# Compute gradient condition (deviation from diff. eq.)
 				grad_loss = self.gradient_regularizer(f_pred, xyz, tape)
-				L_f += self.grad_condition_weight.value() * grad_loss
-					
+				grad_reg_loss_tracker.update_state(grad_loss)
+				weighted_grad_loss = self.grad_condition_weight.value() * grad_loss
+				L_f += weighted_grad_loss
+
 			# Add regularization loss	
-			L_f += sum(self.losses)
+			weighted_reg_loss = sum(self.losses)
+			w_reg_loss_tracker.update_state(weighted_reg_loss)
+			L_f += weighted_reg_loss 
 		
 		
 		# Compute gradient of total loss w.r.t. trainable variables
@@ -142,7 +152,7 @@ class NN(keras.models.Model):
 	
 		# Update network parameters
 		self.optimizer.apply_gradients(zip(gradients, trainable_vars))
-	
+
 		# Update loss metric
 		loss_tracker.update_state(L_f)
 
@@ -163,7 +173,7 @@ class NN(keras.models.Model):
 			# end for loop on mini batches
 
 		# Update loss and return value
-		return {"loss": loss_tracker.result()}
+		return {m.name: m.result() for m in self.metrics}
 		
 	# def train_step
 
@@ -174,7 +184,7 @@ class NN(keras.models.Model):
 		# or at the start of `evaluate()`.
 		# If you don't implement this property, you have to call
 		# `reset_states()` yourself at the time of your choosing.
-		return [loss_tracker]
+		return [loss_tracker, base_loss_tracker, grad_reg_loss_tracker, w_reg_loss_tracker]
 
 # class NN
 

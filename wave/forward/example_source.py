@@ -39,7 +39,7 @@ params = {
 	# Where to save this run
 	"data_dir": data_dir,
 	# Save percentages of [[interior, int bound, labeled], [exterior,ext bound, labeled], [int_test, ext_test]]
-	"data_percents": [[.01, .01, 1], [.01, .01, 0], [.05,.05]],
+	"data_percents": [[.01, .01, 1.0, 1.0], [.01, .01, 0.0, 0.0], [.05, .05]],
 	"heatmap": False,
 	"data_plot": True,
 	"seed": 0, 

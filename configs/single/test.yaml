@@ -7,8 +7,7 @@ gradient_loss: first_explicit
 epochs: 5000
 lr_scheduler: true
                     #[initial,  final,  decay_steps,  power]
-lr_scheduler_params: [1.0e-3,   3.0e-5, 50000,        1.0] 
-lr: 1.0e-3
+lr_scheduler_params: [1.0e-3,   3.0e-5, 1000,        1.0] 
 
 loss_schedulerizer: true
 loss_schedulerizer_params: [500, 1000] #[Begin adding grad, fully added]

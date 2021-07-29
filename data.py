@@ -353,6 +353,9 @@ def load_slices(dump_file):
 	return pts, bound
 
 def process_wave_data_sample(wave_data_dir, params):
+	# Seed for reproducibility
+	np.random.seed(params["seed"])
+
 	tic = time.time()
 
 	# TODO: This is bad
@@ -443,6 +446,9 @@ def process_wave_data_sample(wave_data_dir, params):
 		perm_ext = np.random.permutation(exterior)
 		ext_label = perm_ext[0:num_ext_label,:]
 		ext_unlabel = perm_ext[num_ext_label:,:]
+	else:
+		ext_label = np.array([])
+		ext_unlabel = np.array([])
 	
 	if heatmap:
 		# Make crude heatmap

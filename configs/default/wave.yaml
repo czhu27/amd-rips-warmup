@@ -36,11 +36,14 @@ from_tensor_slices: false
 regularizer: none
 reg_const: 0.1
 # none, const, zero, first
+model_outputs: pressure
 gradient_loss: none
 loss_schedulerizer: true
 loss_schedulerizer_params: [500,2000] #[Begin adding grad, fully added]
 #grad_reg_norm: l1 l2
 grad_reg_const: 1
+# grad_reg_scheduler: late_start
+# grad_reg_start: 
 
 #############
 #  Logging  #
@@ -50,3 +53,4 @@ output_dir: null   # overridden in main.py
 output_root: output/wave
 plots: [extrapolation, data-distribution, tensorboard, extrapolation_wave, heatmap]
 saves: [model]
+tb_error_timestep: 100

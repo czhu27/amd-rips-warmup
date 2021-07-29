@@ -25,6 +25,9 @@ def get_delta(x):
 def unstack(a, axis=0):
     return np.moveaxis(a, axis, 0)
 
+def np_unstack(a, axis = 0):
+    return [np.squeeze(e, axis) for e in np.split(a, a.shape[axis], axis = axis)]
+
 def random_rows(data, perc):
     num = len(data) * perc
     idx = np.random.choice(len(data), num)

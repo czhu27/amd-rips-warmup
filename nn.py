@@ -27,11 +27,11 @@ class NN(keras.models.Model):
 	
 	# Called from outside as a convenient way (albeit slightly risky)
 	# to specify the mini-batch size
-	def set_batch_size(self, batch_size):
-		self.batch_size = batch_size
+	# def set_batch_size(self, batch_size):
+	# 	self.batch_size = batch_size
 
-	def set_gd_noise(self, gd_noise):
-		self.gd_noise = gd_noise
+	# def set_gd_noise(self, gd_noise):
+	# 	self.gd_noise = gd_noise
 
 	# Create mini batches
 	def create_mini_batches(self, dataset):

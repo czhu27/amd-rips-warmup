@@ -105,10 +105,9 @@ def get_data(configs, figs_folder):
 			grad_bools = tf.fill(X_l.shape[0] + X_ul.shape[0], True)
 
 		# TODO: Should be handled in get_wave_reg?
-		if configs.gradient_loss == 'second_explicit':
-			grad_bools_bound = tf.fill(int_bound.shape[0] + ext_bound.shape[0], False)
-			grad_bools_int = tf.fill(int_label.shape[0] + ext_label.shape[0] + X_ul.shape[0], True)
-			grad_bools = tf.concat([grad_bools_bound, grad_bools_int], axis = 0)
+		grad_bools_bound = tf.fill(int_bound.shape[0] + ext_bound.shape[0], False)
+		grad_bools_int = tf.fill(int_label.shape[0] + ext_label.shape[0] + X_ul.shape[0], True)
+		grad_bools = tf.concat([grad_bools_bound, grad_bools_int], axis = 0)
 
 		# Remove the other outputs in the model (hack)
 		if configs.model_outputs == "all":
@@ -340,13 +339,15 @@ def train(configs: Configs):
 					tf.summary.scalar('Error/' + error_name, data=error_val, step=epoch)
 					
 	class LossSchedulerizer(keras.callbacks.Callback):
-		def on_train_begin(self, epoch):
-			if epoch == 0:
-				self.model.grad_condition_weight.assign(0)
-				
+		def on_train_begin(self, logs):
+			self.model.grad_condition_weight.assign(0)
+
 		def on_epoch_begin(self, epoch, logs):
-			if configs.loss_schedulerizer_params[0] < epoch < configs.loss_schedulerizer_params[1]:
-				grad_weight = configs.grad_reg_const * ((epoch-configs.loss_schedulerizer_params[0])/configs.loss_schedulerizer_params[0])
+			max_val = configs.grad_reg_const
+			start = configs.loss_schedulerizer_params[0]
+			finish = configs.loss_schedulerizer_params[1]
+			if start <= epoch and epoch <= finish:
+				grad_weight = max_val * ((epoch-start)/(finish-start))
 				self.model.grad_condition_weight.assign(grad_weight)
 
 	tensorboard_callback = keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)

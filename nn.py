@@ -250,7 +250,7 @@ def create_nn(layer_widths, configs):
 	else:
 		model.gradient_loss = True
 
-	model.grad_condition_weight = tf.Variable(0, dtype = tf.float32, trainable = False)
+	model.grad_condition_weight = tf.Variable(configs.grad_reg_const, dtype = tf.float32, trainable = False)
 	model.base_condition_weight = tf.Variable(1, dtype = tf.float32, trainable = False)
 	return model
 

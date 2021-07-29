@@ -3,6 +3,7 @@ import time
 import os
 from tensorflow.python.ops.gen_array_ops import zeros_like
 
+import math
 import yaml
 import tensorflow as tf
 
@@ -35,6 +36,25 @@ class FakeModel:
 		puv = self.model.predict(x)
 		p, u, v = np_unstack(puv, axis=1)
 		return p
+
+class CustomLRSched(tf.keras.optimizers.schedules.LearningRateSchedule):
+	def __init__(self, initial_lr, batch_size, dataset_size, start_epoch, end_lr, decay_epochs):
+		self.initial_lr = initial_lr
+		self.num_batches_per_epoch = math.ceil(dataset_size/batch_size)
+		self.start_step = start_epoch * self.num_batches_per_epoch + self.num_batches_per_epoch
+		self.decay_epochs = decay_epochs
+		self.end_decay_step = (start_epoch+decay_epochs) * self.num_batches_per_epoch + self.num_batches_per_epoch
+		self.end_lr = end_lr
+
+	@tf.function
+	def __call__(self, step):
+		if step <= self.start_step:
+			return self.initial_lr
+		elif step > self.start_step and step <= self.end_decay_step:
+			step_cast = tf.cast(step, tf.float32)
+			return self.initial_lr + tf.math.multiply((self.end_lr - self.initial_lr)/(self.end_decay_step - self.start_step), step_cast-self.start_step)
+		else:
+			return self.end_lr
 
 #tf.debugging.set_log_device_placement(True)
 def general_error(model, X, Y):
@@ -287,11 +307,14 @@ def train(configs: Configs):
 	# Model compilation / training (optimization)
 	# ------------------------------------------------------------------------------
 	if configs.lr_scheduler:
-		opt_step = tf.keras.optimizers.schedules.PolynomialDecay(
-			configs.lr_scheduler_params[0],
-			(X_all.shape[0]/configs.batch_size) * configs.lr_scheduler_params[2],
-			end_learning_rate=configs.lr_scheduler_params[1], power=configs.lr_scheduler_params[3],
-			cycle=False, name=None) #Changing learning rate
+		#opt_step = tf.keras.optimizers.schedules.PolynomialDecay(
+		#	configs.lr_scheduler_params[0],
+		#	(X_all.shape[0]/configs.batch_size) * configs.lr_scheduler_params[2],
+		#	end_learning_rate=configs.lr_scheduler_params[1], power=configs.lr_scheduler_params[3],
+		#	cycle=False, name=None) #Changing learning rate
+		opt_step = CustomLRSched(configs.lr_scheduler_params[0], configs.batch_size, 
+			X_all.shape[0], configs.loss_schedulerizer_params[0], configs.lr_scheduler_params[1],
+			configs.loss_schedulerizer_params[1] - configs.loss_schedulerizer_params[0])
 	else:
 		print(type(configs.lr))
 		if not isinstance(configs.lr, float):

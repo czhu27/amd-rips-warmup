@@ -1,6 +1,12 @@
 import numpy as np
 import tensorflow as tf
 
+def stack_unstack(X_f):
+    # Needed for gradient calculations (per-column)
+    xyz = tf.unstack(X_f, axis=1)
+    new_X_f = tf.stack(xyz, axis=1)
+    return new_X_f, xyz	
+
 class Configs:
     def __init__(self, **entries):
         self.__dict__.update(entries)
@@ -8,7 +14,14 @@ class Configs:
 def shuffle_in_parallel(mat_list):
     indices = tf.random.shuffle(np.arange(mat_list[0].shape[0]))
     for i, mat in enumerate(mat_list):
-        mat_list[i] = tf.gather(mat, indices)
+        # Handle lists of dictionaries
+        if isinstance(mat, dict):
+            new_mat = {}
+            for k,v in mat.items():
+                new_mat[k] = tf.gather(v, indices)
+        else:
+            new_mat = tf.gather(mat, indices)
+        mat_list[i] = new_mat
     
     return mat_list
 

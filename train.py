@@ -96,21 +96,6 @@ def get_data(configs, figs_folder):
 		else:
 			raise ValueError("Unknown model_outputs ", configs.model_outputs)
 
-		int_bound = np.concatenate((int_bound_l, int_bound_ul))
-		ext_bound = np.concatenate((ext_bound_l, ext_bound_ul))
-		bound_horizontal, bound_vertical = get_boundary(int_bound, ext_bound, total_size)
-				
-		grad_reg = get_wave_reg(configs.gradient_loss, configs)
-		#grad_reg = get_target(configs.target, configs.gradient_loss, configs)
-
-		if grad_reg is None:
-			grad_bools = tf.fill(X_l.shape[0] + X_ul.shape[0], True)
-
-		# TODO: Should be handled in get_wave_reg?
-		grad_bools_bound = tf.fill(int_bound.shape[0] + ext_bound.shape[0], False)
-		grad_bools_pts = tf.fill(int_label.shape[0] + ext_label.shape[0] + int_unlabel.shape[0] + ext_unlabel.shape[0], True)
-		grad_bools = tf.concat([grad_bools_bound, grad_bools_pts], axis = 0)
-
 		# Remove the other outputs in the model (hack)
 		if configs.model_outputs == "all":
 			simplify = lambda model : FakeModel(model)
@@ -126,15 +111,14 @@ def get_data(configs, figs_folder):
 		}
 		
 		print(f"Loaded wave eq. simulation inputs/outputs. Count: {len(X_l) + len(X_ul)}")
+	else:
+		raise ValueError("Unknown source: ", configs.source)
 
 	#Creates labels to pass through network
 	is_labeled_l = tf.fill(X_l.shape[0], True)
 	is_labeled_ul = tf.fill(X_ul.shape[0], False)
 
-	if X_ul.shape[0] == 0:
-		label_bools = is_labeled_l
-	else:
-		label_bools = tf.concat([is_labeled_l, is_labeled_ul], axis=0)
+	label_bools = tf.concat([is_labeled_l, is_labeled_ul], axis=0)
 
 	Y_ul = tf.zeros((X_ul.shape[0], Y_l.shape[1]))
 
@@ -144,13 +128,25 @@ def get_data(configs, figs_folder):
 		Y_l += np.reshape(configs.noise*np.random.randn((len(Y_l))),(len(Y_l),1))
 
 	#Concat inputs, outputs, and bools
-	if X_ul.shape[0] == 0:
-		X_all = X_l
-		Y_all = Y_l
+	X_all = tf.concat([X_l, X_ul], axis=0)
+	Y_all = tf.concat([Y_l, Y_ul], axis=0)
+
+	### Create the gradient regularizers
+	if configs.source == "synthetic":
+		pass
+	if configs.source == "wave":
+		is_boundary_lr = (X_all[:,0] == 0) | (X_all[:,0] == 1)
+		is_boundary_ud = (X_all[:,1] == 0) | (X_all[:,1] == 1)
+		is_boundary = is_boundary_lr | is_boundary_ud
+		is_interior = ~is_boundary
+		grad_bools = {
+			'interior': is_interior,
+			'boundary_lr': is_boundary_lr,
+			'boundary_ud': is_boundary_ud,
+		}
+		grad_regs = get_wave_reg(configs.gradient_loss)
 	else:
-		X_all = tf.concat([X_l, X_ul], axis=0)
-		Y_all = tf.concat([Y_l, Y_ul], axis=0)
-	
+		raise ValueError("Unknown source: ", configs.source)
 	
 
 		# if "data-distribution" in configs.plots:
@@ -160,7 +156,7 @@ def get_data(configs, figs_folder):
 	# else:
 	# 	raise ValueError("Unknown data source " + configs.source)
 
-	return X_all, Y_all, label_bools, grad_bools, bound_horizontal, bound_vertical, grad_reg, error_metrics, error_plots
+	return X_all, Y_all, label_bools, grad_bools, grad_regs, error_metrics, error_plots
 
 def plot_data(X_l, X_ul, figs_folder, configs):
 	
@@ -258,7 +254,7 @@ def train(configs: Configs):
 	# ------------------------------------------------------------------------------
 
 	# Get the "interesting" data
-	X_all, Y_all, label_bools, grad_bools, bound_horizontal, bound_vertical, grad_reg, error_metrics, error_plots = get_data(configs, figs_folder)#, error_metrics = get_data(configs)
+	X_all, Y_all, label_bools, grad_bools, grad_regs, error_metrics, error_plots = get_data(configs, figs_folder)#, error_metrics = get_data(configs)
 
 	# Create TensorFlow dataset for passing to 'fit' function (below)
 	if configs.from_tensor_slices:
@@ -279,7 +275,7 @@ def train(configs: Configs):
 	model.summary()
 
 	# TODO: Hacky add...
-	model.gradient_regularizer = grad_reg
+	model.grad_regs = grad_regs
 	# ------------------------------------------------------------------------------
 	# Assess accuracy with non-optimized model
 	# ------------------------------------------------------------------------------
@@ -352,19 +348,31 @@ def train(configs: Configs):
 
 	class LossLogger(keras.callbacks.Callback):
 		def on_epoch_end(self, epoch, logs):
-			tf.summary.scalar('Loss/Base (weighted)', 
-				data=self.model.weighted_base_loss, step=epoch
+			group = 'Loss Term'
+			w_group = 'Loss Term Weight'
+			tf.summary.scalar(group + '/Base', 
+				data=self.model.base_loss_tracker.result(), step=epoch
 			)
-			tf.summary.scalar('Loss/Gradient (weighted)', 
-				data=self.model.weighted_grad_loss, step=epoch
+			tf.summary.scalar(group + '/Gradient', 
+				data=self.model.grad_reg_loss_tracker.result(), step=epoch
 			)
-			tf.summary.scalar('Loss/Regularizer (weighted)', 
-				data=self.model.weighted_reg_loss, step=epoch
+			w = (self.model.w_base_loss_tracker.result() 
+				/ self.model.base_loss_tracker.result())
+			tf.summary.scalar(w_group + '/Base', 
+				data=w, step=epoch
+			)
+			w = (self.model.w_grad_reg_loss_tracker.result() 
+				/ self.model.grad_reg_loss_tracker.result())
+			tf.summary.scalar(w_group + '/Gradient', 
+				data=w, step=epoch
+			)
+			tf.summary.scalar(group + '/Regularizer (weighted)', 
+				data=self.model.w_reg_loss_tracker.result(), step=epoch
 			)
 			
 
 	tensorboard_callback = keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
-	logging_callbacks = [TimeLogger(), StressTestLogger(), tensorboard_callback]
+	logging_callbacks = [TimeLogger(), StressTestLogger(), LossLogger(), tensorboard_callback]
 
 	if "tensorboard" in configs.plots:
 		print("Using tensorboard callbacks")

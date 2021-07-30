@@ -3,6 +3,7 @@ import time
 import os
 from tensorflow.python.ops.gen_array_ops import zeros_like
 
+import math
 import yaml
 import tensorflow as tf
 
@@ -35,6 +36,25 @@ class FakeModel:
 		puv = self.model.predict(x)
 		p, u, v = np_unstack(puv, axis=1)
 		return p
+
+class CustomLRSched(tf.keras.optimizers.schedules.LearningRateSchedule):
+	def __init__(self, initial_lr, batch_size, dataset_size, start_epoch, end_lr, decay_epochs):
+		self.initial_lr = initial_lr
+		self.num_batches_per_epoch = math.ceil(dataset_size/batch_size)
+		self.start_step = start_epoch * self.num_batches_per_epoch + self.num_batches_per_epoch
+		self.decay_epochs = decay_epochs
+		self.end_decay_step = (start_epoch+decay_epochs) * self.num_batches_per_epoch + self.num_batches_per_epoch
+		self.end_lr = end_lr
+
+	@tf.function
+	def __call__(self, step):
+		if step <= self.start_step:
+			return self.initial_lr
+		elif step > self.start_step and step <= self.end_decay_step:
+			step_cast = tf.cast(step, tf.float32)
+			return self.initial_lr + tf.math.multiply((self.end_lr - self.initial_lr)/(self.end_decay_step - self.start_step), step_cast-self.start_step)
+		else:
+			return self.end_lr
 
 #tf.debugging.set_log_device_placement(True)
 def general_error(model, X, Y):
@@ -199,12 +219,9 @@ def comparison_plots(model, figs_folder, configs):
 			make_heatmap_movie(model, figs_folder, time_steps = 100, dx = .01, sample_step = .01)
 		make_movie(model, figs_folder, filename='wave_pred.gif', t0=0)
 		make_movie(model, figs_folder, filename='wave_pred_ext.gif', t0=1)
-		make_wave_plot(model, t = 0, figs_folder = figs_folder, tag='0')
-		make_wave_plot(model, t = .25, figs_folder = figs_folder, tag='0.25')
-		make_wave_plot(model, t = .5, figs_folder = figs_folder, tag='0.5')
-		make_wave_plot(model, t = .75, figs_folder = figs_folder, tag='0.75')
-		make_wave_plot(model, t = 1, figs_folder = figs_folder, tag='1')
-	
+		for i in range(11):
+			make_wave_plot(model, t = i*.2, figs_folder = figs_folder, tag='{:.02f}'.format(i*.2))
+		
 	else:
 		raise ValueError("Unknown data source " + configs.source)
 
@@ -288,6 +305,9 @@ def train(configs: Configs):
 			(X_all.shape[0]/configs.batch_size) * configs.lr_scheduler_params[2],
 			end_learning_rate=configs.lr_scheduler_params[1], power=configs.lr_scheduler_params[3],
 			cycle=False, name=None) #Changing learning rate
+		#opt_step = CustomLRSched(configs.lr_scheduler_params[0], configs.batch_size, 
+		#	X_all.shape[0], configs.loss_schedulerizer_params[0], configs.lr_scheduler_params[1],
+		#	configs.loss_schedulerizer_params[1] - configs.loss_schedulerizer_params[0])
 	else:
 		print(type(configs.lr))
 		if not isinstance(configs.lr, float):

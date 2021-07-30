@@ -6,6 +6,7 @@ import time
 import matplotlib.pyplot as plt
 import io
 import shutil
+from matplotlib.animation import FuncAnimation
 
 from helpers import get_p_mat_list, unstack
 
@@ -69,6 +70,70 @@ def data_creation(params, corners):
 		X_f_l[3, 0] = -2.0; X_f_l[3, 1] =  2.0
 
 	return X_f_l, X_f_ul
+
+def plot_wave_data(wave_data_dir, name, data_sets):
+	fig, ax = plt.subplots()
+	starter_iter = data_sets[-1][0,2]
+	times = np.unique(data_sets[-1][:,2])
+	data_num = []
+	for set in data_sets:
+		try:
+			num = np.unique(set[:,2], return_counts=True)[1][0]
+		except:
+			num = 0
+		data_num.append(num)
+	tf = times[-1]
+	dt = times[1] - times[0]
+
+	def update_train(frame, fig, dt, starter_iter, data_num):
+        #Creates inputs
+		grid = []
+		X = np.zeros((0,2))
+		for i, set in enumerate(data_sets):
+			grid.append(set[frame*data_num[i]:(frame+1)*data_num[i], 0:2])
+			if i < len(data_num) - 2:
+				X = np.concatenate((X, grid[i]))
+		X_bound = grid[-2]
+		X_test = grid[-1]
+        #Clears current fig and draws surface
+
+		if len(fig.axes[0].collections) != 0:
+			fig.axes[0].collections = []
+			scatter = fig.axes[0].scatter(X[:,0], X[:,1], color = 'k', linewidth=0, antialiased=False)
+			scatter = fig.axes[0].scatter(X_bound[:,0], X_bound[:,1], color = 'b', linewidth=0, antialiased=False)
+			#scatter2 = fig2.axes2[0].scatter(X_test[:,0], X_test[:,1], linewidth=0, antialiased=False)
+		else:
+			scatter = fig.axes[0].scatter(X[:,0], X[:,1], color = 'k', linewidth=0, antialiased=False)
+			scatter = fig.axes[0].scatter(X_bound[:,0], X_bound[:,1], color = 'b', linewidth=0, antialiased=False)
+			#scatter2 = fig2.axes2[0].scatter(X_test[:,0], X_test[:,1], linewidth=0, antialiased=False)
+		ax.set_title('t = {:.2f}'.format(starter_iter + frame*dt))
+		ax.set_xlim(0,1)
+		ax.set_ylim(0,1)
+
+		return scatter,
+
+	def update_test(frame, fig, dt, starter_iter, data_num):
+		#Creates inputs
+		X_test = data_sets[-1][frame*data_num[-1]:(frame+1)*data_num[-1], 0:2]
+		#Clears current fig and draws surface
+
+		if len(fig.axes[0].collections) != 0:
+			fig.axes[0].collections = []
+			scatter = fig.axes[0].scatter(X_test[:,0], X_test[:,1], color = 'k', linewidth=0, antialiased=False)
+		else:
+			scatter = fig.axes[0].scatter(X_test[:,0], X_test[:,1], color = 'k', linewidth=0, antialiased=False)
+		ax.set_title('t = {:.2f}'.format(starter_iter + frame*dt))
+		ax.set_xlim(0,1)
+		ax.set_ylim(0,1)
+
+		return scatter,
+
+	# #Loops through update to create animation
+	ani = FuncAnimation(fig, update_train, fargs=[fig, dt, starter_iter, data_num], frames=len(times))
+	ani.save(wave_data_dir + '/' + name + '_data_dist_train.gif', writer = 'PillowWriter', fps=2)
+	
+	ani2 = FuncAnimation(fig, update_test, fargs=[fig, dt, starter_iter, data_num], frames=len(times))
+	ani2.save(wave_data_dir + '/' + name + '_data_dist_test.gif', writer = 'PillowWriter', fps=2)
 
 def data_wave(params, time_steps = None, nx = None, ny = None, order = None):
 	'''
@@ -354,21 +419,18 @@ def load_slices(dump_file):
 
 def process_wave_data_sample(wave_data_dir, params):
 	# Seed for reproducibility
-	np.random.seed(params["seed"])
+	if "seed" in params:
+		np.random.seed(params["seed"])
 
 	tic = time.time()
 
-	# TODO: This is bad
-	label_int = 1
-	label_ext = 0
-	# End bad stuff
 	tf = params["tf"]
 	dt = params["dt"]
 	T = int(tf / dt) + 1
 
 	# Check heatmap
 	if "heatmap" in params:
-		heatmap = True
+		heatmap = params["heatmap"]
 	else:
 		heatmap = False
 
@@ -382,9 +444,13 @@ def process_wave_data_sample(wave_data_dir, params):
 	#Initialize datasets
 	interior = np.zeros((0,6), dtype = np.float32)
 	exterior = np.zeros((0,6), dtype = np.float32)
-	boundary = np.zeros((0,6), dtype = np.float32)
+	int_bound = np.zeros((0,6), dtype = np.float32)
+	ext_bound = np.zeros((0,6), dtype = np.float32)
 	int_test = np.zeros((0,6), dtype = np.float32)
 	ext_test = np.zeros((0,6), dtype = np.float32)
+
+	#Make sure exterior region exists
+	assert params["tf"] > params["int_ext_time"], "Nonexistent exterior region"
 
 	#x_all = np.zeros(int(tf/params["sample_step"]), )
 	x_all = None
@@ -397,17 +463,8 @@ def process_wave_data_sample(wave_data_dir, params):
 	for i in range(start_iter, int(tf/params["dt"]), int(params["sample_step"]/params['dt'])):
 		pts, boundaries = load_data(wave_data_dir + "/dumps/dump{:03d}.npz".format(i))
 		#If interior
-		if i == start_iter:
-			x_all = np.zeros((0,pts.shape[0]+boundaries.shape[0]))
-			y_all = np.zeros((0,pts.shape[0]+boundaries.shape[0]))
-			p_all = np.zeros((0,pts.shape[0]+boundaries.shape[0]))
-			#u_all
-			#v_all
 		all_pts = np.concatenate((pts, boundaries))
-		x_all = np.append(x_all, np.array([all_pts[:,0]]), axis=0)
-		y_all = np.append(y_all, np.array([all_pts[:,1]]), axis=0)
-		p_all = np.append(p_all, np.array([all_pts[:,3]]), axis=0)
-		if i <= 1/params["dt"]:
+		if i <= params["int_ext_time"]/params["dt"]:
 			#Separate boundary, interior points, test set
 			num_pts = int(params["data_percents"][0][0]*pts.shape[0])
 			num_bound = int(params["data_percents"][0][1]*boundaries.shape[0])
@@ -415,7 +472,7 @@ def process_wave_data_sample(wave_data_dir, params):
 			indices_pts = np.random.randint(0,pts.shape[0], num_pts)
 			interior = np.append(interior, pts[indices_pts,:], axis=0)
 			indices_bound = np.random.randint(0,boundaries.shape[0], num_bound)
-			boundary = np.append(boundary, boundaries[indices_bound,:], axis=0)
+			int_bound = np.append(int_bound, boundaries[indices_bound,:], axis=0)
 			indices_test = np.random.randint(0,pts.shape[0] + boundaries.shape[0], num_test)
 			int_test = np.append(int_test, all_pts[indices_test,:], axis = 0)
 		#If exterior
@@ -427,7 +484,7 @@ def process_wave_data_sample(wave_data_dir, params):
 			indices_pts = np.random.randint(0,pts.shape[0], num_pts)
 			exterior = np.append(exterior, pts[indices_pts,:], axis=0)
 			indices_bound = np.random.randint(0,boundaries.shape[0], num_bound)
-			boundary = np.append(boundary, boundaries[indices_bound,:], axis=0)
+			ext_bound = np.append(ext_bound, boundaries[indices_bound,:], axis=0)
 			indices_test = np.random.randint(0,pts.shape[0] + boundaries.shape[0], num_test)
 			ext_test = np.append(ext_test, all_pts[indices_test,:], axis = 0)
 
@@ -435,20 +492,30 @@ def process_wave_data_sample(wave_data_dir, params):
 	shutil.rmtree(wave_data_dir + "/dumps/")
 
 	#Randomly sample labeled and unlabeled data on interior
-	num_int_label = int(interior.shape[0]*label_int)
-	perm_int = np.random.permutation(interior)
-	int_label = perm_int[0:num_int_label,:]
-	int_unlabel = perm_int[num_int_label:,:]
+	num_int_label = int(interior.shape[0]*params["data_percents"][0][2])
+	int_perm = np.random.permutation(interior)
+	int_label = int_perm[0:num_int_label,:]
+	int_unlabel = int_perm[num_int_label:,:]
+	num_int_bound_l = int(int_bound.shape[0]*params["data_percents"][0][3])
+	int_bound_perm = np.random.permutation(int_bound)
+	int_bound_l = int_bound_perm[0:num_int_bound_l,:]
+	int_bound_ul = int_bound_perm[num_int_bound_l:,:]
 
 	#Randomly sample labeled and unlabeled data on exterior
-	if tf > 1:
-		num_ext_label = int(exterior.shape[0]*label_ext)
-		perm_ext = np.random.permutation(exterior)
-		ext_label = perm_ext[0:num_ext_label,:]
-		ext_unlabel = perm_ext[num_ext_label:,:]
+	if tf > params["int_ext_time"]:
+		num_ext_label = int(exterior.shape[0]*params["data_percents"][1][2])
+		ext_perm = np.random.permutation(exterior)
+		ext_label = ext_perm[0:num_ext_label,:]
+		ext_unlabel = ext_perm[num_ext_label:,:]
+		num_ext_bound_l = int(int_bound.shape[0]*params["data_percents"][1][3])
+		ext_bound_perm = np.random.permutation(ext_bound)
+		ext_bound_l = ext_bound_perm[0:num_ext_bound_l,:]
+		ext_bound_ul = ext_bound_perm[num_ext_bound_l:,:]
+
 	else:
-		ext_label = np.array([])
-		ext_unlabel = np.array([])
+		ext_label = np.zeros((0,6))
+		ext_unlabel = np.zeros((0,6))
+		ext_bound = np.zeros((0,6))
 	
 	if heatmap:
 		# Make crude heatmap
@@ -466,14 +533,35 @@ def process_wave_data_sample(wave_data_dir, params):
 		make_heatmap_animation(p_mat_list, save_dir=wave_data_dir, fps=fps)
 		print("Finished making heatmap animation")
 
+	#Plot data if toggled
+	if params["data_plot"]:
+		plot_wave_data(wave_data_dir, 'int', (int_label, int_unlabel, int_bound, int_test))
+		plot_wave_data(wave_data_dir, 'ext', (ext_label, ext_unlabel, ext_bound, ext_test))
+		
+
 	np.savez(
 		wave_data_dir + '/processed_data.npz', 
-		int_label = int_label, int_unlabel = int_unlabel, bound = boundaries, int_test = int_test, 
-		ext_label = ext_label, ext_unlabel = ext_unlabel, ext_test = ext_test
+		int_label = int_label, int_unlabel = int_unlabel, int_bound_l = int_bound_l, 
+		int_bound_ul = int_bound_ul , int_test = int_test, 
+		ext_label = ext_label, ext_unlabel = ext_unlabel, ext_bound_l = ext_bound_l,
+		ext_bound_ul = ext_bound_ul, ext_test = ext_test
 	)
 
 	toc = time.time()
 	print("Time elapsed: ", toc - tic)
+
+def get_boundary(int_bound, ext_bound, total_size):
+	int_bound_horizontal = (int_bound[:,0] == 0) | (int_bound[:,0] == 1)
+	ext_bound_horizontal = (ext_bound[:,0] == 0) | (ext_bound[:,0] == 1)
+	bound_horizontal = np.concatenate((int_bound_horizontal, ext_bound_horizontal))
+	int_bound_vertical = (int_bound[:,1] == 0) | (int_bound[:,1] == 1)
+	ext_bound_vertical = (ext_bound[:,1] == 0) | (ext_bound[:,1] == 1)
+	bound_vertical = np.concatenate((int_bound_vertical, ext_bound_vertical))
+	others_horizontal = np.full((total_size - bound_horizontal.shape[0]), False)
+	others_vertical = np.full((total_size - bound_vertical.shape[0]), False)
+	bound_horizontal = np.concatenate((bound_horizontal, others_horizontal))
+	bound_vertical = np.concatenate((bound_vertical, others_vertical))
+	return bound_horizontal, bound_vertical
 
 def process_wave_data(wave_data_dir, params):
 	print("Processing wave data...")

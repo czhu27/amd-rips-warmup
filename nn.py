@@ -3,7 +3,7 @@
 # ------------------------------------------------------------------------------
 import numpy as np
 import math
-
+import time
 import tensorflow as tf
 from tensorflow import keras
 from keras import backend as K
@@ -11,6 +11,9 @@ from tensorflow.python.ops.gen_math_ops import lgamma
 from tensorflow.python.types.core import Value
 
 loss_tracker = tf.keras.metrics.Mean(name='loss')
+base_loss_tracker = tf.keras.metrics.Mean(name='base_loss')
+grad_reg_loss_tracker = tf.keras.metrics.Mean(name='grad_reg_loss')
+w_reg_loss_tracker = tf.keras.metrics.Mean(name='w_reg_loss')
 
 # ------------------------------------------------------------------------------
 # Custom model based on Keras Model.
@@ -20,17 +23,18 @@ class NN(keras.models.Model):
 	# Custom loss for function value
 	def loss_function_f(self, f, f_pred):
 		sq_diff = tf.math.squared_difference(f, f_pred)
-		loss_value = tf.math.reduce_mean(sq_diff)
+		loss_val = tf.math.reduce_mean(sq_diff)
+		loss_value = tf.where(tf.math.is_nan(loss_val), tf.zeros_like(loss_val), loss_val)
 		return loss_value			 
 	# def loss_function_f
 	
 	# Called from outside as a convenient way (albeit slightly risky)
 	# to specify the mini-batch size
-	def set_batch_size(self, batch_size):
-		self.batch_size = batch_size
+	# def set_batch_size(self, batch_size):
+	# 	self.batch_size = batch_size
 
-	def set_gd_noise(self, gd_noise):
-		self.gd_noise = gd_noise
+	# def set_gd_noise(self, gd_noise):
+	# 	self.gd_noise = gd_noise
 
 	# Create mini batches
 	def create_mini_batches(self, dataset):
@@ -94,6 +98,7 @@ class NN(keras.models.Model):
 	
 	def do_one_batch(self, batch):
 		X_f, f, l_bools, grad_bools = batch
+
 		# f = tf.reshape(f, [f.shape[0],1])
 		
 		# For gradient of loss w.r.t. trainable variables	
@@ -113,15 +118,23 @@ class NN(keras.models.Model):
 			## Compute Loss
 			# Compute L_f: \sum_i |f_i - f_i*|^2
 			L_f = 0
-			L_f += self.loss_function_f(f[l_bools], f_pred[l_bools])
+			base_loss = self.loss_function_f(f[l_bools], f_pred[l_bools])
+			base_loss_tracker.update_state(base_loss)
+			# Hacky silent add
+			weighted_base_loss = self.base_condition_weight.value() * base_loss
+			L_f += weighted_base_loss
 
 			if self.gradient_loss:
 				# Compute gradient condition (deviation from diff. eq.)
-				grad_loss = self.gradient_regularizer(f_pred, xyz, tape)
-				L_f += self.condition_weight * grad_loss
-					
+				grad_loss = tf.cast(self.gradient_regularizer(f_pred, xyz[-4:-1], tape), tf.float32)
+				grad_reg_loss_tracker.update_state(grad_loss)
+				weighted_grad_loss = self.grad_condition_weight.value() * grad_loss
+				L_f += weighted_grad_loss
+
 			# Add regularization loss	
-			L_f += sum(self.losses)
+			weighted_reg_loss = sum(self.losses)
+			w_reg_loss_tracker.update_state(weighted_reg_loss)
+			L_f += weighted_reg_loss 
 		
 		
 		# Compute gradient of total loss w.r.t. trainable variables
@@ -139,7 +152,7 @@ class NN(keras.models.Model):
 	
 		# Update network parameters
 		self.optimizer.apply_gradients(zip(gradients, trainable_vars))
-	
+
 		# Update loss metric
 		loss_tracker.update_state(L_f)
 
@@ -160,7 +173,7 @@ class NN(keras.models.Model):
 			# end for loop on mini batches
 
 		# Update loss and return value
-		return {"loss": loss_tracker.result()}
+		return {m.name: m.result() for m in self.metrics}
 		
 	# def train_step
 
@@ -171,7 +184,7 @@ class NN(keras.models.Model):
 		# or at the start of `evaluate()`.
 		# If you don't implement this property, you have to call
 		# `reset_states()` yourself at the time of your choosing.
-		return [loss_tracker]
+		return [loss_tracker, base_loss_tracker, grad_reg_loss_tracker, w_reg_loss_tracker]
 
 # class NN
 
@@ -247,7 +260,8 @@ def create_nn(layer_widths, configs):
 	else:
 		model.gradient_loss = True
 
-	model.condition_weight = configs.grad_reg_const
+	model.grad_condition_weight = tf.Variable(configs.grad_reg_const, dtype = tf.float32, trainable = False)
+	model.base_condition_weight = tf.Variable(1, dtype = tf.float32, trainable = False)
 	return model
 
 # def create_nn	

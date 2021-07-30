@@ -161,3 +161,5 @@ notebooks/*
 !notebooks/.gitkeep
 
 state_space.ipynb
+
+test.npz

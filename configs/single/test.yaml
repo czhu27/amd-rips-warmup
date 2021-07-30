@@ -1,16 +1,25 @@
 batch_size: 128
-# batch_size: 16384
-layers: [5,20, 20, 20, 1]
-#layers: [5, 150, 150, 150, 150, 1]
+layers: [5,20, 20, 20, 3]
 epochs: 10
 #data_run: ["05-05", "09-01", "025-075"]
 plots: [extrapolation, data-distribution, tensorboard, extrapolation_wave, movie]
 lr: 1.0e-4
 #data_run: fine_mesh_gauss_few/20210727-093118
-#data_run: 05-05
-data_run: [05-05, 09-01, 025-075]
+data_run: [09-01, 06-06]
+data_sources: [[0.9, 0.1], [0.6, 0.6]]
+#data_sources: [[0.5, 0.5], [0.9, 0.1], [0.25, 0.75]]
+#data_run: [05-05, 09-01, 025-075]
 from_tensor_slices: true
 source: wave_with_source
+#source: wave_with_source
 test_source: [0.6, 0.6]
 activation: elu
-test_data_dir: data/wave/06-06/
+test_data_dir: data/wave/06-06
+lr_scheduler: true
+                    #[initial,  final,  decay_steps,  power]
+lr_scheduler_params: [1.0e-3,   3.0e-5, 1000,        1.0] 
+
+loss_schedulerizer: true
+loss_schedulerizer_params: [500, 1000] #[Begin adding grad, fully added]
+model_outputs: all
+gradient_loss: first_explicit

@@ -23,8 +23,8 @@ gd_noise: 0.0
 #############
 #source: wave_with_source
 source: wave
-data_dir: data/wave
-data_run: fine_mesh_gauss_few 
+data_dir: data/wave/
+data_run: [fine_mesh_gauss_few] 
 
 corners: false
 dataset: [2500, 7500, 0, 1.0, 0.0] #[interior, exterior, border, labeled_int%, labeled_ext%]
@@ -33,6 +33,7 @@ noise: 0.0
 from_tensor_slices: true
 
 # make sure data_sources correspond with files in data_run
+# also make sure data_sources is list of points
 #data_sources: [[0.5, 0.5], [0.9, 0.1], [0.25, 0.75]]
 #data_run: [05-05, 09-01, 025-075]
 
@@ -46,9 +47,14 @@ test_data_dir: data/wave/06-06/
 regularizer: none
 reg_const: 0.1
 # none, const, zero, first
+model_outputs: pressure
 gradient_loss: none
+loss_schedulerizer: true
+loss_schedulerizer_params: [500,2000] #[Begin adding grad, fully added]
 #grad_reg_norm: l1 l2
 grad_reg_const: 1
+# grad_reg_scheduler: late_start
+# grad_reg_start: 
 
 #############
 #  Logging  #
@@ -58,3 +64,4 @@ output_dir: null   # overridden in main.py
 output_root: output/wave
 plots: [extrapolation, data-distribution, tensorboard, extrapolation_wave, heatmap]
 saves: [model]
+tb_error_timestep: 100

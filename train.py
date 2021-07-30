@@ -20,13 +20,21 @@ else:
 from tensorflow import keras
 from tensorflow.keras import optimizers
 
-from helpers import Configs
+from helpers import Configs, shuffle_in_parallel, np_unstack
 from nn import create_nn
 from targets import get_target
 from plots import plot_data_2D, plot_gridded_functions, make_movie, make_wave_plot, make_heatmap_movie
-from data import data_creation, compute_error, extrap_error, data_wave, compute_error_wave, error_time
+from data import data_creation, compute_error, extrap_error, data_wave, compute_error_wave, error_time, get_boundary
 from wave_reg import get_wave_reg
 
+
+class FakeModel:
+	def __init__(self, model):
+		self.model = model
+	def predict(self, x):
+		puv = self.model.predict(x)
+		p, u, v = np_unstack(puv, axis=1)
+		return p
 
 #tf.debugging.set_log_device_placement(True)
 def general_error(model, X, Y):
@@ -38,202 +46,143 @@ def general_error(model, X, Y):
 def get_data(configs, figs_folder):
 	grad_bools = None #Placeholder
 	if configs.source == "synthetic":
-
 		# Data for training NN based on L_f loss function
 		X_l, X_ul = data_creation(configs.dataset, configs.corners)
-
 		# Set target function
 		f, grad_reg = get_target(configs.target, configs.gradient_loss, configs)
-
 		# Apply target func to data
 		Y_l = f(X_l[:, 0:1], X_l[:, 1:2])
-
 		if grad_reg == 'zero' or grad_reg == 'const':
 			grad_bools = tf.fill(X_l.shape[0] + X_ul.shape[0], True)
-
 		error_metrics = {
 			"interpolation error (1x1 square)": lambda model : compute_error(model, f, -1.0, 1.0),
 			"extrapolation error (2x2 ring)": lambda model : extrap_error(model, f, -1.0, 1.0, -2.0, 2.0),
 			"extrapolation error (3x3 ring)": lambda model : extrap_error(model, f, -2.0, 2.0, -3.0, 3.0),
 		}
 
-	elif configs.source == "wave_with_source":
+	elif configs.source == "wave" or configs.source == "wave_with_source":
 		data_run = configs.data_dir
-		tot_X_all = np.zeros((0,5), dtype = np.float32)
-		tot_Y_all = tf.zeros((0,1))
+		
+		if configs.source == "wave_with_source":
+			assert configs.layers[0] == 5, "Wrong input layer size"
+
+		if configs.model_outputs == "all":
+			# (p, u, v)
+			assert configs.layers[-1] == 3
+			tot_Y_all = tf.zeros((0,3))	
+		elif configs.model_outputs == "pressure":
+			# (p)
+			assert configs.layers[-1] == 1
+			tot_Y_all = tf.zeros((0,1))
+		else:
+			raise ValueError("Unknown model_outputs ", configs.model_outputs)
+		
+		tot_X_all = np.zeros((0,configs.layers[0]), dtype = np.float32)
 		tot_label_bools = tf.Variable(np.array([], dtype=bool))
+		tot_grad_bools = tf.Variable(np.array([], dtype=bool))
+		tot_bound_horizontal = tf.Variable(np.array([], dtype=bool))
+		tot_bound_vertical = tf.Variable(np.array([], dtype=bool))
 		for i, data_run_name in enumerate(configs.data_run):
-			data_run_x = data_run + data_run_name
-			data = np.load(data_run_x + '/processed_data.npz')
-
-			int_label, int_unlabel, bound = data['int_label'], data['int_unlabel'], data['bound']
-			ext_label, ext_unlabel = data['ext_label'], data['ext_unlabel']
-			X_l = np.float32(np.concatenate((bound[:,0:3],int_label[:,0:3])))
-			X_ul = int_unlabel #int_ulabel
-			Y_l = np.float32(np.concatenate((bound[:,3], int_label[:,3])))
-			Y_l = np.reshape(Y_l, (len(Y_l),1))
-
-			is_boundary = tf.fill(bound.shape[0], True)
-			is_not_boundary = tf.fill(int_label.shape[0] + int_unlabel.shape[0], False)
-			is_boundary_all = tf.concat([is_boundary, is_not_boundary], axis=0)
-
+			new_data_run = data_run + "/" + data_run_name
+			# Get the latest timestamp
+			subpaths = os.listdir(new_data_run)
+			assert len(subpaths) == 1, "Must have exactly one data timestamp"
+			new_data_run = new_data_run + "/" + subpaths[-1]
+			fpath = new_data_run + '/' + 'processed_data.npz'
+			assert os.path.exists(fpath)
+			data = np.load(fpath)
+			int_label, int_unlabel, int_bound_l, int_bound_ul = data['int_label'], data['int_unlabel'], data['int_bound_l'], data['int_bound_ul']
+			ext_label, ext_unlabel, ext_bound_l, ext_bound_ul = data['ext_label'], data['ext_unlabel'], data['ext_bound_l'], data['ext_bound_ul']
+			X_l = np.float32(np.concatenate((int_bound_l[:,0:3], ext_bound_l[:,0:3], int_label[:,0:3], ext_label[:,0:3])))
+			X_ul = np.float32(np.concatenate((int_bound_ul[:,0:3], ext_bound_ul[:,0:3], int_unlabel[:,0:3],ext_unlabel[:,0:3])))
+			
+			total_size = X_l.shape[0] + X_ul.shape[0]
+			if configs.model_outputs == "all":
+				Y_l = np.float32(np.concatenate((int_bound_l[:,3:], ext_bound_l[:,3:], int_label[:,3:], ext_label[:,3:])))	
+			elif configs.model_outputs == "pressure":
+				Y_l = np.float32(np.concatenate((int_bound_l[:,3], ext_bound_l[:,3], int_label[:,3], ext_label[:,3])))
+				Y_l = Y_l[:, None]
+			int_bound = np.concatenate((int_bound_l, int_bound_ul))
+			ext_bound = np.concatenate((ext_bound_l, ext_bound_ul))
+			bound_horizontal, bound_vertical = get_boundary(int_bound, ext_bound, total_size)
+			grad_reg = get_wave_reg(configs.gradient_loss, configs)
+			#grad_reg = get_target(configs.target, configs.gradient_loss, configs)
+			if grad_reg is None:
+				grad_bools = tf.fill(X_l.shape[0] + X_ul.shape[0], True)
+			# TODO: Should be handled in get_wave_reg?
+			grad_bools_bound = tf.fill(int_bound.shape[0] + ext_bound.shape[0], False)
+			grad_bools_pts = tf.fill(int_label.shape[0] + ext_label.shape[0] + int_unlabel.shape[0] + ext_unlabel.shape[0], True)
+			grad_bools = tf.concat([grad_bools_bound, grad_bools_pts], axis = 0)
+			# Remove the other outputs in the model (hack)
 
 
 			#Creates labels to pass through network
 			is_labeled_l = tf.fill(X_l.shape[0], True)
 			is_labeled_ul = tf.fill(X_ul.shape[0], False)
-
 			if X_ul.shape[0] == 0:
 				label_bools = is_labeled_l
 			else:
 				label_bools = tf.concat([is_labeled_l, is_labeled_ul], axis=0)
-
-			Y_ul = tf.zeros((X_ul.shape[0], 1))
-
+			Y_ul = tf.zeros((X_ul.shape[0], Y_l.shape[1]))
 			# Add noise to y-values
 			if configs.noise > 0:
 				Y_l += tf.random.normal(Y_l.shape, stddev=configs.noise)
 				Y_l += np.reshape(configs.noise*np.random.randn((len(Y_l))),(len(Y_l),1))
+			
+			X_all = tf.concat([X_l, X_ul], axis=0)
+			Y_all = tf.concat([Y_l, Y_ul], axis=0)
 
-			#Concat inputs, outputs, and bools
-			if X_ul.shape[0] == 0:
-				X_all = X_l
-				Y_all = Y_l
-			else:
-				X_all = tf.concat([X_l, X_ul], axis=0)
-				Y_all = tf.concat([Y_l, Y_ul], axis=0)
+			if configs.source == "wave_with_source":
+				source_x = configs.data_sources[i][0]
+				source_y = configs.data_sources[i][1]
 
-			source_x = configs.data_sources[i][0]
-			source_y = configs.data_sources[i][1]
-			source_x_col = np.full((X_all.shape[0],1), source_x)
-			source_y_col = np.full((X_all.shape[0],1), source_y)
-			X_all = np.concatenate((source_x_col, source_y_col, X_all), axis=1)
+				source_x_col = np.full((X_all.shape[0],1), source_x)
+				source_y_col = np.full((X_all.shape[0],1), source_y)
+				X_all = np.concatenate((source_x_col, source_y_col, X_all), axis=1)
+		
 			tot_X_all = np.concatenate((tot_X_all, X_all), axis=0)
 			tot_Y_all = tf.concat([tot_Y_all, Y_all], axis=0)
 			tot_label_bools = tf.concat([tot_label_bools, label_bools], axis=0)
+			tot_grad_bools = tf.concat([tot_grad_bools, grad_bools], axis=0)
+			tot_bound_horizontal = tf.concat([tot_bound_horizontal, bound_horizontal], axis=0)
+			tot_bound_vertical = tf.concat([tot_bound_vertical, bound_vertical], axis=0)
 
-
-
-				
-		grad_reg = get_wave_reg(configs.gradient_loss, configs)
-		#grad_reg = get_target(configs.target, configs.gradient_loss, configs)
-
-		if grad_reg is None:
-			grad_bools = tf.fill(tot_X_all.shape[0], True)
-
-		if grad_reg == 'unknown':
-			grad_bools = tf.fill(tot_X_all.shape[0], True)
-		elif grad_reg == 'none':
-			grad_bools = tf.fill(tot_X_all.shape[0], True)
-		elif grad_reg == "TBD":
-			grad_bools = tf.fill(tot_X_all.shape[0], True)
-		elif grad_reg == "We'll figure it out":
-			grad_bools = tf.fill(tot_X_all.shape[0], True)
-		# 	raise ValueError("Unknown gradient regularizer ", grad_reg)
-			
-		test_data = np.load(configs.test_data_dir + '/processed_data.npz')
+	#Concat inputs, outputs, and bools
+		test_data_dir = configs.test_data_dir
+		# Get the latest timestamp
+		subpaths = os.listdir(test_data_dir)
+		assert len(subpaths) == 1, "Must have exactly one data timestamp"
+		test_data_dir = test_data_dir + "/" + subpaths[-1]
+		fpath = test_data_dir + '/' + 'processed_data.npz'
+		assert os.path.exists(fpath)
+		test_data = np.load(fpath)
 		int_test = test_data['int_test']
 		ext_test = test_data['ext_test']
 
-		test_source = configs.test_source
+		test_source = None
+		if configs.source == "wave_with_source":
+			test_source = configs.test_source
 
+		if configs.model_outputs == "all":
+			simplify = lambda model : FakeModel(model)
+		else:
+			simplify = lambda model : model		
 		error_metrics = {
-			"interpolation error (t <= 1)" : lambda model : compute_error_wave(model, int_test, source_input=test_source),
-			"extrapolation error (1 < t)" : lambda model : compute_error_wave(model, ext_test, source_input=test_source)
+			"interpolation error (t <= 1)" : lambda model : compute_error_wave(simplify(model), int_test, source_input=test_source),
+			"extrapolation error (1 < t)" : lambda model : compute_error_wave(simplify(model), ext_test, source_input=test_source)
 		}
-
 		error_plots = {
-			"Error vs. time" : lambda model : error_time(model, int_test, ext_test, figs_folder, '/error_time', test_source=test_source)
+			"Error vs. time" : lambda model : error_time(simplify(model), int_test, ext_test, figs_folder, '/error_time', test_source=test_source)
 		}
-		
-		print(f"Loaded wave eq. simulation inputs/outputs. Count: {len(X_l)}")
-
-		return tot_X_all, tot_Y_all, tot_label_bools, grad_bools, grad_reg, error_metrics, error_plots
-
-
-	elif configs.source == "wave":
-		data_run = configs.data_dir
-		data_run = data_run + "/" + configs.data_run
-		# Get the latest timestamp
-		subpaths = os.listdir(data_run)
-		assert len(subpaths) == 1, "Must have exactly one data timestamp"
-		data_run = data_run + "/" + subpaths[-1]
-
-		fpath = data_run + '/' + 'processed_data.npz'
-		assert os.path.exists(fpath)
-		data = np.load(fpath)
-
-		int_label, int_unlabel, bound, int_test = data['int_label'], data['int_unlabel'], data['bound'], data['int_test']
-		ext_label, ext_unlabel, ext_test = data['ext_label'], data['ext_unlabel'], data['ext_test']
-		X_l = np.float32(np.concatenate((bound[:,0:3],int_label[:,0:3])))
-		X_ul = int_unlabel #int_ulabel
-		Y_l = np.float32(np.concatenate((bound[:,3], int_label[:,3])))
-		Y_l = np.reshape(Y_l, (len(Y_l),1))
-
-		is_boundary = tf.fill(bound.shape[0], True)
-		is_not_boundary = tf.fill(int_label.shape[0] + int_unlabel.shape[0], False)
-		is_boundary_all = tf.concat([is_boundary, is_not_boundary], axis=0)
-
-		grad_reg = get_wave_reg(configs.gradient_loss, configs)
-		#grad_reg = get_target(configs.target, configs.gradient_loss, configs)
-
-		grad_bools = tf.fill(X_l.shape[0] + X_ul.shape[0], True)
-
-		# if grad_reg == 'second_explicit':
-		# 	grad_bools = tf.fill(X_l.shape[0] + X_ul.shape[0], True)
-		# elif grad_reg == "TBD":
-		# 	grad_bools = tf.fill(X_l.shape[0] + X_ul.shape[0], True)
-		# elif grad_reg == "We'll figure it out":
-		# 	grad_bools = tf.fill(X_l.shape[0] + X_ul.shape[0], True)
-		# else:
-		# 	raise ValueError("Unknown gradient regularizer ", grad_reg)
-
-
-		error_metrics = {
-			"interpolation error (t <= 1)" : lambda model : compute_error_wave(model, int_test),
-			"extrapolation error (1 < t)" : lambda model : compute_error_wave(model, ext_test)
-		}
-
-		error_plots = {
-			"Error vs. time" : lambda model : error_time(model, int_test, ext_test, figs_folder, '/error_time')
-		}
-		
-		print(f"Loaded wave eq. simulation inputs/outputs. Count: {len(X_l)}")
-
-	#Creates labels to pass through network
-	is_labeled_l = tf.fill(X_l.shape[0], True)
-	is_labeled_ul = tf.fill(X_ul.shape[0], False)
-
-	if X_ul.shape[0] == 0:
-		label_bools = is_labeled_l
-	else:
-		label_bools = tf.concat([is_labeled_l, is_labeled_ul], axis=0)
-
-	Y_ul = tf.zeros((X_ul.shape[0], 1))
-
-	# Add noise to y-values
-	if configs.noise > 0:
-		Y_l += tf.random.normal(Y_l.shape, stddev=configs.noise)
-		Y_l += np.reshape(configs.noise*np.random.randn((len(Y_l))),(len(Y_l),1))
-
-	#Concat inputs, outputs, and bools
-	if X_ul.shape[0] == 0:
-		X_all = tf.convert_to_tensor(X_l)
-		Y_all = tf.convert_to_tensor(Y_l)
-	else:
-		X_all = tf.concat([X_l, X_ul], axis=0)
-		Y_all = tf.concat([Y_l, Y_ul], axis=0)
-	
-	
+		print(f"Loaded wave eq. simulation inputs/outputs. Count: {len(X_l) + len(X_ul)}")
 
 		# if "data-distribution" in configs.plots:
 		# 	plot_data(X_l, X_ul, figs_folder, configs)
-
-	print(f"Loaded wave eq. simulation inputs/outputs. Count: {len(X_l)}")
+	print(f"Loaded wave eq. simulation inputs/outputs. Count: {len(X_all)}")
 	# else:
 	# 	raise ValueError("Unknown data source " + configs.source)
+	return X_all, Y_all, label_bools, grad_bools, bound_horizontal, bound_vertical, grad_reg, error_metrics, error_plots
 
-	return X_all, Y_all, label_bools, grad_bools, grad_reg, error_metrics, error_plots
 
 def plot_data(X_l, X_ul, figs_folder, configs):
 	
@@ -247,6 +196,9 @@ def plot_data(X_l, X_ul, figs_folder, configs):
 			print("PLOT PLOT PLOT")
 
 def comparison_plots(model, figs_folder, configs):
+
+	if configs.model_outputs == "all":
+		model = FakeModel(model)
 
 	if configs.source == "synthetic":
 		# 2D Plotting
@@ -271,18 +223,22 @@ def comparison_plots(model, figs_folder, configs):
 					ml_input = tf.concat([X, tf.fill((len(X), 1), t)], axis=1)
 					return model.predict(ml_input)
 			f = lambda x, y: tf.zeros_like(x)
-			buf = plot_gridded_functions(m, f, 0, 1, f"_t={t:.3f}", folder=figs_folder, test_source=test_source)
-
+			#buf = plot_gridded_functions(m, f, 0, 1, f"_t={t:.3f}", folder=figs_folder)
 		# 3D Plotting
 		if "heatmap" in configs.plots:
 			make_heatmap_movie(model, figs_folder, time_steps = 100, dx = .01, sample_step = .01, test_source=test_source)
 		if "movie" in configs.plots:
 			make_movie(model, figs_folder, test_source=test_source)
-		make_wave_plot(model, t = 0, f_true = 0, figs_folder = figs_folder, tag='0', test_source=test_source)
-		make_wave_plot(model, t = .25, f_true = 0, figs_folder = figs_folder, tag='0.25', test_source=test_source)
-		make_wave_plot(model, t = .5, f_true = 0, figs_folder = figs_folder, tag='0.5', test_source=test_source)
-		make_wave_plot(model, t = .75, f_true = 0, figs_folder = figs_folder, tag='0.75', test_source=test_source)
-		make_wave_plot(model, t = 1, f_true = 0, figs_folder = figs_folder, tag='1', test_source=test_source)
+		make_movie(model, figs_folder, filename='wave_pred.gif', t0=0, test_source=test_source)
+		make_movie(model, figs_folder, filename='wave_pred_ext.gif', t0=1, test_source=test_source)
+		make_wave_plot(model, t = 0, figs_folder = figs_folder, tag='0', test_source=test_source)
+		make_wave_plot(model, t = .25, figs_folder = figs_folder, tag='0.25', test_source=test_source)
+		make_wave_plot(model, t = .5, figs_folder = figs_folder, tag='0.5', test_source=test_source)
+		make_wave_plot(model, t = .75, figs_folder = figs_folder, tag='0.75', test_source=test_source)
+		make_wave_plot(model, t = 1, figs_folder = figs_folder, tag='1', test_source=test_source)
+	
+	else:
+		raise ValueError("Unknown data source " + configs.source)
 
 def train(configs: Configs):
 
@@ -330,20 +286,24 @@ def train(configs: Configs):
 	# ------------------------------------------------------------------------------
 
 	# Get the "interesting" data
-	X_all, Y_all, label_bools, grad_bools, grad_reg, error_metrics, error_plots = get_data(configs, figs_folder)#, error_metrics = get_data(configs)
+	X_all, Y_all, label_bools, grad_bools, bound_horizontal, bound_vertical, grad_reg, error_metrics, error_plots = get_data(configs, figs_folder)#, error_metrics = get_data(configs)
 
 	# Create TensorFlow dataset for passing to 'fit' function (below)
 	if configs.from_tensor_slices:
 		dataset = tf.data.Dataset.from_tensor_slices((X_all, Y_all, label_bools, grad_bools))
 		dataset = dataset.shuffle(len(dataset))
 	else:
-		dataset = tf.data.Dataset.from_tensors((X_all, Y_all, label_bools, grad_bools))
-
+		mat_list = shuffle_in_parallel([X_all, Y_all, label_bools, grad_bools])
+		dataset = tf.data.Dataset.from_tensors(tuple(mat_list))
 	# ------------------------------------------------------------------------------
 	# Create neural network (physics-inspired)
 	# ------------------------------------------------------------------------------
 	layers = configs.layers
 	model = create_nn(layers, configs)
+
+	# Hack on the model
+	#model = tf.keras.models.load_model('output/wave/single/first_grad_tests/lr_1E-4/trial_0/model')
+
 	model.summary()
 
 	# TODO: Hacky add...
@@ -356,7 +316,8 @@ def train(configs: Configs):
 	# ------------------------------------------------------------------------------
 	if configs.lr_scheduler:
 		opt_step = tf.keras.optimizers.schedules.PolynomialDecay(
-			configs.lr_scheduler_params[0], configs.lr_scheduler_params[2], 
+			configs.lr_scheduler_params[0],
+			(X_all.shape[0]/configs.batch_size) * configs.lr_scheduler_params[2],
 			end_learning_rate=configs.lr_scheduler_params[1], power=configs.lr_scheduler_params[3],
 			cycle=False, name=None) #Changing learning rate
 	else:
@@ -368,13 +329,13 @@ def train(configs: Configs):
 	opt_batch_size = configs.batch_size	# batch size
 	opt_num_its = configs.epochs		# number of iterations
 
-	model.set_batch_size(opt_batch_size)
+	model.batch_size = opt_batch_size
 	if configs.from_tensor_slices:
 		dataset = dataset.batch(opt_batch_size)
 		model.is_dataset_prebatched = True
 	else:
 		model.is_dataset_prebatched = False
-	model.set_gd_noise(configs.gd_noise)
+	model.gd_noise = configs.gd_noise
 
 	optimizer = optimizers.Adam(learning_rate = opt_step)
 	model.compile(optimizer = optimizer, run_eagerly=configs.debug)		# DEBUG
@@ -399,12 +360,36 @@ def train(configs: Configs):
 
 	class StressTestLogger(keras.callbacks.Callback):
 		def on_epoch_end(self, epoch, logs):
-			self.test_every = 100
+			self.test_every = configs.tb_error_timestep
 			if epoch % self.test_every == self.test_every - 10:
 				for error_name, error_func in error_metrics.items():
 					error_val = error_func(model)
 					tf.summary.scalar('Error/' + error_name, data=error_val, step=epoch)
 					
+	class LossSchedulerizer(keras.callbacks.Callback):
+		def on_train_begin(self, logs):
+			self.model.grad_condition_weight.assign(0)
+
+		def on_epoch_begin(self, epoch, logs):
+			max_val = configs.grad_reg_const
+			start = configs.loss_schedulerizer_params[0]
+			finish = configs.loss_schedulerizer_params[1]
+			if start <= epoch and epoch <= finish:
+				grad_weight = max_val * ((epoch-start)/(finish-start))
+				self.model.grad_condition_weight.assign(grad_weight)
+
+	class LossLogger(keras.callbacks.Callback):
+		def on_epoch_end(self, epoch, logs):
+			tf.summary.scalar('Loss/Base (weighted)', 
+				data=self.model.weighted_base_loss, step=epoch
+			)
+			tf.summary.scalar('Loss/Gradient (weighted)', 
+				data=self.model.weighted_grad_loss, step=epoch
+			)
+			tf.summary.scalar('Loss/Regularizer (weighted)', 
+				data=self.model.weighted_reg_loss, step=epoch
+			)
+			
 
 	tensorboard_callback = keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
 	logging_callbacks = [TimeLogger(), StressTestLogger(), tensorboard_callback]
@@ -414,6 +399,9 @@ def train(configs: Configs):
 		callbacks = logging_callbacks
 	else:
 		callbacks = []
+
+	if configs.loss_schedulerizer:
+		callbacks.append(LossSchedulerizer())
 
 	model.fit(dataset, 
 			epochs=opt_num_its, 
@@ -432,6 +420,7 @@ def train(configs: Configs):
 	# ------------------------------------------------------------------------------
 	# Stress set - Assess extrapolation capabilities
 	# ------------------------------------------------------------------------------
+
 	final_metrics = {}
 
 	'''

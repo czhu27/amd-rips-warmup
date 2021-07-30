@@ -17,19 +17,9 @@ def alt_second_order_c_known(f, xyz, tape):
     source_t = 0
     wave_eq = ftt - c_sqd * del_f - source_t
 
-    return wave_eq
+    grad_loss = tf.math.reduce_mean(tf.math.abs(wave_eq))
 
-def velocity_lr(f, xyz, tape):
-    x, y, t = xyz
-    p, u, v = tf.unstack(f, axis=1)
-
-    return u
-
-def velocity_ud(f, xyz, tape):
-    x, y, t = xyz
-    p, u, v = tf.unstack(f, axis=1)
-
-    return v
+    return grad_loss
 
 def first_order_c_known(f, xyz, tape):
     x, y, t = xyz
@@ -50,13 +40,13 @@ def first_order_c_known(f, xyz, tape):
     source = 0
 
     first_eq = source - p_t - kappa*div_vel
-    second_eq_A = u_t + (1/rho)*p_x
-    second_eq_B = v_t + (1/rho)*p_y
-    eqs = tf.stack([first_eq, second_eq_A, second_eq_B], axis=-1)
-    return eqs
+    second_eq_l1_norm = tf.math.abs(u_t + (1/rho)*p_x) + tf.math.abs(v_t + (1/rho)*p_y) 
+
+    eq_sys = tf.concat([first_eq, second_eq_l1_norm], axis=0)
+    grad_loss = tf.math.reduce_mean(tf.math.abs(eq_sys))
+    return grad_loss
 
 def first_order_curl_c_known(f, xyz, tape):
-    raise ValueError("needs to be updated")
     x, y, t = xyz
     p, u, v = tf.unstack(f, axis=1)
 
@@ -83,7 +73,6 @@ def first_order_curl_c_known(f, xyz, tape):
     return grad_loss
 
 def second_order_c_known(f, xyz, tape):
-    raise ValueError("needs to be updated")
     # Unpack the columns
     x,y,t = xyz
 
@@ -104,7 +93,6 @@ def second_order_c_known(f, xyz, tape):
     return grad_loss
 
 def second_order_c_known_L2(f, xyz, tape):
-    raise ValueError("needs to be updated")
     # Unpack the columns
     x,y,t = xyz
 
@@ -126,7 +114,6 @@ def second_order_c_known_L2(f, xyz, tape):
 
 
 def second_order_c_known_late_start(f, xyz, tape):
-    raise ValueError("needs to be updated")
     # Unpack the columns
     x,y,t = xyz
 
@@ -151,7 +138,6 @@ def second_order_c_known_late_start(f, xyz, tape):
 
 
 def second_order_c_known_no_middle(f, xyz, tape):
-    raise ValueError("needs to be updated")
     # Unpack the columns
     x,y,t = xyz
 
@@ -178,7 +164,6 @@ def second_order_c_known_no_middle(f, xyz, tape):
     return grad_loss
 
 def second_order_c_unknown(f, xyz, tape):
-    raise ValueError("needs to be updated")
     # Unpack the columns
     x,y,t = xyz
 
@@ -195,7 +180,6 @@ def second_order_c_unknown(f, xyz, tape):
     return grad_loss
 
 def third_order_c_unknown(f, xyz, tape):
-    raise ValueError("needs to be updated")
     # Unpack the columns
     x,y,t = xyz
 
@@ -214,46 +198,27 @@ def third_order_c_unknown(f, xyz, tape):
 
     return grad_loss
 
-name_to_reg_by_category = {
-    "wave_eq": {
-        "first_explicit": {"interior": first_order_c_known},
-        "first_curl_explicit": {"interior": first_order_curl_c_known},
-        "second_explicit": {"interior": second_order_c_known},
-        "second_c_known": {"interior": second_order_c_known},
-        "second_explicit_L2": {"interior": second_order_c_known_L2},
-        "second_explicit_late": {"interior": second_order_c_known_late_start},
-        "second_explicit_no_middle": {"interior": second_order_c_known_no_middle},
-        "second_implicit": {"interior": second_order_c_unknown},
-        "second_c_unknown": {"interior": second_order_c_unknown},
-        "third_implicit": {"interior": third_order_c_unknown},
-        "third_c_unknown": {"interior": third_order_c_unknown},
-    },
-    "boundary": {
-        "velocity": {"boundary_lr": velocity_lr, "boundary_ud": velocity_ud}
-    }
-}
 
-def clean_append(my_dict, key, element):
-    if key in my_dict:
-        my_dict.append(element)
+def get_wave_reg(regularizer, configs):
+    if regularizer == "first_explicit":
+        return first_order_c_known
+    elif regularizer == "first_curl_explicit":
+        return first_order_curl_c_known
+    if regularizer in ["second_explicit", "second_c_known"]:
+        return second_order_c_known
+    elif regularizer == "second_explicit_L2":
+        return second_order_c_known_L2
+    elif regularizer == "second_explicit_late":
+        return second_order_c_known_late_start
+    elif regularizer == "second_explicit_no_middle":
+        return second_order_c_known_no_middle
+    elif regularizer in ["second_implicit", "second_c_unknown"]:
+        return second_order_c_unknown
+    elif regularizer in ["third_implicit", "third_c_unknown"]:
+        return third_order_c_unknown
+    elif regularizer == "none":
+        return None
     else:
-        my_dict[key] = [element]
-
-def get_wave_reg(gr_names_by_category):
-
-    # Ensure grad_reg_names is a list
-    if not isinstance(gr_names_by_category, dict):
-        raise ValueError("GR Names must be a dictionary")
-
-    grad_regs = {}
-
-    for category, gr_names in gr_names_by_category.items():
-        name_to_reg = name_to_reg_by_category[category]
-        for name in gr_names:
-            reg = name_to_reg[name]
-            for region, func in reg.items():
-                clean_append(grad_regs, region, func)
-
-    return grad_regs
-
+        raise ValueError(f"Unknown regularizer {regularizer} for wave eq.")
+    
         

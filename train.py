@@ -3,6 +3,7 @@ import time
 import os
 from tensorflow.python.ops.gen_array_ops import zeros_like
 
+import math
 import yaml
 import tensorflow as tf
 
@@ -35,6 +36,36 @@ class FakeModel:
 		puv = self.model.predict(x)
 		p, u, v = np_unstack(puv, axis=1)
 		return p
+
+class CustomLRSched(tf.keras.optimizers.schedules.LearningRateSchedule):
+	def __init__(self, initial_lr, batch_size, dataset_size, start_epoch, end_lr, decay_epochs):
+		self.initial_lr = initial_lr
+		self.num_batches_per_epoch = math.ceil(dataset_size/batch_size)
+		self.start_step = start_epoch * self.num_batches_per_epoch + self.num_batches_per_epoch
+		self.decay_epochs = decay_epochs
+		self.end_decay_step = (start_epoch+decay_epochs) * self.num_batches_per_epoch + self.num_batches_per_epoch
+		self.end_lr = end_lr
+
+	@tf.function
+	def __call__(self, step):
+		if step <= self.start_step:
+			return self.initial_lr
+		elif step > self.start_step and step <= self.end_decay_step:
+			step_cast = tf.cast(step, tf.float32)
+			return self.initial_lr + tf.math.multiply((self.end_lr - self.initial_lr)/(self.end_decay_step - self.start_step), step_cast-self.start_step)
+		else:
+			return self.end_lr
+
+	def get_config(self):
+		config = {
+    		'initial_lr': self.initial_lr,
+    		'num_batches_per_epoch': self.num_batches_per_epoch,
+			'start_step': self.start_step,
+			'decay_epochs': self.decay_epochs,
+			'end_decay_step': self.end_decay_step,
+			'end_lr': self.end_lr
+     	}
+		return config
 
 #tf.debugging.set_log_device_placement(True)
 def general_error(model, X, Y):
@@ -79,9 +110,9 @@ def get_data(configs, figs_folder):
 		
 		tot_X_all = np.zeros((0,configs.layers[0]), dtype = np.float32)
 		tot_label_bools = tf.Variable(np.array([], dtype=bool))
-		tot_grad_bools = tf.Variable(np.array([], dtype=bool))
-		tot_bound_horizontal = tf.Variable(np.array([], dtype=bool))
-		tot_bound_vertical = tf.Variable(np.array([], dtype=bool))
+		# tot_grad_bools = tf.Variable(np.array([], dtype=bool))
+		# tot_bound_horizontal = tf.Variable(np.array([], dtype=bool))
+		# tot_bound_vertical = tf.Variable(np.array([], dtype=bool))
 		for i, data_run_name in enumerate(configs.data_run):
 			new_data_run = data_run + "/" + data_run_name
 			# Get the latest timestamp
@@ -102,27 +133,21 @@ def get_data(configs, figs_folder):
 			elif configs.model_outputs == "pressure":
 				Y_l = np.float32(np.concatenate((int_bound_l[:,3], ext_bound_l[:,3], int_label[:,3], ext_label[:,3])))
 				Y_l = Y_l[:, None]
-			int_bound = np.concatenate((int_bound_l, int_bound_ul))
-			ext_bound = np.concatenate((ext_bound_l, ext_bound_ul))
-			bound_horizontal, bound_vertical = get_boundary(int_bound, ext_bound, total_size)
-			grad_reg = get_wave_reg(configs.gradient_loss, configs)
-			#grad_reg = get_target(configs.target, configs.gradient_loss, configs)
-			if grad_reg is None:
-				grad_bools = tf.fill(X_l.shape[0] + X_ul.shape[0], True)
-			# TODO: Should be handled in get_wave_reg?
-			grad_bools_bound = tf.fill(int_bound.shape[0] + ext_bound.shape[0], False)
-			grad_bools_pts = tf.fill(int_label.shape[0] + ext_label.shape[0] + int_unlabel.shape[0] + ext_unlabel.shape[0], True)
-			grad_bools = tf.concat([grad_bools_bound, grad_bools_pts], axis = 0)
-			# Remove the other outputs in the model (hack)
-
+			# int_bound = np.concatenate((int_bound_l, int_bound_ul))
+			# ext_bound = np.concatenate((ext_bound_l, ext_bound_ul))
+			# bound_horizontal, bound_vertical = get_boundary(int_bound, ext_bound, total_size)
+			# grad_reg = get_wave_reg(configs.gradient_loss, configs)
+			# if grad_reg is None:
+			# 	grad_bools = tf.fill(X_l.shape[0] + X_ul.shape[0], True)
+			# # TODO: Should be handled in get_wave_reg?
+			# grad_bools_bound = tf.fill(int_bound.shape[0] + ext_bound.shape[0], False)
+			# grad_bools_pts = tf.fill(int_label.shape[0] + ext_label.shape[0] + int_unlabel.shape[0] + ext_unlabel.shape[0], True)
+			# grad_bools = tf.concat([grad_bools_bound, grad_bools_pts], axis = 0)
 
 			#Creates labels to pass through network
 			is_labeled_l = tf.fill(X_l.shape[0], True)
 			is_labeled_ul = tf.fill(X_ul.shape[0], False)
-			if X_ul.shape[0] == 0:
-				label_bools = is_labeled_l
-			else:
-				label_bools = tf.concat([is_labeled_l, is_labeled_ul], axis=0)
+			label_bools = tf.concat([is_labeled_l, is_labeled_ul], axis=0)
 			Y_ul = tf.zeros((X_ul.shape[0], Y_l.shape[1]))
 			# Add noise to y-values
 			if configs.noise > 0:
@@ -143,11 +168,15 @@ def get_data(configs, figs_folder):
 			tot_X_all = np.concatenate((tot_X_all, X_all), axis=0)
 			tot_Y_all = tf.concat([tot_Y_all, Y_all], axis=0)
 			tot_label_bools = tf.concat([tot_label_bools, label_bools], axis=0)
-			tot_grad_bools = tf.concat([tot_grad_bools, grad_bools], axis=0)
-			tot_bound_horizontal = tf.concat([tot_bound_horizontal, bound_horizontal], axis=0)
-			tot_bound_vertical = tf.concat([tot_bound_vertical, bound_vertical], axis=0)
+			# tot_grad_bools = tf.concat([tot_grad_bools, grad_bools], axis=0)
+			# tot_bound_horizontal = tf.concat([tot_bound_horizontal, bound_horizontal], axis=0)
+			# tot_bound_vertical = tf.concat([tot_bound_vertical, bound_vertical], axis=0)
 
-	#Concat inputs, outputs, and bools
+		X_all = tot_X_all
+		Y_all = tot_Y_all
+		label_bools = tot_label_bools
+
+		### Concat inputs, outputs, and bools
 		test_data_dir = configs.test_data_dir
 		# Get the latest timestamp
 		subpaths = os.listdir(test_data_dir)
@@ -163,6 +192,7 @@ def get_data(configs, figs_folder):
 		if configs.source == "wave_with_source":
 			test_source = configs.test_source
 
+		# Remove the other outputs in the model (hack)
 		if configs.model_outputs == "all":
 			simplify = lambda model : FakeModel(model)
 		else:
@@ -175,13 +205,36 @@ def get_data(configs, figs_folder):
 			"Error vs. time" : lambda model : error_time(simplify(model), int_test, ext_test, figs_folder, '/error_time', test_source=test_source)
 		}
 		print(f"Loaded wave eq. simulation inputs/outputs. Count: {len(X_l) + len(X_ul)}")
+	else:
+		raise ValueError("Unknown source: ", configs.source)
+
+	### Create the gradient regularizers
+	if configs.source == "synthetic":
+		pass
+	if configs.source == "wave" or configs.source == "wave_with_source":
+		is_boundary_lr = (X_all[:,-3] == 0) | (X_all[:,-3] == 1)
+		is_boundary_ud = (X_all[:,-2] == 0) | (X_all[:,-2] == 1)
+		is_boundary = is_boundary_lr | is_boundary_ud
+		is_interior = ~is_boundary
+		grad_bools = {
+			'interior': is_interior,
+			'boundary_lr': is_boundary_lr,
+			'boundary_ud': is_boundary_ud,
+		}
+		grad_regs = get_wave_reg(configs.gradient_loss)
+		# Get rid of the grad bools we don't need
+		grad_bools = {k:v for k,v in grad_bools.items() if k in grad_regs}
+	else:
+		raise ValueError("Unknown source: ", configs.source)
+	
 
 		# if "data-distribution" in configs.plots:
 		# 	plot_data(X_l, X_ul, figs_folder, configs)
 	print(f"Loaded wave eq. simulation inputs/outputs. Count: {len(X_all)}")
 	# else:
 	# 	raise ValueError("Unknown data source " + configs.source)
-	return X_all, Y_all, label_bools, grad_bools, bound_horizontal, bound_vertical, grad_reg, error_metrics, error_plots
+
+	return X_all, Y_all, label_bools, grad_bools, grad_regs, error_metrics, error_plots
 
 
 def plot_data(X_l, X_ul, figs_folder, configs):
@@ -231,11 +284,8 @@ def comparison_plots(model, figs_folder, configs):
 			make_movie(model, figs_folder, test_source=test_source)
 		make_movie(model, figs_folder, filename='wave_pred.gif', t0=0, test_source=test_source)
 		make_movie(model, figs_folder, filename='wave_pred_ext.gif', t0=1, test_source=test_source)
-		make_wave_plot(model, t = 0, figs_folder = figs_folder, tag='0', test_source=test_source)
-		make_wave_plot(model, t = .25, figs_folder = figs_folder, tag='0.25', test_source=test_source)
-		make_wave_plot(model, t = .5, figs_folder = figs_folder, tag='0.5', test_source=test_source)
-		make_wave_plot(model, t = .75, figs_folder = figs_folder, tag='0.75', test_source=test_source)
-		make_wave_plot(model, t = 1, figs_folder = figs_folder, tag='1', test_source=test_source)
+		for i in range(11):
+			make_wave_plot(model, t = i*.2, figs_folder = figs_folder, tag='{:.02f}'.format(i*.2), test_source=test_source)
 	
 	else:
 		raise ValueError("Unknown data source " + configs.source)
@@ -286,7 +336,7 @@ def train(configs: Configs):
 	# ------------------------------------------------------------------------------
 
 	# Get the "interesting" data
-	X_all, Y_all, label_bools, grad_bools, bound_horizontal, bound_vertical, grad_reg, error_metrics, error_plots = get_data(configs, figs_folder)#, error_metrics = get_data(configs)
+	X_all, Y_all, label_bools, grad_bools, grad_regs, error_metrics, error_plots = get_data(configs, figs_folder)#, error_metrics = get_data(configs)
 
 	# Create TensorFlow dataset for passing to 'fit' function (below)
 	if configs.from_tensor_slices:
@@ -307,7 +357,7 @@ def train(configs: Configs):
 	model.summary()
 
 	# TODO: Hacky add...
-	model.gradient_regularizer = grad_reg
+	model.grad_regs = grad_regs
 	# ------------------------------------------------------------------------------
 	# Assess accuracy with non-optimized model
 	# ------------------------------------------------------------------------------
@@ -315,11 +365,28 @@ def train(configs: Configs):
 	# Model compilation / training (optimization)
 	# ------------------------------------------------------------------------------
 	if configs.lr_scheduler:
-		opt_step = tf.keras.optimizers.schedules.PolynomialDecay(
-			configs.lr_scheduler_params[0],
-			(X_all.shape[0]/configs.batch_size) * configs.lr_scheduler_params[2],
-			end_learning_rate=configs.lr_scheduler_params[1], power=configs.lr_scheduler_params[3],
-			cycle=False, name=None) #Changing learning rate
+		# Interpret the mystical configs list
+		start_lr = configs.lr_scheduler_params[0]
+		end_lr = configs.lr_scheduler_params[1]
+		if configs.lr_scheduler_type == "polynomial_decay":
+			duration = configs.lr_scheduler_params[2]
+			power = configs.lr_scheduler_params[3]
+		elif configs.lr_scheduler_type == "piecewise_linear":
+			start_epoch = configs.lr_scheduler_params[2]
+			end_epoch = configs.lr_scheduler_params[3]
+			duration = end_epoch - start_epoch
+		duration_steps = (X_all.shape[0]/configs.batch_size) * duration
+
+		if configs.lr_scheduler_type == "polynomial_decay":
+			opt_step = tf.keras.optimizers.schedules.PolynomialDecay(
+				start_lr, duration_steps, end_learning_rate=end_lr, power=power,
+				cycle=False, name=None) #Changing learning rate
+		elif configs.lr_scheduler_type == "piecewise_linear":
+			# initial_lr, batch_size, dataset_size, start_epoch, end_lr, decay_epochs
+			opt_step = CustomLRSched(start_lr, configs.batch_size, 
+				X_all.shape[0], start_epoch, end_lr, duration)
+		else:
+			raise ValueError("Cannot do dat! Unknown lr scheduler type", configs.lr_scheduler_type)
 	else:
 		print(type(configs.lr))
 		if not isinstance(configs.lr, float):
@@ -380,19 +447,31 @@ def train(configs: Configs):
 
 	class LossLogger(keras.callbacks.Callback):
 		def on_epoch_end(self, epoch, logs):
-			tf.summary.scalar('Loss/Base (weighted)', 
-				data=self.model.weighted_base_loss, step=epoch
+			group = 'Loss Term'
+			w_group = 'Loss Term Weight'
+			tf.summary.scalar(group + '/Base', 
+				data=self.model.base_loss_tracker.result(), step=epoch
 			)
-			tf.summary.scalar('Loss/Gradient (weighted)', 
-				data=self.model.weighted_grad_loss, step=epoch
+			tf.summary.scalar(group + '/Gradient', 
+				data=self.model.grad_reg_loss_tracker.result(), step=epoch
 			)
-			tf.summary.scalar('Loss/Regularizer (weighted)', 
-				data=self.model.weighted_reg_loss, step=epoch
+			w = (self.model.w_base_loss_tracker.result() 
+				/ self.model.base_loss_tracker.result())
+			tf.summary.scalar(w_group + '/Base', 
+				data=w, step=epoch
+			)
+			w = (self.model.w_grad_reg_loss_tracker.result() 
+				/ self.model.grad_reg_loss_tracker.result())
+			tf.summary.scalar(w_group + '/Gradient', 
+				data=w, step=epoch
+			)
+			tf.summary.scalar(group + '/Regularizer (weighted)', 
+				data=self.model.w_reg_loss_tracker.result(), step=epoch
 			)
 			
 
 	tensorboard_callback = keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
-	logging_callbacks = [TimeLogger(), StressTestLogger(), tensorboard_callback]
+	logging_callbacks = [TimeLogger(), StressTestLogger(), LossLogger(), tensorboard_callback]
 
 	if "tensorboard" in configs.plots:
 		print("Using tensorboard callbacks")

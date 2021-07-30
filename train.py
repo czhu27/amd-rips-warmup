@@ -304,14 +304,14 @@ def train(configs: Configs):
 	# Model compilation / training (optimization)
 	# ------------------------------------------------------------------------------
 	if configs.lr_scheduler:
-		#opt_step = tf.keras.optimizers.schedules.PolynomialDecay(
-		#	configs.lr_scheduler_params[0],
-		#	(X_all.shape[0]/configs.batch_size) * configs.lr_scheduler_params[2],
-		#	end_learning_rate=configs.lr_scheduler_params[1], power=configs.lr_scheduler_params[3],
-		#	cycle=False, name=None) #Changing learning rate
-		opt_step = CustomLRSched(configs.lr_scheduler_params[0], configs.batch_size, 
-			X_all.shape[0], configs.loss_schedulerizer_params[0], configs.lr_scheduler_params[1],
-			configs.loss_schedulerizer_params[1] - configs.loss_schedulerizer_params[0])
+		opt_step = tf.keras.optimizers.schedules.PolynomialDecay(
+			configs.lr_scheduler_params[0],
+			(X_all.shape[0]/configs.batch_size) * configs.lr_scheduler_params[2],
+			end_learning_rate=configs.lr_scheduler_params[1], power=configs.lr_scheduler_params[3],
+			cycle=False, name=None) #Changing learning rate
+		#opt_step = CustomLRSched(configs.lr_scheduler_params[0], configs.batch_size, 
+		#	X_all.shape[0], configs.loss_schedulerizer_params[0], configs.lr_scheduler_params[1],
+		#	configs.loss_schedulerizer_params[1] - configs.loss_schedulerizer_params[0])
 	else:
 		print(type(configs.lr))
 		if not isinstance(configs.lr, float):

@@ -56,6 +56,17 @@ class CustomLRSched(tf.keras.optimizers.schedules.LearningRateSchedule):
 		else:
 			return self.end_lr
 
+	def get_config(self):
+		config = {
+    		'initial_lr': self.initial_lr,
+    		'num_batches_per_epoch': self.num_batches_per_epoch,
+			'start_step': self.start_step,
+			'decay_epochs': self.decay_epochs,
+			'end_decay_step': self.end_decay_step,
+			'end_lr': self.end_lr
+     	}
+		return config
+
 #tf.debugging.set_log_device_placement(True)
 def general_error(model, X, Y):
 	Y_pred = model.predict(X)

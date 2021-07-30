@@ -17,12 +17,8 @@ loss_schedulerizer_params: [500, 1000] #[Begin adding grad, fully added]
 
 # false -> slow graph, fast epoch
 # true -> fast graph, slower epoch
-<<<<<<< HEAD
 from_tensor_slices: false 
 shuffle: true # Shuffles at the start of each epoch
 
 # turns on eagerly mode
 debug: false
-=======
-from_tensor_slices: false 
->>>>>>> 9dbaf31930be328f24485d665c79810b6fcef6bb

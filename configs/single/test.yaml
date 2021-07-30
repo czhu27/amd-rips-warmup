@@ -4,8 +4,10 @@ lr: 1.0e-3
 grad_reg_const: 0.0001    # !!!
 activation: tanh
 model_outputs: all
-gradient_loss: first_explicit
-epochs: 2500
+gradient_loss: 
+  wave_eq: [first_explicit]
+  boundary: [velocity]
+epochs: 5000
 
 lr_scheduler: true
 lr_scheduler_params: [1.0e-3, 3.0e-5, 50, 1.0] #[initial, final, decay_steps, power]
@@ -16,3 +18,7 @@ loss_schedulerizer_params: [500, 1000] #[Begin adding grad, fully added]
 # false -> slow graph, fast epoch
 # true -> fast graph, slower epoch
 from_tensor_slices: false 
+shuffle: true # Shuffles at the start of each epoch
+
+# turns on eagerly mode
+debug: false

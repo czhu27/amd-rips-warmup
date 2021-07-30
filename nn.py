@@ -9,11 +9,7 @@ from tensorflow import keras
 from keras import backend as K
 from tensorflow.python.ops.gen_math_ops import lgamma
 from tensorflow.python.types.core import Value
-
-loss_tracker = tf.keras.metrics.Mean(name='loss')
-base_loss_tracker = tf.keras.metrics.Mean(name='base_loss')
-grad_reg_loss_tracker = tf.keras.metrics.Mean(name='grad_reg_loss')
-w_reg_loss_tracker = tf.keras.metrics.Mean(name='w_reg_loss')
+from helpers import stack_unstack
 
 # ------------------------------------------------------------------------------
 # Custom model based on Keras Model.
@@ -35,6 +31,17 @@ class NN(keras.models.Model):
 
 	# def set_gd_noise(self, gd_noise):
 	# 	self.gd_noise = gd_noise
+
+	def get_batch(self, dataset, indices):
+		batch = []
+		for element in dataset:
+			if isinstance(element, dict):
+				element_b = {k: tf.gather(v, indices, axis = 0) for k,v in element.items()}
+			else:
+				element_b = tf.gather(element, indices, axis = 0)
+			batch.append(element_b)
+		batch = tuple(batch)
+		return batch
 
 	# Create mini batches
 	def create_mini_batches(self, dataset):
@@ -61,11 +68,7 @@ class NN(keras.models.Model):
 			indices = perm_idx_f[idx0:idx1]
 
 			# Batch along an arbitrary number of tensors
-			batch = []
-			for v in dataset:
-				v_b = tf.gather(v, indices, axis = 0)
-				batch.append(v_b)
-			batch = tuple(batch)
+			batch = self.get_batch(dataset, indices)
 
 			# X_f_b = tf.gather(X_f, indices, axis = 0)
 			# f_b = tf.gather(f, indices, axis = 0)
@@ -80,11 +83,7 @@ class NN(keras.models.Model):
 			indices = perm_idx_f[idx0:idx1]
 			
 			# Batch along an arbitrary number of tensors
-			batch = []
-			for v in dataset:
-				v_b = tf.gather(v, indices, axis = 0)
-				batch.append(v_b)
-			batch = tuple(batch)
+			batch = self.get_batch(dataset, indices)
 
 			# X_f_b = tf.gather(X_f, indices, axis = 0)
 			# f_b = tf.gather(f, indices, axis = 0)
@@ -94,7 +93,7 @@ class NN(keras.models.Model):
 			batches.append(batch)
 		
 		return batches
-	# def create_mini_batches	
+	# def create_mini_batches
 	
 	def do_one_batch(self, batch):
 		X_f, f, l_bools, grad_bools = batch
@@ -107,11 +106,9 @@ class NN(keras.models.Model):
 			# Allow gradients wrt X_f
 			tape.watch(X_f)
 			
-			# Forward run
-			xyz = tf.unstack(X_f, axis=1)
-			new_X_f = tf.stack(xyz, axis=1)
-			X_f = new_X_f
-
+			new_X_f, xyz = stack_unstack(X_f)
+			X_f, old_X_f = new_X_f, X_f
+	
 			# Calc. model predicted y values
 			f_pred = self.call(X_f)
 
@@ -119,21 +116,35 @@ class NN(keras.models.Model):
 			# Compute L_f: \sum_i |f_i - f_i*|^2
 			L_f = 0
 			base_loss = self.loss_function_f(f[l_bools], f_pred[l_bools])
-			base_loss_tracker.update_state(base_loss)
+			self.base_loss_tracker.update_state(base_loss)
 			# Hacky silent add
-			weighted_base_loss = self.base_condition_weight.value() * base_loss
-			L_f += weighted_base_loss
+			w_base_loss = self.base_condition_weight.value() * base_loss
+			self.w_base_loss_tracker.update_state(w_base_loss)
+			L_f += w_base_loss
 
 			if self.gradient_loss:
 				# Compute gradient condition (deviation from diff. eq.)
-				grad_loss = self.gradient_regularizer(f_pred, xyz, tape)
-				grad_reg_loss_tracker.update_state(grad_loss)
-				weighted_grad_loss = self.grad_condition_weight.value() * grad_loss
-				L_f += weighted_grad_loss
+				grad_loss = 0
+				for region, gr_list in self.grad_regs.items():
+					region_mask = grad_bools[region]
+					# X_f, xyz = stack_unstack(old_X_f[idx])
+					# f_pred = self.call(X_f)
+					for grad_reg in gr_list:
+						v = grad_reg(f_pred, xyz, tape)
+						v_masked = v[region_mask]
+						# assert v_masked.shape[0] == tf.reduce_sum(tf.cast(region_mask, tf.float32))
+						# L1 norm
+						grad_loss += tf.math.reduce_mean(tf.math.abs(v))
+
+				# grad_loss = self.gradient_regularizer(f_pred, xyz, tape)
+				self.grad_reg_loss_tracker.update_state(grad_loss)
+				w_grad_loss = self.grad_condition_weight.value() * grad_loss
+				self.w_grad_reg_loss_tracker.update_state(w_grad_loss)
+				L_f += w_grad_loss
 
 			# Add regularization loss	
 			weighted_reg_loss = sum(self.losses)
-			w_reg_loss_tracker.update_state(weighted_reg_loss)
+			self.w_reg_loss_tracker.update_state(weighted_reg_loss)
 			L_f += weighted_reg_loss 
 		
 		
@@ -154,7 +165,7 @@ class NN(keras.models.Model):
 		self.optimizer.apply_gradients(zip(gradients, trainable_vars))
 
 		# Update loss metric
-		loss_tracker.update_state(L_f)
+		self.loss_tracker.update_state(L_f)
 
 	# Redefine train_step used for optimizing the neural network parameters
 	# This function implements one epoch (one pass over entire dataset)
@@ -184,7 +195,10 @@ class NN(keras.models.Model):
 		# or at the start of `evaluate()`.
 		# If you don't implement this property, you have to call
 		# `reset_states()` yourself at the time of your choosing.
-		return [loss_tracker, base_loss_tracker, grad_reg_loss_tracker, w_reg_loss_tracker]
+
+		# return [self.loss_tracker, self.base_loss_tracker, 
+		# 	self.grad_reg_loss_tracker, self.w_reg_loss_tracker]
+		return [self.loss_tracker]
 
 # class NN
 
@@ -262,6 +276,14 @@ def create_nn(layer_widths, configs):
 
 	model.grad_condition_weight = tf.Variable(configs.grad_reg_const, dtype = tf.float32, trainable = False)
 	model.base_condition_weight = tf.Variable(1, dtype = tf.float32, trainable = False)
+	
+	model.loss_tracker = tf.keras.metrics.Mean(name='loss')
+	model.base_loss_tracker = tf.keras.metrics.Mean(name='base_loss')
+	model.w_base_loss_tracker = tf.keras.metrics.Mean(name='w_base_loss')
+	model.grad_reg_loss_tracker = tf.keras.metrics.Mean(name='grad_reg_loss')
+	model.w_grad_reg_loss_tracker = tf.keras.metrics.Mean(name='w_grad_reg_loss')
+	model.w_reg_loss_tracker = tf.keras.metrics.Mean(name='w_reg_loss')
+	
 	return model
 
 # def create_nn	

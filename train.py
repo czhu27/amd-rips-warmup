@@ -313,14 +313,28 @@ def train(configs: Configs):
 	# Model compilation / training (optimization)
 	# ------------------------------------------------------------------------------
 	if configs.lr_scheduler:
-		opt_step = tf.keras.optimizers.schedules.PolynomialDecay(
-			configs.lr_scheduler_params[0],
-			(X_all.shape[0]/configs.batch_size) * configs.lr_scheduler_params[2],
-			end_learning_rate=configs.lr_scheduler_params[1], power=configs.lr_scheduler_params[3],
-			cycle=False, name=None) #Changing learning rate
-		#opt_step = CustomLRSched(configs.lr_scheduler_params[0], configs.batch_size, 
-		#	X_all.shape[0], configs.loss_schedulerizer_params[0], configs.lr_scheduler_params[1],
-		#	configs.loss_schedulerizer_params[1] - configs.loss_schedulerizer_params[0])
+		# Interpret the mystical configs list
+		start_lr = configs.lr_scheduler_params[0]
+		end_lr = configs.lr_scheduler_params[1]
+		if configs.lr_scheduler_type == "polynomial_decay":
+			duration = configs.lr_scheduler_params[2]
+			power = configs.lr_scheduler_params[3]
+		elif configs.lr_scheduler_type == "piecewise_linear":
+			start_epoch = configs.lr_scheduler_params[2]
+			end_epoch = configs.lr_scheduler_params[3]
+			duration = end_epoch - start_epoch
+		duration_steps = (X_all.shape[0]/configs.batch_size) * duration
+
+		if configs.lr_scheduler_type == "polynomial_decay":
+			opt_step = tf.keras.optimizers.schedules.PolynomialDecay(
+				start_lr, duration_steps, end_learning_rate=end_lr, power=power,
+				cycle=False, name=None) #Changing learning rate
+		elif configs.lr_scheduler_type == "piecewise_linear":
+			# initial_lr, batch_size, dataset_size, start_epoch, end_lr, decay_epochs
+			opt_step = CustomLRSched(start_lr, configs.batch_size, 
+				X_all.shape[0], start_epoch, end_lr, duration)
+		else:
+			raise ValueError("Cannot do dat! Unknown lr scheduler type", configs.lr_scheduler_type)
 	else:
 		print(type(configs.lr))
 		if not isinstance(configs.lr, float):

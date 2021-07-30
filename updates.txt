@@ -1,0 +1,23 @@
+Code Improvements: 
+    - Gradient Regularizer
+        - Sub Region (bools)
+        - Multiple
+        - Weight Scheduler
+    - Multiple Sources
+
+Experiments:
+    - Source interpolation
+    - Labeled boundary is *enough*
+    - Boundary condition isn't... :o
+
+
+Questions:
+    - How many different sources should we use in our dataset?
+    - Is there any more info. we can give boundary?
+    
+His Comments:
+    - Also show video results, show snapshots/pictures (?)
+    - < 10 should be good, sources
+    - train on 3 datasets, then "crank it up" (eg. 2 at a time)
+        - see how the error evolves
+        - its doing an experiment (try to see what happens after the fact)

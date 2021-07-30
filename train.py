@@ -165,6 +165,8 @@ def get_data(configs, figs_folder):
 			'boundary_ud': is_boundary_ud,
 		}
 		grad_regs = get_wave_reg(configs.gradient_loss)
+		# Get rid of the grad bools we don't need
+		grad_bools = {k:v for k,v in grad_bools.items() if k in grad_regs}
 	else:
 		raise ValueError("Unknown source: ", configs.source)
 	

@@ -25,7 +25,7 @@ data_run: fine_mesh_gauss_few_bound
 
 # false -> slow graph, fast epoch
 # true -> fast graph, slower epoch
-from_tensor_slices: true 
+from_tensor_slices: false
 shuffle: true # Shuffles at the start of each epoch
 
 # turns on eagerly mode

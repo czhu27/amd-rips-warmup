@@ -290,9 +290,11 @@ def train(configs: Configs):
 	if configs.from_tensor_slices:
 		dataset = tf.data.Dataset.from_tensor_slices((X_all, Y_all, label_bools, grad_bools))
 		dataset = dataset.shuffle(len(dataset))
-	else:
+	elif hasattr(configs, 'i_know_what_im_doing') and configs.i_know_what_im_doing:
 		mat_list = shuffle_in_parallel([X_all, Y_all, label_bools, grad_bools])
 		dataset = tf.data.Dataset.from_tensors(tuple(mat_list))
+	else:
+		raise ValueError("You really shouldn't use from_tensor_slice=True")
 	# ------------------------------------------------------------------------------
 	# Create neural network (physics-inspired)
 	# ------------------------------------------------------------------------------

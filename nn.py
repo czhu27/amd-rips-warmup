@@ -131,13 +131,13 @@ class NN(keras.models.Model):
 					# X_f, xyz = stack_unstack(old_X_f[idx])
 					# f_pred = self.call(X_f)
 					for grad_reg in gr_list:
-						v = grad_reg(f_pred, xyz[-4:-1], tape)
+						v = grad_reg(f_pred, xyz[-3:], tape)
 						# TODO: Do we need this?
 						v = tf.cast(v, tf.float32)
 						v_masked = v[region_mask]
 						# assert v_masked.shape[0] == tf.reduce_sum(tf.cast(region_mask, tf.float32))
 						# L1 norm
-						grad_loss += tf.math.reduce_mean(tf.math.abs(v))
+						grad_loss += tf.math.reduce_mean(tf.math.abs(v_masked))
 
 				# grad_loss = self.gradient_regularizer(f_pred, xyz, tape)
 				self.grad_reg_loss_tracker.update_state(grad_loss)

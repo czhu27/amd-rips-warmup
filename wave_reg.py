@@ -240,6 +240,7 @@ name_to_reg_by_category = {
         "second_c_unknown": {"interior": second_order_c_unknown},
         "third_implicit": {"interior": third_order_c_unknown},
         "third_c_unknown": {"interior": third_order_c_unknown},
+        "curl_condition": {"interior": curl_condition},
     },
     "boundary": {
         "velocity": {"boundary_lr": velocity_lr, "boundary_ud": velocity_ud}

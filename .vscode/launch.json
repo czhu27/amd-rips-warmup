@@ -45,5 +45,15 @@
             "program": "wave/forward/main.py",
             "console": "integratedTerminal"
         },
+        {
+            "name": "wave debug",
+            "type": "python",
+            "args": [
+                "-w"
+            ],
+            "request": "launch",
+            "program": "main.py",
+            "console": "integratedTerminal"
+        }
     ]
 }

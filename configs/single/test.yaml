@@ -1,23 +1,25 @@
 batch_size: 128
-layers: [5,20, 20, 20, 3]
-epochs: 10
+layers: [5, 100, 100, 100, 100, 100, 1]
+#layers: [5,20,20,20,1]
+epochs: 300
+#model_outputs: all
 #data_run: ["05-05", "09-01", "025-075"]
 plots: [extrapolation, data-distribution, tensorboard, extrapolation_wave, movie]
 lr: 1.0e-4
 #data_run: fine_mesh_gauss_few/20210727-093118
-data_run: [09-01, 06-06]
-data_sources: [[0.9, 0.1], [0.6, 0.6]]
+#data_run: [09-01, 06-06]
+data_sources: [[0.25, 0.25], [0.25, 0.75], [0.75, 0.75], [0.75, 0.25], [0.5, 0.5]]
 #data_sources: [[0.5, 0.5], [0.9, 0.1], [0.25, 0.75]]
-#data_run: [05-05, 09-01, 025-075]
+data_run: [025-025, 025-075, 075-075, 075-025, 05-05]
 from_tensor_slices: true
 source: wave_with_source
 #source: wave_with_source
-test_source: [0.6, 0.6]
+test_source: [0.5, 0.25]
 activation: elu
-test_data_dir: data/wave/06-06
+test_data_dir: data/wave/05-025
 gradient_loss: 
-  wave_eq: [first_explicit]
-  boundary: [velocity]
+  wave_eq: [] #[first_explicit]
+  boundary: [] #[velocity]
 #lr_scheduler: true
 #lr_scheduler_type: polynomial_decay
 #lr_scheduler_params: [1.0e-3, 3.0e-5, 10, 1.0] #[initial, final, decay_steps, power]

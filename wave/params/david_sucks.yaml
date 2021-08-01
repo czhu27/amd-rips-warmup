@@ -2,8 +2,8 @@ x0: 0.0 # domain dimension (x0)
 x1: 1.0 # domain dimension (x1)
 y0: 0.0 # domain dimension (y0)
 y1: 1.0 # domain dimension (y1)
-nx: 25 # number of mesh elements (x)
-ny: 25 # number of mesh elements (y)
+nx: 50 # number of mesh elements (x)
+ny: 50 # number of mesh elements (y)
 # Time-related parameters
 tf: 2.0 # final time
 dt: 0.002 # time step
@@ -22,13 +22,13 @@ src_loc: [ [0.9, 0.1] ]
 src_f: 5.0 # source frequency (Hz)
 src_a: 0.0 # source magnitude (set to 0 to disable source)
 #src_gauss: [[0.5, 0.5] [0.7, 0.1] [0.4, 0.8]] (default is [[0.5, 0.5]])
-src_gauss: [[0.6, 0.6]]
+src_gauss: [[0.8, 0.9]]
 # Receivers coordinates (x0 y0 x1 y1 ...) 
 rcv_loc: [ [0.25, 0.25], [0.60, 0.50] ]
 # Where to save this run
-data_dir: data/wave
+data_dir: data/wave/08-09
 # Save percentages of [[interior int bound labeled] [exteriorext bound labeled] [int_test ext_test]]
-data_percents: [[.01, .01, 1.0, 1.0], [.01, .01, 0.0, 0.0], [.05, .05]]
+data_percents: [[.01, .01, 1.0, 1.0], [.01, .01, 0.0, 0.0], [.02, .02]]
 heatmap: False
 data_plot: True
 seed: 0 

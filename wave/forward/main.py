@@ -27,6 +27,6 @@ if __name__ == "__main__":
     params = yaml.safe_load(open(args.configs))
 
     fname = os.path.basename(args.configs).split(".")[0]
-    params['data_dir'] = params['data_dir'] + "/" + fname
+    params['data_dir'] = params['data_dir'] #+ "/" + fname
     
     main(params)

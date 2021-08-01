@@ -6,7 +6,8 @@ sys.path.append(sys.path[0] + "/app")
 from simulator import Simulator
 
 timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-data_dir = "data/wave"
+data_dir = "data/wave/" + timestamp
+#data_dir = "data/wave/triple"
 
 # Create all parameters
 params = {
@@ -18,7 +19,7 @@ params = {
 	"nx": 25,			# number of mesh elements (x)
 	"ny": 25,			# number of mesh elements (y)
 	# Time-related parameters
-	"tf": 2,			# final time
+	"tf": 2.0,			# final time
 	"dt": 0.002,		# time step
 	"sample_step": .01,  # amount of time between samples, should be multiple of dt
 	"show_every": 50,	# interval between two time steps reports
@@ -31,9 +32,11 @@ params = {
 	"initializer": 'gaussian',
 	# Source characteristics (locations given as [[x0, y0], [x1, y1], ...)
 	#"src_loc": [[0.25, 0.25], [0.75, 0.75]],
-	"src_loc": [ [0.5, 0.5] ],
+	"src_loc": [ [0.9, 0.1] ],
 	"src_f": 5.0,		# source frequency (Hz)
 	"src_a": 0.0,		# source magnitude (set to 0 to disable source)
+	#"src_gauss": [[0.5, 0.5], [0.7, 0.1], [0.4, 0.8]], (default is [[0.5, 0.5]])
+	"src_gauss": [[0.9, 0.1]],
 	# Receivers coordinates (x0, y0, x1, y1, ...) 
 	"rcv_loc": [ [0.25, 0.25], [0.60, 0.50] ],
 	# Where to save this run

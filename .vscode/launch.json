@@ -39,7 +39,7 @@
             "type": "python",
             "args": [
                 "-c",
-                "wave/params/coarse_mesh.yaml"
+                "wave/params/fine_mesh_gauss_few.yaml"
             ],
             "request": "launch",
             "program": "wave/forward/main.py",

@@ -17,7 +17,7 @@ def plot_data_2D(X_l, X_ul, save_dir):
     plt.savefig(save_dir + "/data")
     plt.clf()
 
-def plot_gridded_functions(model, f, lb, ub, tag, folder="figs"):
+def plot_gridded_functions(model, f, lb, ub, tag, folder="figs", test_source=None):
     n1d = 101
     npts = n1d*n1d
     x0 = np.linspace(lb, ub, n1d)
@@ -31,6 +31,8 @@ def plot_gridded_functions(model, f, lb, ub, tag, folder="figs"):
     ml_input = np.zeros((npts, 2))
     ml_input[:,0] = x0_g.flatten()
     ml_input[:,1] = x1_g.flatten()
+    if test_source is not None:
+        ml_input = np.concatenate((np.full((npts,2), test_source), ml_input), axis=1)
     ml_output = model.predict(ml_input)
     f_ml = np.reshape(ml_output, (n1d, n1d), order = 'C')
 
@@ -59,7 +61,7 @@ def plot_gridded_functions(model, f, lb, ub, tag, folder="figs"):
     return buf
 
 
-def make_wave_plot(model, t, figs_folder, tag):
+def make_wave_plot(model, t, figs_folder, tag, test_source=None):
     n1d = 101
     lb = 0
     ub = 1
@@ -76,6 +78,8 @@ def make_wave_plot(model, t, figs_folder, tag):
     ml_input[:,0] = x0_g.flatten()
     ml_input[:,1] = x1_g.flatten()
     ml_input[:,2] = t*np.ones((npts))
+    if test_source is not None:
+        ml_input = np.concatenate((np.full((npts,2), test_source), ml_input), axis=1)
     ml_output = model.predict(ml_input)
     f_ml = np.reshape(ml_output, (n1d, n1d), order = 'C')
 
@@ -105,7 +109,7 @@ def make_wave_plot(model, t, figs_folder, tag):
 
 
 def make_movie(model, figs_folder, filename = 'wave_pred.gif', 
-        time_steps = 100, t0 = 0, dx = .01, dt = .01):
+        time_steps = 100, t0 = 0, dx = .01, dt = .01, test_source=None):
     #Create figure for movie and init constants
     fig = plt.figure()
     ax = fig.add_subplot(projection='3d')
@@ -122,9 +126,22 @@ def make_movie(model, figs_folder, filename = 'wave_pred.gif',
         #Runs inputs through model for soln
         X_t = np.reshape(X_g, (nx*ny,1))
         Y_t = np.reshape(Y_g, (nx*ny,1))
-        inputs = np.concatenate((X_t, Y_t,time_vec), axis=1)
+        if test_source is not None:
+            inputs = np.concatenate((np.full((len(X_t),2), test_source[0]), X_t, Y_t, time_vec), axis=1)
+        else:
+            inputs = np.concatenate((X_t, Y_t,time_vec), axis=1)
         soln = model.predict(inputs)
         soln = np.reshape(soln, (nx,ny))
+
+        #Add two predictions together
+        #inputs1 = np.concatenate((np.full((len(X_t),2), [0.25, 0.25]), X_t, Y_t, time_vec), axis=1)
+        #inputs2 = np.concatenate((np.full((len(X_t),2), [0.75, 0.75]), X_t, Y_t, time_vec), axis=1)
+        #soln1 = model.predict(inputs1)
+        #soln1 = np.reshape(soln1, (nx,ny))
+        #soln2 = model.predict(inputs2)
+        #soln2 = np.reshape(soln2, (nx,ny))  
+        #soln = soln1 + soln2 
+
         #Clears current fig and draws surface
         if len(fig.axes[0].collections) != 0:
             fig.axes[0].collections = []
@@ -140,7 +157,7 @@ def make_movie(model, figs_folder, filename = 'wave_pred.gif',
     ani = FuncAnimation(fig, update, fargs=[fig, dt, t0, nx, ny], frames=time_steps, blit=True)
     ani.save(figs_folder + '/' + filename, writer = 'PillowWriter', fps=10)
 
-def make_heatmap_movie(model, figs_folder, time_steps = 100, dx = .01, sample_step = .01):
+def make_heatmap_movie(model, figs_folder, time_steps = 100, dx = .01, sample_step = .01, test_source=None):
     #Create figure for movie and init constants
     fig, ax = plt.subplots()
     nx = ny = int(1 / dx)
@@ -156,6 +173,8 @@ def make_heatmap_movie(model, figs_folder, time_steps = 100, dx = .01, sample_st
     X_t = np.reshape(X_g, (nx*ny,1))
     Y_t = np.reshape(Y_g, (nx*ny,1))
     inputs = np.concatenate((X_t, Y_t,time_vec), axis=1)
+    if test_source is not None:
+        inputs = np.concatenate((np.full((nx*ny,2), test_source), inputs), axis=1)
     soln = model.predict(inputs)
     soln = np.reshape(soln, (nx,ny))
     #End init for heatmap
@@ -172,6 +191,8 @@ def make_heatmap_movie(model, figs_folder, time_steps = 100, dx = .01, sample_st
         X_t = np.reshape(X_g, (nx*ny,1))
         Y_t = np.reshape(Y_g, (nx*ny,1))
         inputs = np.concatenate((X_t, Y_t,time_vec), axis=1)
+        if test_source is not None:
+            inputs = np.concatenate((np.full((nx*ny,2), test_source), inputs), axis=1)
         soln = model.predict(inputs)
         soln = np.reshape(soln, (nx,ny))
         #Clears current fig and draws surface
@@ -226,7 +247,7 @@ def make_heatmap_animation(mat_list, save_dir, R=None, fps = 10):
     pillowwriter = animation.PillowWriter(fps=fps)
     anim.save(savefile, writer=pillowwriter)
 
-def wave_model_heatmap(model, figs_folder, x_min=0, x_max=1, dx = 0.05, t_min=0, t_max=1, dt=None):
+def wave_model_heatmap(model, figs_folder, x_min=0, x_max=1, dx = 0.05, t_min=0, t_max=1, dt=None, test_source=None):
     print("Making model heatmap plot...")
     nx = int((x_max - x_min) / dx)
     if dt is None:
@@ -247,7 +268,10 @@ def wave_model_heatmap(model, figs_folder, x_min=0, x_max=1, dx = 0.05, t_min=0,
     X = np.stack([x,y,t], axis=-1)
     p_mat_arr = np.zeros((len(t_lin), len(x_lin), len(y_lin)))
     for i, t_min in enumerate(t):
-        Y_pred = model.predict(X[i])
+        if test_source is not None:
+            Y_pred = model.predict(np.concatenate((test_source, X[i]), axis=1))
+        else:
+            Y_pred = model.predict(X[i])
         Y_pred = Y_pred.reshape(len(x_lin), len(y_lin))
         p_mat_arr[i] = Y_pred
     

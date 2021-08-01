@@ -105,7 +105,8 @@ class NN(keras.models.Model):
 
 			# Allow gradients wrt X_f
 			tape.watch(X_f)
-			
+			# TODO: Move source to back ;)
+			# TODO: Dont calc grad w r t source x y
 			new_X_f, xyz = stack_unstack(X_f)
 			X_f, old_X_f = new_X_f, X_f
 	
@@ -130,7 +131,9 @@ class NN(keras.models.Model):
 					# X_f, xyz = stack_unstack(old_X_f[idx])
 					# f_pred = self.call(X_f)
 					for grad_reg in gr_list:
-						v = grad_reg(f_pred, xyz, tape)
+						v = grad_reg(f_pred, xyz[-4:-1], tape)
+						# TODO: Do we need this?
+						v = tf.cast(v, tf.float32)
 						v_masked = v[region_mask]
 						# assert v_masked.shape[0] == tf.reduce_sum(tf.cast(region_mask, tf.float32))
 						# L1 norm

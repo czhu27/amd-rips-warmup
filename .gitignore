@@ -152,7 +152,7 @@ wave/forward/figs/
 
 .vscode
 
-trials.py
+trial.py
 debug.yaml
 test.yaml
 # exclude everything

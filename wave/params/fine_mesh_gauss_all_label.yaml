@@ -1,0 +1,45 @@
+# Space-related parameters
+x0: 0.0 # domain dimension (x0)
+x1: 1.0 # domain dimension (x1)
+y0: 0.0 # domain dimension (y0)
+y1: 1.0 # domain dimension (y1)
+nx: 50 # number of mesh elements (x)
+ny: 50 # number of mesh elements (y)
+
+# Time-related parameters
+tf: 2 # final time
+dt: 0.002 # time step
+sample_step: 0.01 # amount of time between samples, should be multiple of dt
+show_every: 50 # interval between two time steps reports
+integrator: rk2 # time integrator 
+
+# Discretization-related parameters
+ps: 2 # polynomial degree for state variables
+pm: 0 # polynomial degree for material properties
+int_diag: 3 # integration used for diagnostics (num 1D Gauss)  
+
+# Initialization function
+initializer: gaussian
+
+# Source characteristics (locations given as [[x0, y0], [x1, y1], ...)
+src_loc: [[0.5, 0.5]]
+src_f: 5.0 # source frequency (Hz)
+src_a: 0.0 # source magnitude (set to 0 to disable source)
+
+# Receivers coordinates (x0, y0, x1, y1, ...) 
+rcv_loc: [ [0.25, 0.25], [0.60, 0.50] ]
+
+seed: 0
+
+
+data_percents: [        # Save percentages of...
+  [.01, .3, 1.0, 1.0],  # [interior, int bound, labeled_int, labeled_int_bound] 
+  [.01, .3, 1.0, 1.0],  # [exterior, ext bound, labeled_ext, labeled_ext_bound]
+  [.05, .05]            # [int_test, ext_test]
+]
+heatmap: False
+data_plot: True
+int_ext_time: 1
+
+# Where to save this run
+data_dir: data/wave

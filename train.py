@@ -287,12 +287,13 @@ def train(configs: Configs):
 	X_all, Y_all, label_bools, grad_bools, grad_regs, error_metrics, error_plots = get_data(configs, figs_folder)#, error_metrics = get_data(configs)
 
 	# Create TensorFlow dataset for passing to 'fit' function (below)
-	if configs.from_tensor_slices:
-		dataset = tf.data.Dataset.from_tensor_slices((X_all, Y_all, label_bools, grad_bools))
-		dataset = dataset.shuffle(len(dataset))
-	else:
-		mat_list = shuffle_in_parallel([X_all, Y_all, label_bools, grad_bools])
-		dataset = tf.data.Dataset.from_tensors(tuple(mat_list))
+	if configs.shuffle:
+		if configs.from_tensor_slices:
+			dataset = tf.data.Dataset.from_tensor_slices((X_all, Y_all, label_bools, grad_bools))
+			dataset = dataset.shuffle(len(dataset))
+		else:
+			mat_list = shuffle_in_parallel([X_all, Y_all, label_bools, grad_bools])
+			dataset = tf.data.Dataset.from_tensors(tuple(mat_list))
 	# ------------------------------------------------------------------------------
 	# Create neural network (physics-inspired)
 	# ------------------------------------------------------------------------------
@@ -395,28 +396,29 @@ def train(configs: Configs):
 
 	class LossLogger(keras.callbacks.Callback):
 		def on_epoch_end(self, epoch, logs):
-			group = 'Loss Term'
-			w_group = 'Loss Term Weight'
-			tf.summary.scalar(group + '/Base', 
-				data=self.model.base_loss_tracker.result(), step=epoch
-			)
-			tf.summary.scalar(group + '/Gradient', 
-				data=self.model.grad_reg_loss_tracker.result(), step=epoch
-			)
-			w = (self.model.w_base_loss_tracker.result() 
-				/ self.model.base_loss_tracker.result())
-			tf.summary.scalar(w_group + '/Base', 
-				data=w, step=epoch
-			)
-			w = (self.model.w_grad_reg_loss_tracker.result() 
-				/ self.model.grad_reg_loss_tracker.result())
-			tf.summary.scalar(w_group + '/Gradient', 
-				data=w, step=epoch
-			)
-			tf.summary.scalar(group + '/Regularizer (weighted)', 
-				data=self.model.w_reg_loss_tracker.result(), step=epoch
-			)
-			
+			if epoch % 10 == 0:
+				group = 'Loss Term'
+				w_group = 'Loss Term Weight'
+				tf.summary.scalar(group + '/Base', 
+					data=self.model.base_loss_tracker.result(), step=epoch
+				)
+				tf.summary.scalar(group + '/Gradient', 
+					data=self.model.grad_reg_loss_tracker.result(), step=epoch
+				)
+				w = (self.model.w_base_loss_tracker.result() 
+					/ self.model.base_loss_tracker.result())
+				tf.summary.scalar(w_group + '/Base', 
+					data=w, step=epoch
+				)
+				w = (self.model.w_grad_reg_loss_tracker.result() 
+					/ self.model.grad_reg_loss_tracker.result())
+				tf.summary.scalar(w_group + '/Gradient', 
+					data=w, step=epoch
+				)
+				tf.summary.scalar(group + '/Regularizer (weighted)', 
+					data=self.model.w_reg_loss_tracker.result(), step=epoch
+				)
+				
 
 	tensorboard_callback = keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
 	logging_callbacks = [TimeLogger(), StressTestLogger(), LossLogger(), tensorboard_callback]

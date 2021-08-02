@@ -39,11 +39,21 @@
             "type": "python",
             "args": [
                 "-c",
-                "wave/params/coarse_mesh.yaml"
+                "wave/params/fine_mesh_gauss_few.yaml"
             ],
             "request": "launch",
             "program": "wave/forward/main.py",
             "console": "integratedTerminal"
         },
+        {
+            "name": "wave debug",
+            "type": "python",
+            "args": [
+                "-w"
+            ],
+            "request": "launch",
+            "program": "main.py",
+            "console": "integratedTerminal"
+        }
     ]
 }

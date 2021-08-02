@@ -31,6 +31,19 @@ def velocity_ud(f, xyz, tape):
 
     return v
 
+def curl_condition(f, xyz, tape):
+    x, y, t = xyz
+    p, u, v = tf.unstack(f, axis=1)
+
+    u_t = nth_gradient(u, t, 1, tape)
+    v_t = nth_gradient(v, t, 1, tape)
+    u_ty = nth_gradient(u_t, y, 1, tape)
+    v_tx = nth_gradient(v_t, x, 1, tape)
+
+    curl = v_tx - u_ty
+    curl_loss = tf.math.reduce_mean(tf.math.abs(curl))
+    return curl_loss
+
 def first_order_c_known(f, xyz, tape):
     x, y, t = xyz
     p, u, v = tf.unstack(f, axis=1)
@@ -227,6 +240,7 @@ name_to_reg_by_category = {
         "second_c_unknown": {"interior": second_order_c_unknown},
         "third_implicit": {"interior": third_order_c_unknown},
         "third_c_unknown": {"interior": third_order_c_unknown},
+        "curl_condition": {"interior": curl_condition},
     },
     "boundary": {
         "velocity": {"boundary_lr": velocity_lr, "boundary_ud": velocity_ud}

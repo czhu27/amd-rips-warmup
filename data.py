@@ -324,7 +324,7 @@ def extrap_error(model, f, i_lb, i_ub, o_lb, o_ub, step_size=0.01):
 	error = np.sqrt(np.mean(np.square(f_ml - f_true)))
 	return error
 
-def compute_error_wave(model, test_set):
+def compute_error_wave(model, test_set, source_input=None):
 	#test_set can be int_test or ext_test
 	#formatting
 	f_true = np.reshape(test_set[:,3],(len(test_set[:,3]),1))
@@ -333,13 +333,18 @@ def compute_error_wave(model, test_set):
 	t = np.reshape(test_set[:,2],(len(test_set[:,2]),1))
 
 	#Computes model and finds difference with sim
-	ml_input = np.concatenate((x,y,t),axis=1)
+	if source_input is not None:
+		source_x_col = np.full((x.shape[0], 1), source_input[0])
+		source_y_col = np.full((x.shape[0], 1), source_input[1])		
+		ml_input = np.concatenate((source_x_col, source_y_col, x,y,t),axis=1)
+	else:
+		ml_input = np.concatenate((x,y,t), axis=1)
 	ml_output = model.predict(ml_input)
 	f_ml = np.reshape(ml_output, (len(f_true), 1))
 	error = np.sqrt(np.mean(np.square(f_ml - f_true)))
 	return error
 
-def error_time(model, int_test, ext_test, figs_folder, tag):
+def error_time(model, int_test, ext_test, figs_folder, tag, test_source=None):
 	#Takes all data, int and ext
 	fig, ax = plt.subplots()
 	starter_iter = int_test[0,2]
@@ -363,6 +368,8 @@ def error_time(model, int_test, ext_test, figs_folder, tag):
 
 			#Computes model and finds difference with sim
 			ml_input = np.concatenate((x,y,t),axis=1)
+			if test_source is not None:
+				ml_input = np.concatenate((np.full((len(f_true),2), test_source), ml_input), axis=1)
 			ml_output = model.predict(ml_input)
 			f_ml = np.reshape(ml_output, (len(f_true), 1))
 			error = np.sqrt(np.mean(np.square(f_ml - f_true)))
@@ -377,6 +384,8 @@ def error_time(model, int_test, ext_test, figs_folder, tag):
 
 			#Computes model and finds difference with sim
 			ml_input = np.concatenate((x,y,t),axis=1)
+			if test_source is not None:
+				ml_input = np.concatenate((np.full((len(f_true),2), test_source), ml_input), axis=1)
 			ml_output = model.predict(ml_input)
 			f_ml = np.reshape(ml_output, (len(f_true), 1))
 			error = np.sqrt(np.mean(np.square(f_ml - f_true)))
@@ -410,13 +419,20 @@ def load_slices(dump_file):
 
 def process_wave_data_sample(wave_data_dir, params):
 	# Seed for reproducibility
-	np.random.seed(params["seed"])
+	if "seed" in params:
+		np.random.seed(params["seed"])
 
 	tic = time.time()
 
 	tf = params["tf"]
 	dt = params["dt"]
 	T = int(tf / dt) + 1
+
+	# Check heatmap
+	if "heatmap" in params:
+		heatmap = params["heatmap"]
+	else:
+		heatmap = False
 
 	#Determine step_size
 	if "sample_step" in params:
@@ -433,13 +449,17 @@ def process_wave_data_sample(wave_data_dir, params):
 	int_test = np.zeros((0,6), dtype = np.float32)
 	ext_test = np.zeros((0,6), dtype = np.float32)
 
+	#Make sure exterior region exists
+	assert params["tf"] > params["int_ext_time"], "Nonexistent exterior region"
+
 	#x_all = np.zeros(int(tf/params["sample_step"]), )
 	x_all = None
 	y_all = None
 	p_all = None
 
 	#Read in files and sort
-	start_iter = 10*int(params["sample_step"]/params['dt'])
+	#start_iter = 10*int(params["sample_step"]/params['dt'])
+	start_iter = 0*int(params["sample_step"]/params['dt'])
 	for i in range(start_iter, int(tf/params["dt"]), int(params["sample_step"]/params['dt'])):
 		pts, boundaries = load_data(wave_data_dir + "/dumps/dump{:03d}.npz".format(i))
 		#If interior
@@ -497,7 +517,7 @@ def process_wave_data_sample(wave_data_dir, params):
 		ext_unlabel = np.zeros((0,6))
 		ext_bound = np.zeros((0,6))
 	
-	if params["heatmap"]:
+	if heatmap:
 		# Make crude heatmap
 		print("Making p_mat_list (for heatmap animation)...")
 		heatmap_dt = 0.02

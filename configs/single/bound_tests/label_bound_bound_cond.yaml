@@ -1,0 +1,37 @@
+#source: wave_with_source
+source: wave
+
+batch_size: 512
+layers: [3, 100, 100, 100, 100, 100, 3]
+lr: 1.0e-3
+grad_reg_const: 0.01    # !!!
+activation: tanh
+model_outputs: all
+gradient_loss: 
+  wave_eq: [first_explicit]
+  boundary: [velocity]
+epochs: 2500
+
+lr_scheduler: true
+#lr_scheduler_type: polynomial_decay
+#lr_scheduler_params: [1.0e-3, 3.0e-5, 10, 1.0] #[initial, final, decay_steps, power]
+lr_scheduler_type: piecewise_linear
+lr_scheduler_params: [1.0e-3, 5.0e-5, 500, 1500] #[initial, final, start_epoch, end_epoch]
+
+loss_schedulerizer: true
+loss_schedulerizer_params: [500, 1500] #[Begin adding grad, fully added]
+
+data_run: [fine_mesh_gauss_label_bound] 
+data_sources: [[0.5, 0.5]]
+
+test_source: [0.5, 0.5]
+test_data_dir: data/wave/fine_mesh_gauss_label_bound/
+
+# false -> slow graph, fast epoch
+# true -> fast graph, slower epoch
+from_tensor_slices: true 
+shuffle: true # Shuffles at the start of each epoch
+
+# turns on eagerly mode
+debug: false
+

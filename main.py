@@ -25,7 +25,7 @@ def get_filename(path):
 
 def run_trials(configs):
 	run_name = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-	parent_dir = configs.output_dir
+	#parent_dir = configs.output_dir
 	configs.output_dir = configs.output_dir + "/" + "run_" + run_name
 
 	# For each run, update output directory and seed

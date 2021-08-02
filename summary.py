@@ -14,23 +14,24 @@ def avg(lst):
 
 def create_run_summary_wave(run_path):
     errorPaths = find("results.yaml", run_path)
-    error_past = []
-    #error_future1 = []
-    #error_future2 = []
+    error_int = []
+    error_ext = []
+    training_time = []
     for path in errorPaths:
         with open(path) as f:
             errorDict = yaml.safe_load(f)
-            error_past.append(float(errorDict["interpolation error (t <= 1)"]))
-            #error_future1.append()
-            #error_future2.append()
-    errorpastavg = avg(error_past)
-    #error2avg = avg(error2s)
-    #error3avg = avg(error3s)
+            error_int.append(float(errorDict["interpolation error (t <= 1)"]))
+            error_ext.append(float(errorDict["extrapolation error (1 < t)"]))
+            training_time.append(float(errorDict["training_time"][:-2]))
+    error_int_avg = avg(error_int)
+    error_ext_avg = avg(error_ext)
+    training_time_avg = avg(training_time)
 
     with open(run_path + "/summary.txt", 'w') as f:
-        f.write("Avg Interpolation Error (t <= 1): " + str(errorpastavg) + "\n")
-        #f.write("Avg Extrapolation Error [-2, 2] x [-2, 2]: " + str(error2avg) + "\n")
-        #f.write("Avg Extrapolation Error [-3, 3] x [-3, 3]: " + str(error3avg) + "\n")
+        f.write("Avg Interpolation Error (t <= 1): " + str(error_int_avg) + "\n")
+        f.write("Avg Extrapolation Error (t > 1): " + str(error_ext_avg) + "\n")
+        f.write("Avg Training Time: " + str(training_time_avg) + "\n")
+        
 
 '''
 Create a text file containing averages for errors across all

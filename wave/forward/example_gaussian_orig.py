@@ -33,7 +33,8 @@ params = {
     "data_dir": "data/wave/" + timestamp,
     # Save percentages of [[interior, int bound], [exterior,ext bound], test points]
 	"data_percents": [[.1, .05], [.5, .25], [.25,.5]],
-    "heatmap": False
+    "heatmap": False,
+	"int_ext_time": 1.0
 }	
 
 # Create simulator and run

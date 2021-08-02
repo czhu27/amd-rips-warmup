@@ -1,7 +1,7 @@
 ###########
 #  Model  #
 ###########
-activation: elu
+activation: tanh
 dropout_rates: 0.0
 layers: [3, 20, 20, 20, 1]
 
@@ -22,15 +22,26 @@ gd_noise: 0.0
 #############
 #  Dataset  #
 #############
+#source: wave_with_source
 source: wave
-data_dir: data/wave
-data_run: fine_mesh_gauss_few 
+data_dir: data/wave/
+data_run: [fine_mesh_gauss_few] 
 
 corners: false
 dataset: [2500, 7500, 0, 1.0, 0.0] #[interior, exterior, border, labeled_int%, labeled_ext%]
 noise: 0.0
-from_tensor_slices: false
-shuffle: true # Shuffles at the start of each epoch
+
+from_tensor_slices: true
+
+# make sure data_sources correspond with files in data_run
+# also make sure data_sources is list of points
+#data_sources: [[0.5, 0.5], [0.9, 0.1], [0.25, 0.75]]
+#data_run: [05-05, 09-01, 025-075]
+
+# test_source and test_data_dir only matter for error calculation and prediction plots
+test_source: [0.6, 0.6]
+test_data_dir: data/wave/06-06/
+shuffle: true
 
 ##################
 #  Regularizers  #

@@ -20,15 +20,11 @@ def alt_second_order_c_known(f, xyz, tape):
     return wave_eq
 
 def velocity_lr(f, xyz, tape):
-    x, y, t = xyz
     p, u, v = tf.unstack(f, axis=1)
-
     return u
 
 def velocity_ud(f, xyz, tape):
-    x, y, t = xyz
     p, u, v = tf.unstack(f, axis=1)
-
     return v
 
 def curl_condition(f, xyz, tape):
@@ -96,9 +92,11 @@ def first_order_curl_c_known(f, xyz, tape):
     return grad_loss
 
 def second_order_c_known(f, xyz, tape):
-    raise ValueError("needs to be updated")
+    # raise ValueError("needs to be updated")
     # Unpack the columns
     x,y,t = xyz
+    puv = tf.unstack(f, axis=1)
+    p = puv[0]
 
     fxx = nth_gradient(f, x, 2, tape)
     fyy = nth_gradient(f, y, 2, tape)
@@ -113,27 +111,6 @@ def second_order_c_known(f, xyz, tape):
     # L1 regularizer
     #grads = tf.concat([fxxx, fxxy, fyyx, fyyy], axis=0)
     grad_loss = tf.math.reduce_mean(tf.math.abs(wave_eq))
-
-    return grad_loss
-
-def second_order_c_known_L2(f, xyz, tape):
-    raise ValueError("needs to be updated")
-    # Unpack the columns
-    x,y,t = xyz
-
-    fxx = nth_gradient(f, x, 2, tape)
-    fyy = nth_gradient(f, y, 2, tape)
-    ftt = nth_gradient(f, t, 2, tape)
-    del_f = fxx + fyy
-    # TODO: c might not be 1
-    c_sqd = 1
-    # TODO: The source ISN'T zero
-    source_t = 0
-    wave_eq = ftt - c_sqd * del_f - source_t
-
-    # L1 regularizer
-    #grads = tf.concat([fxxx, fxxy, fyyx, fyyy], axis=0)
-    grad_loss = tf.math.reduce_mean(wave_eq ** 2)
 
     return grad_loss
 

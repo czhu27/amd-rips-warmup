@@ -137,7 +137,9 @@ class NN(keras.models.Model):
 						v_masked = v[region_mask]
 						# assert v_masked.shape[0] == tf.reduce_sum(tf.cast(region_mask, tf.float32))
 						# L1 norm
-						grad_loss += tf.math.reduce_mean(tf.math.abs(v_masked))
+						gl = tf.math.reduce_mean(tf.math.abs(v_masked))
+						gl = tf.where(tf.math.is_nan(gl), tf.zeros_like(gl), gl)
+						grad_loss += gl
 
 				# grad_loss = self.gradient_regularizer(f_pred, xyz, tape)
 				self.grad_reg_loss_tracker.update_state(grad_loss)

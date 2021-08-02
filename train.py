@@ -353,6 +353,8 @@ def train(configs: Configs):
 	layers = configs.layers
 	model = create_nn(layers, configs)
 
+	# model.c = self.add_weight(shape=[], initializer="ones", trainable=True)
+
 	# Hack on the model
 	#model = tf.keras.models.load_model('output/wave/single/first_grad_tests/lr_1E-4/trial_0/model')
 
@@ -401,6 +403,7 @@ def train(configs: Configs):
 	model.batch_size = opt_batch_size
 	if configs.from_tensor_slices:
 		dataset = dataset.batch(opt_batch_size)
+		dataset.prefetch(tf.data.AUTOTUNE)
 		model.is_dataset_prebatched = True
 	else:
 		model.is_dataset_prebatched = False
@@ -449,30 +452,33 @@ def train(configs: Configs):
 
 	class LossLogger(keras.callbacks.Callback):
 		def on_epoch_end(self, epoch, logs):
-			group = 'Loss Term'
-			w_group = 'Loss Term Weight'
-			tf.summary.scalar(group + '/Base', 
-				data=self.model.base_loss_tracker.result(), step=epoch
-			)
-			tf.summary.scalar(group + '/Gradient', 
-				data=self.model.grad_reg_loss_tracker.result(), step=epoch
-			)
-			w = (self.model.w_base_loss_tracker.result() 
-				/ self.model.base_loss_tracker.result())
-			tf.summary.scalar(w_group + '/Base', 
-				data=w, step=epoch
-			)
-			w = (self.model.w_grad_reg_loss_tracker.result() 
-				/ self.model.grad_reg_loss_tracker.result())
-			tf.summary.scalar(w_group + '/Gradient', 
-				data=w, step=epoch
-			)
-			tf.summary.scalar(group + '/Regularizer (weighted)', 
-				data=self.model.w_reg_loss_tracker.result(), step=epoch
-			)
+			if epoch % 10 == 0:
+				group = 'Loss Term'
+				w_group = 'Loss Term Weight'
+				tf.summary.scalar(group + '/Base', 
+					data=self.model.base_loss_tracker.result(), step=epoch
+				)
+				tf.summary.scalar(group + '/Gradient', 
+					data=self.model.grad_reg_loss_tracker.result(), step=epoch
+				)
+				w = (self.model.w_base_loss_tracker.result() 
+					/ self.model.base_loss_tracker.result())
+				tf.summary.scalar(w_group + '/Base', 
+					data=w, step=epoch
+				)
+				w = (self.model.w_grad_reg_loss_tracker.result() 
+					/ self.model.grad_reg_loss_tracker.result())
+				tf.summary.scalar(w_group + '/Gradient', 
+					data=w, step=epoch
+				)
+				tf.summary.scalar(group + '/Regularizer (weighted)', 
+					data=self.model.w_reg_loss_tracker.result(), step=epoch
+				)
 			
 
-	tensorboard_callback = keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
+	# tensorboard_callback = keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1, profile_batch='10, 15')
+	# tensorboard_callback = keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
+	tensorboard_callback = keras.callbacks.TensorBoard(log_dir=log_dir)
 	logging_callbacks = [TimeLogger(), StressTestLogger(), LossLogger(), tensorboard_callback]
 
 	if "tensorboard" in configs.plots:

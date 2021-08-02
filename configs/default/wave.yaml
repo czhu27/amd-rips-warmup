@@ -24,7 +24,7 @@ gd_noise: 0.0
 #############
 #source: wave_with_source
 source: wave
-data_dir: data/wave/
+data_dir: data/wave
 data_run: [fine_mesh_gauss_few] 
 
 corners: false
@@ -39,8 +39,8 @@ from_tensor_slices: true
 #data_run: [05-05, 09-01, 025-075]
 
 # test_source and test_data_dir only matter for error calculation and prediction plots
-test_source: [0.6, 0.6]
-test_data_dir: data/wave/06-06/
+# test_source: [0.6, 0.6]
+# test_data_dir: data/wave/06-06/
 shuffle: true
 
 ##################

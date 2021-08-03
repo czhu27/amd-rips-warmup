@@ -27,7 +27,7 @@ def velocity_ud(f, xyz, tape):
     p, u, v = tf.unstack(f, axis=1)
     return v
 
-def curl_condition(f, xyz, tape):
+def second_curl(f, xyz, tape):
     x, y, t = xyz
     p, u, v = tf.unstack(f, axis=1)
 
@@ -36,9 +36,8 @@ def curl_condition(f, xyz, tape):
     u_ty = nth_gradient(u_t, y, 1, tape)
     v_tx = nth_gradient(v_t, x, 1, tape)
 
-    curl = v_tx - u_ty
-    curl_loss = tf.math.reduce_mean(tf.math.abs(curl))
-    return curl_loss
+    curly = v_tx - u_ty
+    return curly
 
 def first_order_c_known(f, xyz, tape):
     x, y, t = xyz
@@ -64,33 +63,6 @@ def first_order_c_known(f, xyz, tape):
     eqs = tf.stack([first_eq, second_eq_A, second_eq_B], axis=-1)
     return eqs
 
-def first_order_curl_c_known(f, xyz, tape):
-    raise ValueError("needs to be updated")
-    x, y, t = xyz
-    p, u, v = tf.unstack(f, axis=1)
-
-    p_t = nth_gradient(p, t, 1, tape)
-    div_vel = nth_gradient(u, x, 1, tape) + nth_gradient(v, y, 1, tape)
-
-    u_t = nth_gradient(u, t, 1, tape)
-    v_t = nth_gradient(v, t, 1, tape)
-    u_ty = nth_gradient(u_t, y, 1, tape)
-    v_tx = nth_gradient(v_t, x, 1, tape)
-
-    # TODO: Constants are medium dependent
-    # TODO: Source can change
-    kappa = 1
-    #rho = 1
-    source = 0
-
-    first_eq = source - p_t - kappa*div_vel
-    second_eq_curl = v_tx - u_ty
-
-    eq_sys = tf.concat([first_eq, second_eq_curl], axis=0)
-
-    grad_loss = tf.math.reduce_mean(tf.math.abs(eq_sys))
-    return grad_loss
-
 def second_order_c_known(f, xyz, tape):
     # raise ValueError("needs to be updated")
     # Unpack the columns
@@ -108,11 +80,7 @@ def second_order_c_known(f, xyz, tape):
     source_t = 0
     wave_eq = ftt - c_sqd * del_f - source_t
 
-    # L1 regularizer
-    #grads = tf.concat([fxxx, fxxy, fyyx, fyyy], axis=0)
-    grad_loss = tf.math.reduce_mean(tf.math.abs(wave_eq))
-
-    return grad_loss
+    return wave_eq
 
 
 def second_order_c_known_late_start(f, xyz, tape):
@@ -207,7 +175,6 @@ def third_order_c_unknown(f, xyz, tape):
 name_to_reg_by_category = {
     "wave_eq": {
         "first_explicit": {"interior": first_order_c_known},
-        "first_curl_explicit": {"interior": first_order_curl_c_known},
         "second_explicit": {"interior": second_order_c_known},
         "second_c_known": {"interior": second_order_c_known},
         "second_explicit_late": {"interior": second_order_c_known_late_start},
@@ -216,7 +183,7 @@ name_to_reg_by_category = {
         "second_c_unknown": {"interior": second_order_c_unknown},
         "third_implicit": {"interior": third_order_c_unknown},
         "third_c_unknown": {"interior": third_order_c_unknown},
-        "curl_condition": {"interior": curl_condition},
+        "second_curl": {"interior": second_curl},
     },
     "boundary": {
         "velocity": {"boundary_lr": velocity_lr, "boundary_ud": velocity_ud}
@@ -225,7 +192,6 @@ name_to_reg_by_category = {
 
 name_to_reg = {
     "first_explicit": first_order_c_known,
-    "first_curl_explicit": first_order_curl_c_known,
     "second_explicit": second_order_c_known,
     "second_c_known": second_order_c_known,
     "second_explicit_late": second_order_c_known_late_start,
@@ -234,7 +200,7 @@ name_to_reg = {
     "second_c_unknown": second_order_c_unknown,
     "third_implicit": third_order_c_unknown,
     "third_c_unknown": third_order_c_unknown,
-    "curl_condition": curl_condition,
+    "second_curl": second_curl,
     "velocity_lr": velocity_lr,
     "velocity_ud": velocity_ud,
 }

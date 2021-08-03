@@ -280,13 +280,17 @@ class Field:
 				# for i
 			# for jj
 		# for j	
-		
+		 
 		fig = plt.figure()
+		fig.set_figheight(8)
+		fig.set_figwidth(8)
+		fig.tight_layout()
+
 		ax = fig.add_subplot(111, projection='3d')
 		ax.plot_surface(xg, yg, pg, cmap=cm.coolwarm)
 		ax.set_title("Simulation (t = {:.2F})".format(self.dt*index))
 		#plt.show()
-		plt.tight_layout(pad=0.75)
+		#plt.tight_layout(pad=0.75)
 		#str_name = "wave/forward/figs/fig_sim_{:03d}.png".format(index)
 		str_name = self.figs_dir + "/fig_sim_{:03d}.png".format(index)
 		plt.savefig(str_name)

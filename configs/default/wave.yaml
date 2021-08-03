@@ -59,6 +59,7 @@ loss_schedulerizer_params: [500, 2000] #[Begin adding grad, fully added]
 grad_reg_const: 1
 # grad_reg_scheduler: late_start
 # grad_reg_start: 
+noise: 0.0
 
 #############
 #  Logging  #

@@ -42,4 +42,4 @@ data_plot: True
 int_ext_time: 1
 
 # Where to save this run
-data_dir: data/wave
+data_dir: data/wave/fine_mesh_gauss_all_label

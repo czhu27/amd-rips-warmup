@@ -92,7 +92,7 @@ def get_data(configs, figs_folder):
 		}
 
 	elif configs.source == "wave" or configs.source == "wave_with_source":
-		data_run = configs.data_dir
+		data_dir = configs.data_dir
 		
 		if configs.source == "wave_with_source":
 			assert configs.layers[0] == 5, "Wrong input layer size"
@@ -113,8 +113,12 @@ def get_data(configs, figs_folder):
 		# tot_grad_bools = tf.Variable(np.array([], dtype=bool))
 		# tot_bound_horizontal = tf.Variable(np.array([], dtype=bool))
 		# tot_bound_vertical = tf.Variable(np.array([], dtype=bool))
-		for i, data_run_name in enumerate(configs.data_run):
-			new_data_run = data_run + "/" + data_run_name
+		if isinstance(configs.data_run, list):
+			data_run = configs.data_run
+		else:
+			data_run = [configs.data_run]
+		for i, data_run_name in enumerate(data_run):
+			new_data_run = data_dir + "/" + data_run_name
 			# Get the latest timestamp
 			subpaths = os.listdir(new_data_run)
 			assert len(subpaths) == 1, "Must have exactly one data timestamp"
@@ -177,7 +181,10 @@ def get_data(configs, figs_folder):
 		label_bools = tot_label_bools
 
 		### Concat inputs, outputs, and bools
-		test_data_dir = configs.test_data_dir
+		if hasattr(configs, "test_data_dir"):
+			test_data_dir = configs.test_data_dir
+		else:
+			test_data_dir = configs.data_run
 		# Get the latest timestamp
 		subpaths = os.listdir(test_data_dir)
 		assert len(subpaths) == 1, "Must have exactly one data timestamp"
@@ -347,7 +354,7 @@ def train(configs: Configs):
 		mat_list = shuffle_in_parallel([X_all, Y_all, label_bools, grad_bools])
 		dataset = tf.data.Dataset.from_tensors(tuple(mat_list))
 	else:
-		raise ValueError("You really shouldn't use from_tensor_slice=True")
+		raise ValueError("You really shouldn't use from_tensor_slice=False")
 	# ------------------------------------------------------------------------------
 	# Create neural network (physics-inspired)
 	# ------------------------------------------------------------------------------

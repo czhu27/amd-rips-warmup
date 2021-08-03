@@ -4,7 +4,7 @@
 #source: wave_with_source
 source: wave
 data_dir: data/wave
-data_run: [fine_mesh_gauss_few] 
+data_run: fine_mesh_gauss_few
 
 corners: false
 dataset: [2500, 7500, 0, 1.0, 0.0] #[interior, exterior, border, labeled_int%, labeled_ext%]
@@ -25,6 +25,7 @@ noise: 0.0
 activation: tanh
 dropout_rates: 0.0
 layers: [3, 20, 20, 20, 1]
+model_outputs: all
 
 ##############
 #  Training  #
@@ -49,8 +50,6 @@ shuffle: true
 ##################
 regularizer: none
 reg_const: 1.0
-# none, const, zero, first
-model_outputs: pressure
 gradient_loss: 
   - region: boundary_lr     # which data to apply to
     name: velocity_lr       # id of gradient regularizer

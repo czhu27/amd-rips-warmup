@@ -182,9 +182,9 @@ def get_data(configs, figs_folder):
 
 		### Concat inputs, outputs, and bools
 		if hasattr(configs, "test_data_dir"):
-			test_data_dir = configs.test_data_dir
+			test_data_dir = data_dir + "/" + configs.test_data_dir
 		else:
-			test_data_dir = configs.data_run
+			test_data_dir = data_dir + "/" + configs.data_run
 		# Get the latest timestamp
 		subpaths = os.listdir(test_data_dir)
 		assert len(subpaths) == 1, "Must have exactly one data timestamp"

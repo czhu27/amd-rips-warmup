@@ -128,13 +128,17 @@ class NN(keras.models.Model):
 				grad_loss = 0
 
 				for grad_reg in self.grad_regs:
-					region_mask = grad_bools[grad_reg.region]
+					if not grad_reg.region == "all":
+						region_mask = grad_bools[grad_reg.region]
 					# X_f, xyz = stack_unstack(old_X_f[idx])
 					# f_pred = self.call(X_f)
 					v = grad_reg.vector_func(f_pred, xyz[-3:], tape)
 					# TODO: Do we need this?
 					v = tf.cast(v, tf.float32)
-					v_masked = v[region_mask]
+					if not grad_reg.region == "all":
+						v_masked = v[region_mask]
+					else:
+						v_masked = v
 					# assert v_masked.shape[0] == tf.reduce_sum(tf.cast(region_mask, tf.float32))
 					# L1 norm
 					gl = tf.math.reduce_mean(tf.math.abs(v_masked))

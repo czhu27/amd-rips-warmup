@@ -13,7 +13,7 @@ gradient_loss:
     schedule: [400, 2250]  
   - region: interior
     name: first_explicit     
-    weight: [0.0, 0.025]    
+    weight: [0.0, 0.055]    
     schedule: [400, 2250] 
 
 lr_scheduler: true
@@ -24,7 +24,7 @@ loss_schedulerizer: false
 grad_reg_const: 1.0
 # loss_schedulerizer_params: [500, 1000] #[Begin adding grad, fully added]
 
-data_run: [fine_mesh_gauss_few_bound2]
+data_run: [fine_mesh_gauss_few_bound]
 
 # data_sources: [[0.5, 0.5]]
 # test_source: [0.5, 0.5]

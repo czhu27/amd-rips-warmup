@@ -1,3 +1,24 @@
+#############
+#  Dataset  #
+#############
+#source: wave_with_source
+source: wave
+data_dir: data/wave
+data_run: [fine_mesh_gauss_few] 
+
+corners: false
+dataset: [2500, 7500, 0, 1.0, 0.0] #[interior, exterior, border, labeled_int%, labeled_ext%]
+noise: 0.0
+
+# make sure data_sources correspond with files in data_run
+# also make sure data_sources is list of points
+#data_sources: [[0.5, 0.5], [0.9, 0.1], [0.25, 0.75]]
+#data_run: [05-05, 09-01, 025-075]
+
+# test_source and test_data_dir only matter for error calculation and prediction plots
+# test_source: [0.6, 0.6]
+# test_data_dir: data/wave/06-06/
+
 ###########
 #  Model  #
 ###########
@@ -11,59 +32,50 @@ layers: [3, 20, 20, 20, 1]
 device: gpu
 trials: 1
 seed: 0
-epochs: 12000
-batch_size: 256
+epochs: 2000
+batch_size: 1024
+
 lr: 1.0e-4
-lr_scheduler: false
+lr_scheduler: true
 lr_scheduler_type: piecewise_linear
-lr_scheduler_params: [1.0e-3, 1.0e-6, 2500, 1.0] #[initial, final, decay_steps, power]
+lr_scheduler_params: [1.0e-3, 1.0e-4, 2000, 2400] #[initial, final, start_epoch, end_epoch]
+
 gd_noise: 0.0
-
-#############
-#  Dataset  #
-#############
-#source: wave_with_source
-source: wave
-data_dir: data/wave
-data_run: [fine_mesh_gauss_few] 
-
-corners: false
-dataset: [2500, 7500, 0, 1.0, 0.0] #[interior, exterior, border, labeled_int%, labeled_ext%]
-noise: 0.0
-
 from_tensor_slices: true
-
-# make sure data_sources correspond with files in data_run
-# also make sure data_sources is list of points
-#data_sources: [[0.5, 0.5], [0.9, 0.1], [0.25, 0.75]]
-#data_run: [05-05, 09-01, 025-075]
-
-# test_source and test_data_dir only matter for error calculation and prediction plots
-# test_source: [0.6, 0.6]
-# test_data_dir: data/wave/06-06/
 shuffle: true
 
 ##################
 #  Regularizers  #
 ##################
 regularizer: none
-reg_const: 0.1
+reg_const: 1.0
 # none, const, zero, first
 model_outputs: pressure
 gradient_loss: 
-  - region: boundary_lr
-    name: velocity_lr
-    weight: [0.0, 2.0]
-    schedule: [20, 30]   #[Begin adding grad, fully added]
-  - region: boundary_ud
-    name: velocity_ud
-    weight: 1.0
-loss_schedulerizer: true
-loss_schedulerizer_params: [500,2000] #[Begin adding grad, fully added]
-#grad_reg_norm: l1 l2
+  - region: boundary_lr     # which data to apply to
+    name: velocity_lr       # id of gradient regularizer
+    weight: [0.0, 0.03]     # start_weight, end_weight
+    schedule: [200, 500]    # start_epoch,  end_epoch
+  - region: boundary_ud   
+    name: velocity_ud     
+    weight: [0.0, 0.03]    
+    schedule: [200, 500]  
+  - region: interior
+    name: first_explicit     
+    weight: [0.0, 0.03]    
+    schedule: [600, 1000]  
+  - region: interior
+    name: second_explicit     
+    weight: [0.0, 0.01]    
+    schedule: [1100, 1400]  
+  - region: interior
+    name: second_curl     
+    weight: [0.0, 0.01]    
+    schedule: [1500, 1800]  
+
 grad_reg_const: 1
-# grad_reg_scheduler: late_start
-# grad_reg_start: 
+loss_schedulerizer: true
+loss_schedulerizer_params: [2000, 2400] #[Begin adding grad, fully added]
 
 #############
 #  Logging  #

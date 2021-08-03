@@ -210,7 +210,6 @@ name_to_reg_by_category = {
         "first_curl_explicit": {"interior": first_order_curl_c_known},
         "second_explicit": {"interior": second_order_c_known},
         "second_c_known": {"interior": second_order_c_known},
-        "second_explicit_L2": {"interior": second_order_c_known_L2},
         "second_explicit_late": {"interior": second_order_c_known_late_start},
         "second_explicit_no_middle": {"interior": second_order_c_known_no_middle},
         "second_implicit": {"interior": second_order_c_unknown},
@@ -224,13 +223,29 @@ name_to_reg_by_category = {
     }
 }
 
+name_to_reg = {
+    "first_explicit": first_order_c_known,
+    "first_curl_explicit": first_order_curl_c_known,
+    "second_explicit": second_order_c_known,
+    "second_c_known": second_order_c_known,
+    "second_explicit_late": second_order_c_known_late_start,
+    "second_explicit_no_middle": second_order_c_known_no_middle,
+    "second_implicit": second_order_c_unknown,
+    "second_c_unknown": second_order_c_unknown,
+    "third_implicit": third_order_c_unknown,
+    "third_c_unknown": third_order_c_unknown,
+    "curl_condition": curl_condition,
+    "velocity_lr": velocity_lr,
+    "velocity_ud": velocity_ud,
+}
+
 def clean_append(my_dict, key, element):
     if key in my_dict:
         my_dict.append(element)
     else:
         my_dict[key] = [element]
 
-def get_wave_reg(gr_names_by_category):
+def get_wave_reg_old(gr_names_by_category):
 
     # Ensure grad_reg_names is a list
     if not isinstance(gr_names_by_category, dict):
@@ -246,5 +261,19 @@ def get_wave_reg(gr_names_by_category):
                 clean_append(grad_regs, region, func)
 
     return grad_regs
+
+class GradReg:
+    def __init__(self, gr_dict):
+        self.region = gr_dict['region']
+        self.name = gr_dict['name']
+        self.vector_func = name_to_reg[self.name]
+        self.min_weight, self.max_weight = gr_dict['weight']
+        self.start_epoch, self.end_epoch = gr_dict['schedule']
+
+def get_grs(gr_dicts):
+    if gr_dicts == "none":
+        return []
+    else:
+        return [GradReg(gr_dict) for gr_dict in gr_dicts]
 
         

@@ -126,20 +126,25 @@ class NN(keras.models.Model):
 			if self.gradient_loss:
 				# Compute gradient condition (deviation from diff. eq.)
 				grad_loss = 0
-				for region, gr_list in self.grad_regs.items():
-					region_mask = grad_bools[region]
+
+				for grad_reg in self.grad_regs:
+					region_mask = grad_bools[grad_reg.region]
 					# X_f, xyz = stack_unstack(old_X_f[idx])
 					# f_pred = self.call(X_f)
-					for grad_reg in gr_list:
-						v = grad_reg(f_pred, xyz[-3:], tape)
-						# TODO: Do we need this?
-						v = tf.cast(v, tf.float32)
-						v_masked = v[region_mask]
-						# assert v_masked.shape[0] == tf.reduce_sum(tf.cast(region_mask, tf.float32))
-						# L1 norm
-						gl = tf.math.reduce_mean(tf.math.abs(v_masked))
-						gl = tf.where(tf.math.is_nan(gl), tf.zeros_like(gl), gl)
-						grad_loss += gl
+					v = grad_reg.vector_func(f_pred, xyz[-3:], tape)
+					# TODO: Do we need this?
+					v = tf.cast(v, tf.float32)
+					v_masked = v[region_mask]
+					# assert v_masked.shape[0] == tf.reduce_sum(tf.cast(region_mask, tf.float32))
+					# L1 norm
+					gl = tf.math.reduce_mean(tf.math.abs(v_masked))
+					gl = tf.where(tf.math.is_nan(gl), tf.zeros_like(gl), gl)
+					
+					grad_reg.loss_tracker.update_state(gl)
+					w_gl = grad_reg.weight.value() * gl
+					grad_reg.w_loss_tracker.update_state(w_gl)
+
+					grad_loss += w_gl
 
 				# grad_loss = self.gradient_regularizer(f_pred, xyz, tape)
 				self.grad_reg_loss_tracker.update_state(grad_loss)
@@ -189,7 +194,7 @@ class NN(keras.models.Model):
 			# end for loop on mini batches
 
 		# Update loss and return value
-		return {m.name: m.result() for m in self.metrics}
+		return {'loss': self.loss_tracker.result()} #for m in self.metrics}
 		
 	# def train_step
 
@@ -203,7 +208,17 @@ class NN(keras.models.Model):
 
 		# return [self.loss_tracker, self.base_loss_tracker, 
 		# 	self.grad_reg_loss_tracker, self.w_reg_loss_tracker]
-		return [self.loss_tracker]
+		ms = [self.loss_tracker]
+		ms.extend([gr.loss_tracker for gr in self.grad_regs])
+		ms.extend([gr.w_loss_tracker for gr in self.grad_regs])
+		ms.extend([
+			self.base_loss_tracker, 
+			self.w_base_loss_tracker,
+			self.grad_reg_loss_tracker, 
+			self.w_grad_reg_loss_tracker, 
+			self.w_reg_loss_tracker,
+		])
+		return ms
 
 # class NN
 
@@ -228,7 +243,7 @@ def relu_squared(x):
 	x = (K.relu(x))**2
 	return x
 
-def create_nn(layer_widths, configs):
+def create_nn(layer_widths, configs, grad_regs):
 	num_hidden_layers = len(layer_widths) - 2
 	
 	# Weight initializer
@@ -278,6 +293,13 @@ def create_nn(layer_widths, configs):
 		model.gradient_loss = False
 	else:
 		model.gradient_loss = True
+
+	# TODO: Hacky add...
+	model.grad_regs = grad_regs
+	for gr in model.grad_regs:
+		gr.weight = model.add_weight(name=f"grad_reg_weight__{gr.name}" + gr.name, shape=[], initializer="zeros", trainable=False)
+		gr.loss_tracker = tf.keras.metrics.Mean(name=f'grad_reg_loss__{gr.name}')
+		gr.w_loss_tracker = tf.keras.metrics.Mean(name=f'w_grad_reg_loss__{gr.name}')
 
 	model.grad_condition_weight = tf.Variable(configs.grad_reg_const, dtype = tf.float32, trainable = False)
 	model.base_condition_weight = tf.Variable(1, dtype = tf.float32, trainable = False)

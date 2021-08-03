@@ -438,12 +438,17 @@ def train(configs: Configs):
 					tf.summary.scalar('Error/' + error_name, data=error_val, step=epoch)
 					
 	class LossSchedulerizer(keras.callbacks.Callback):
-		def on_train_begin(self, logs):
-			if configs.loss_schedulerizer:
-				self.model.grad_condition_weight.assign(0)
+		# def on_train_begin(self, logs):
+		# 	if configs.loss_schedulerizer:
+		# 		self.model.grad_condition_weight.assign(0)
 
+		# 	for gr in self.model.grad_regs:
+		# 		if gr.is_scheduled:
+		# 			gr.weight.assign(gr.)
+
+		def on_train_begin(self, logs):
 			for gr in self.model.grad_regs:
-				gr.weight.assign(0)
+				gr.weight.assign(gr.init_weight)
 
 		def calc_weight(self, min_val, max_val, start, finish, epoch):
 			if epoch < start:
@@ -463,8 +468,9 @@ def train(configs: Configs):
 				self.model.grad_condition_weight.assign(grad_weight)
 
 			for gr in self.model.grad_regs:
-				grad_weight = self.calc_weight(gr.min_weight, gr.max_weight, gr.start_epoch, gr.end_epoch, epoch)
-				gr.weight.assign(grad_weight)
+				if gr.is_scheduled:
+					grad_weight = self.calc_weight(gr.min_weight, gr.max_weight, gr.start_epoch, gr.end_epoch, epoch)
+					gr.weight.assign(grad_weight)
 			
 
 	class LossLogger(keras.callbacks.Callback):

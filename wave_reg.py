@@ -267,8 +267,13 @@ class GradReg:
         self.region = gr_dict['region']
         self.name = gr_dict['name']
         self.vector_func = name_to_reg[self.name]
-        self.min_weight, self.max_weight = gr_dict['weight']
-        self.start_epoch, self.end_epoch = gr_dict['schedule']
+        self.is_scheduled = ('schedule' in gr_dict) and (gr_dict['schedule'] is not None)
+        if self.is_scheduled:
+            self.min_weight, self.max_weight = gr_dict['weight']
+            self.start_epoch, self.end_epoch = gr_dict['schedule']
+            self.init_weight = self.min_weight
+        else:
+            self.init_weight = gr_dict['weight']
 
 def get_grs(gr_dicts):
     if gr_dicts == "none":

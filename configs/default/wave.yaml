@@ -51,8 +51,13 @@ reg_const: 0.1
 # none, const, zero, first
 model_outputs: pressure
 gradient_loss: 
-  wave_eq: [first_explicit]
-  boundary: [velocity]
+  - region: boundary_lr
+    name: velocity_lr
+    weight: [0.0, 2.0]
+    schedule: [20, 30]   #[Begin adding grad, fully added]
+  - region: boundary_ud
+    name: velocity_ud
+    weight: 1.0
 loss_schedulerizer: true
 loss_schedulerizer_params: [500,2000] #[Begin adding grad, fully added]
 #grad_reg_norm: l1 l2

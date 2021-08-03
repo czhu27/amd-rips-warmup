@@ -149,6 +149,7 @@ data/
 wave/forward/traces/*.png
 wave/forward/traces/*.npz
 wave/forward/figs/
+wave/params/multiple_sources
 
 .vscode
 

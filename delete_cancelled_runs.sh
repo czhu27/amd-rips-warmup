@@ -1,6 +1,7 @@
 #!/bin/bash
 
 cd output/wave/single
+echo "WO WO WEE WA"
 array=(`find -mindepth 2 -maxdepth 2 -type d`)
 for i in "${array[@]}" ; do
     cd $i

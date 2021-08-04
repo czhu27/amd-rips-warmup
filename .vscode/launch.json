@@ -23,7 +23,19 @@
             "console": "integratedTerminal"
         },
         {
-            "name": "main.py | Single Run",
+            "name": "main.py | Single Run (parabola)",
+            "type": "python",
+            "args": [
+                "-t",
+                "-s",
+                "configs/single/toy_test.yaml"
+            ],
+            "request": "launch",
+            "program": "main.py",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "main.py | Single Run (wave)",
             "type": "python",
             "args": [
                 "-w",

@@ -1,0 +1,27 @@
+layers: [3, 100, 100, 100, 100, 100, 3]
+epochs: 700
+batch_size: 512
+
+gradient_loss: 
+  - region: boundary_lr   # which data to apply to
+    name: velocity_lr     # id of gradient regularizer
+    weight: [0.0, 0.05]   # start_weight, end_weight
+    schedule: [200, 500]  # start_epoch,  end_epoch
+  - region: boundary_ud   
+    name: velocity_ud     
+    weight: [0.0, 0.05]    
+    schedule: [200, 500]  
+  - region: interior
+    name: first_explicit     
+    weight: [0.0, 0.05]    
+    schedule: [200, 500] 
+
+lr_scheduler: true
+lr_scheduler_type: piecewise_linear
+lr_scheduler_params: [3.0e-3, 1.0e-4, 500, 700] #[initial, final, start_epoch, end_epoch]
+
+loss_schedulerizer: false
+grad_reg_const: 1.0
+# loss_schedulerizer_params: [500, 1000] #[Begin adding grad, fully added]
+
+data_run: fine_mesh_gauss_few_bound2

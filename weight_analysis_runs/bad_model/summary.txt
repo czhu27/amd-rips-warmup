@@ -1,0 +1,4 @@
+Avg Interpolation Error [-1, 1] x [-1, 1]: 0.0004207852
+Avg Extrapolation Error [-2, 2] x [-2, 2]: 0.07288445
+Avg Extrapolation Error [-3, 3] x [-3, 3]: 1.035369
+Avg Training Time: 216.75 s

@@ -1,5 +1,6 @@
 from targets import nth_gradient
 import tensorflow as tf
+from helpers import GradReg
 
 def alt_second_order_c_known(f, xyz, tape):
     #x, y, t = xyz
@@ -228,23 +229,19 @@ def get_wave_reg_old(gr_names_by_category):
 
     return grad_regs
 
-class GradReg:
-    def __init__(self, gr_dict):
-        self.region = gr_dict['region']
-        self.name = gr_dict['name']
-        self.vector_func = name_to_reg[self.name]
-        self.is_scheduled = ('schedule' in gr_dict) and (gr_dict['schedule'] is not None)
-        if self.is_scheduled:
-            self.min_weight, self.max_weight = gr_dict['weight']
-            self.start_epoch, self.end_epoch = gr_dict['schedule']
-            self.init_weight = self.min_weight
-        else:
-            self.init_weight = gr_dict['weight']
 
-def get_grs(gr_dicts):
+
+def get_wave_grs(gr_dicts):
     if gr_dicts == "none":
         return []
     else:
-        return [GradReg(gr_dict) for gr_dict in gr_dicts]
+        grs = []
+        for gr_dict in gr_dicts:
+            # Add the vector function
+            name = gr_dict['name']
+            gr_dict['vector_func'] = name_to_reg[name]
+            gr = GradReg(gr_dict)
+            grs.append(gr)
+        return grs
 
         

@@ -12,6 +12,19 @@ class Configs:
     def __init__(self, **entries):
         self.__dict__.update(entries)
 
+class GradReg:
+    def __init__(self, gr_dict):
+        self.region = gr_dict['region']
+        self.name = gr_dict['name']
+        self.vector_func = gr_dict['vector_func']
+        self.is_scheduled = ('schedule' in gr_dict) and (gr_dict['schedule'] is not None)
+        if self.is_scheduled:
+            self.min_weight, self.max_weight = gr_dict['weight']
+            self.start_epoch, self.end_epoch = gr_dict['schedule']
+            self.init_weight = self.min_weight
+        else:
+            self.init_weight = gr_dict['weight']
+
 def shuffle_in_parallel(mat_list):
     indices = tf.random.shuffle(np.arange(mat_list[0].shape[0]))
     for i, mat in enumerate(mat_list):

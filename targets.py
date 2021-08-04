@@ -1,4 +1,5 @@
 import tensorflow as tf
+from helpers import GradReg
 
 def nth_gradient(y, x, n, tape):
 	'''
@@ -168,46 +169,60 @@ def cubic_regularizer_const(f, xyz, tape):
 ##################################
 ##################################
 
-def get_target(name: str, regularizer: str, configs):
+name_to_reg_parabola = {
+    "zero": parabola_regularizer_zero,
+    "third": parabola_regularizer_zero,
+    "const": parabola_regularizer_const,
+    "second": parabola_regularizer_const,
+    "first": parabola_regularizer_first,
+}
+
+name_to_reg_cubic = {
+    "zero": cubic_regularizer_zero,
+    "fourth": cubic_regularizer_zero,
+    "const": cubic_regularizer_const,
+    "third": cubic_regularizer_const,
+}
+
+name_to_reg_sin_cosh = {
+    "zero": waveish_regularizer_zero,
+    "laplacian": waveish_regularizer_zero,
+}
+
+def get_synth_grs(target_name, gr_dicts):
+    if (gr_dicts == "none") or (gr_dicts is None):
+        return []
+    else:
+        grs = []
+        for gr_dict in gr_dicts:
+            # Add the vector function
+            name = gr_dict['name']
+            if target_name == 'parabola':
+                gr_dict['vector_func'] = name_to_reg_parabola[name]
+            elif target_name == 'cubic':
+                gr_dict['vector_func'] = name_to_reg_cubic[name]
+            elif target_name == 'sin-cosh':
+                gr_dict['vector_func'] = name_to_reg_sin_cosh[name]
+            else:
+                raise ValueError("Unknown target function, ", target_name)
+            gr = GradReg(gr_dict)
+            grs.append(gr)
+        return grs
+
+def get_target(name, configs):
     if name == 'parabola':
         f_a, f_b = configs.target_coefficients
         f = lambda x,y : parabola(x,y, f_a, f_b)
-        if regularizer in ["zero", "third"]:
-            reg = parabola_regularizer_zero
-        elif regularizer in ["const", "second"]:
-            reg = parabola_regularizer_const
-        elif regularizer == "none":
-            reg = None
-        elif regularizer == "first":
-            reg = parabola_regularizer_first
-        else:
-            raise ValueError("Unknown regularizer for " + name + ", " + regularizer)
-
     elif name == 'cubic':
         f_a, f_b = configs.target_coefficients
         f = lambda x,y : cubic(x,y, f_a, f_b)
-        if regularizer in ["zero", "fourth"]:
-            reg = cubic_regularizer_zero
-        elif regularizer in ["const", "third"]:
-            reg = cubic_regularizer_const
-        elif regularizer == "none":
-            reg = None
-        else:
-            raise ValueError("Unknown regularizer for " + name + ", " + regularizer)
-    
     elif name == "sin-cosh":
         # Unpack coefficients
         k, = configs.target_coefficients[0]
         f = lambda x,y : waveish(x, y, k=k)
-        if regularizer in ["zero", "laplacian"]:
-            reg = waveish_regularizer_zero
-        else:
-            raise ValueError("Unknown regularizer for " + name + ", " + regularizer)
-    
     else:
         raise ValueError("Unknown target function " + name)
-
-    return f, reg
+    return f
 
 
 # def partial_derivatives(f, xyz, n, tape):

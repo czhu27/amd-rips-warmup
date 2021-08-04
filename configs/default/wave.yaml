@@ -71,7 +71,6 @@ gradient_loss:
     name: second_curl     
     weight: [0.0, 0.01]    
     schedule: [1500, 1800]  
-
 grad_reg_const: 1
 loss_schedulerizer: true
 loss_schedulerizer_params: [2000, 2400] #[Begin adding grad, fully added]

@@ -23,10 +23,10 @@ from tensorflow.keras import optimizers
 
 from helpers import Configs, shuffle_in_parallel, np_unstack
 from nn import create_nn
-from targets import get_target
+from targets import get_target, get_synth_grs
 from plots import plot_data_2D, plot_gridded_functions, make_movie, make_wave_plot, make_heatmap_movie
 from data import data_creation, compute_error, extrap_error, data_wave, compute_error_wave, error_time, get_boundary
-from wave_reg import get_grs
+from wave_reg import get_wave_grs
 
 
 class FakeModel:
@@ -160,16 +160,15 @@ def get_data(configs, figs_folder):
 		# Data for training NN based on L_f loss function
 		X_l, X_ul = data_creation(configs.dataset, configs.corners)
 		# Set target function
-		f, grad_reg = get_target(configs.target, configs.gradient_loss, configs)
+		f = get_target(configs.target, configs)
 		# Apply target func to data
 		Y_l = f(X_l[:, 0:1], X_l[:, 1:2])
-		if grad_reg == 'zero' or grad_reg == 'const':
-			grad_bools = tf.fill(X_l.shape[0] + X_ul.shape[0], True)
 		error_metrics = {
 			"interpolation error (1x1 square)": lambda model : compute_error(model, f, -1.0, 1.0),
 			"extrapolation error (2x2 ring)": lambda model : extrap_error(model, f, -1.0, 1.0, -2.0, 2.0),
 			"extrapolation error (3x3 ring)": lambda model : extrap_error(model, f, -2.0, 2.0, -3.0, 3.0),
 		}
+		error_plots = {}
 
 	elif configs.source == "wave" or configs.source == "wave_with_source":
 		data_dir = configs.data_dir
@@ -223,7 +222,8 @@ def get_data(configs, figs_folder):
 
 	### Create the gradient regularizers
 	if configs.source == "synthetic":
-		pass
+		grad_bools = {}
+		grad_regs = get_synth_grs(configs.target, configs.gradient_loss)
 	elif configs.source == "wave" or configs.source == "wave_with_source":
 		is_boundary_lr = (X_all[:,-3] == 0) | (X_all[:,-3] == 1)
 		is_boundary_ud = (X_all[:,-2] == 0) | (X_all[:,-2] == 1)
@@ -234,7 +234,7 @@ def get_data(configs, figs_folder):
 			'boundary_lr': is_boundary_lr,
 			'boundary_ud': is_boundary_ud,
 		}
-		grad_regs = get_grs(configs.gradient_loss)
+		grad_regs = get_wave_grs(configs.gradient_loss)
 		# Get rid of the grad bools we don't need
 		regions = [gr.region for gr in grad_regs]
 		grad_bools = {k:v for k,v in grad_bools.items() if k in regions}
@@ -342,8 +342,8 @@ def train(configs: Configs):
 	# General setup
 	# ------------------------------------------------------------------------------
 	# Set seeds for reproducibility
-	# np.random.seed(configs.seed)
-	# tf.random.set_seed(configs.seed)
+	np.random.seed(configs.seed)
+	tf.random.set_seed(configs.seed)
 
 	# ------------------------------------------------------------------------------
 	# Data preparation
@@ -360,7 +360,7 @@ def train(configs: Configs):
 		mat_list = shuffle_in_parallel([X_all, Y_all, label_bools, grad_bools])
 		dataset = tf.data.Dataset.from_tensors(tuple(mat_list))
 	else:
-		raise ValueError("You really shouldn't use from_tensor_slice=False")
+		raise ValueError("You really shouldn't use from_tensor_slices=False")
 	# ------------------------------------------------------------------------------
 	# Create neural network (physics-inspired)
 	# ------------------------------------------------------------------------------

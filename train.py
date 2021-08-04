@@ -26,7 +26,7 @@ from nn import create_nn
 from targets import get_target
 from plots import plot_data_2D, plot_gridded_functions, make_movie, make_wave_plot, make_heatmap_movie
 from data import data_creation, compute_error, extrap_error, data_wave, compute_error_wave, error_time, get_boundary
-from wave_reg import get_wave_reg
+from wave_reg import get_grs
 
 
 class FakeModel:
@@ -92,7 +92,7 @@ def get_data(configs, figs_folder):
 		}
 
 	elif configs.source == "wave" or configs.source == "wave_with_source":
-		data_run = configs.data_dir
+		data_dir = configs.data_dir
 		
 		if configs.source == "wave_with_source":
 			assert configs.layers[0] == 5, "Wrong input layer size"
@@ -113,8 +113,12 @@ def get_data(configs, figs_folder):
 		# tot_grad_bools = tf.Variable(np.array([], dtype=bool))
 		# tot_bound_horizontal = tf.Variable(np.array([], dtype=bool))
 		# tot_bound_vertical = tf.Variable(np.array([], dtype=bool))
-		for i, data_run_name in enumerate(configs.data_run):
-			new_data_run = data_run + "/" + data_run_name
+		if isinstance(configs.data_run, list):
+			data_run = configs.data_run
+		else:
+			data_run = [configs.data_run]
+		for i, data_run_name in enumerate(data_run):
+			new_data_run = data_dir + "/" + data_run_name
 			# Get the latest timestamp
 			subpaths = os.listdir(new_data_run)
 			assert len(subpaths) == 1, "Must have exactly one data timestamp"
@@ -177,7 +181,10 @@ def get_data(configs, figs_folder):
 		label_bools = tot_label_bools
 
 		### Concat inputs, outputs, and bools
-		test_data_dir = configs.test_data_dir
+		if hasattr(configs, "test_data_dir"):
+			test_data_dir = data_dir + "/" + configs.test_data_dir
+		else:
+			test_data_dir = data_dir + "/" + configs.data_run
 		# Get the latest timestamp
 		subpaths = os.listdir(test_data_dir)
 		assert len(subpaths) == 1, "Must have exactly one data timestamp"
@@ -221,9 +228,10 @@ def get_data(configs, figs_folder):
 			'boundary_lr': is_boundary_lr,
 			'boundary_ud': is_boundary_ud,
 		}
-		grad_regs = get_wave_reg(configs.gradient_loss)
+		grad_regs = get_grs(configs.gradient_loss)
 		# Get rid of the grad bools we don't need
-		grad_bools = {k:v for k,v in grad_bools.items() if k in grad_regs}
+		regions = [gr.region for gr in grad_regs]
+		grad_bools = {k:v for k,v in grad_bools.items() if k in regions}
 	else:
 		raise ValueError("Unknown source: ", configs.source)
 	
@@ -347,20 +355,20 @@ def train(configs: Configs):
 			mat_list = shuffle_in_parallel([X_all, Y_all, label_bools, grad_bools])
 			dataset = tf.data.Dataset.from_tensors(tuple(mat_list))
 		else:
-			raise ValueError("You really shouldn't use from_tensor_slice=True")
+			raise ValueError("You really shouldn't use from_tensor_slice=False")
 	# ------------------------------------------------------------------------------
 	# Create neural network (physics-inspired)
 	# ------------------------------------------------------------------------------
 	layers = configs.layers
-	model = create_nn(layers, configs)
+	model = create_nn(layers, configs, grad_regs)
+
+	# model.c = self.add_weight(shape=[], initializer="ones", trainable=True)
 
 	# Hack on the model
 	#model = tf.keras.models.load_model('output/wave/single/first_grad_tests/lr_1E-4/trial_0/model')
 
 	model.summary()
 
-	# TODO: Hacky add...
-	model.grad_regs = grad_regs
 	# ------------------------------------------------------------------------------
 	# Assess accuracy with non-optimized model
 	# ------------------------------------------------------------------------------
@@ -402,6 +410,7 @@ def train(configs: Configs):
 	model.batch_size = opt_batch_size
 	if configs.from_tensor_slices:
 		dataset = dataset.batch(opt_batch_size)
+		dataset.prefetch(tf.data.AUTOTUNE)
 		model.is_dataset_prebatched = True
 	else:
 		model.is_dataset_prebatched = False
@@ -437,44 +446,86 @@ def train(configs: Configs):
 					tf.summary.scalar('Error/' + error_name, data=error_val, step=epoch)
 					
 	class LossSchedulerizer(keras.callbacks.Callback):
-		def on_train_begin(self, logs):
-			self.model.grad_condition_weight.assign(0)
+		# def on_train_begin(self, logs):
+		# 	if configs.loss_schedulerizer:
+		# 		self.model.grad_condition_weight.assign(0)
 
+		# 	for gr in self.model.grad_regs:
+		# 		if gr.is_scheduled:
+		# 			gr.weight.assign(gr.)
+
+		def on_train_begin(self, logs):
+			for gr in self.model.grad_regs:
+				gr.weight.assign(gr.init_weight)
+
+		def calc_weight(self, min_val, max_val, start, finish, epoch):
+			if epoch < start:
+				return min_val
+			elif epoch < finish:
+				return max_val * ((epoch-start)/(finish-start))
+			else:
+				return max_val
+		
 		def on_epoch_begin(self, epoch, logs):
-			max_val = configs.grad_reg_const
-			start = configs.loss_schedulerizer_params[0]
-			finish = configs.loss_schedulerizer_params[1]
-			if start <= epoch and epoch <= finish:
-				grad_weight = max_val * ((epoch-start)/(finish-start))
+			if configs.loss_schedulerizer:
+				min_val = 0
+				max_val = configs.grad_reg_const
+				start = configs.loss_schedulerizer_params[0]
+				finish = configs.loss_schedulerizer_params[1]
+				grad_weight = self.calc_weight(min_val, max_val, start, finish, epoch)
 				self.model.grad_condition_weight.assign(grad_weight)
+
+			for gr in self.model.grad_regs:
+				if gr.is_scheduled:
+					grad_weight = self.calc_weight(gr.min_weight, gr.max_weight, gr.start_epoch, gr.end_epoch, epoch)
+					gr.weight.assign(grad_weight)
+			
 
 	class LossLogger(keras.callbacks.Callback):
 		def on_epoch_end(self, epoch, logs):
-			if epoch % 10 == 0:
-				group = 'Loss Term'
-				w_group = 'Loss Term Weight'
-				tf.summary.scalar(group + '/Base', 
+			if epoch % configs.tb_loss_timestep == 0:
+				loss_group = 'Loss'
+				w_loss_group = 'Loss (weighted)'
+				weight_group = "Weight"
+				tf.summary.scalar(loss_group + '/All', 
+					data=logs['loss'], step=epoch
+				)
+				tf.summary.scalar(loss_group + '/Base', 
 					data=self.model.base_loss_tracker.result(), step=epoch
 				)
-				tf.summary.scalar(group + '/Gradient', 
+				tf.summary.scalar(w_loss_group + '/Base', 
+					data=self.model.w_base_loss_tracker.result(), step=epoch
+				)
+				tf.summary.scalar(weight_group + '/Base', 
+					data=self.model.base_condition_weight.value(), step=epoch
+				)
+				tf.summary.scalar(loss_group + '/Gradient', 
 					data=self.model.grad_reg_loss_tracker.result(), step=epoch
 				)
-				w = (self.model.w_base_loss_tracker.result() 
-					/ self.model.base_loss_tracker.result())
-				tf.summary.scalar(w_group + '/Base', 
-					data=w, step=epoch
+				tf.summary.scalar(w_loss_group + '/Gradient', 
+					data=self.model.w_grad_reg_loss_tracker.result(), step=epoch
 				)
-				w = (self.model.w_grad_reg_loss_tracker.result() 
-					/ self.model.grad_reg_loss_tracker.result())
-				tf.summary.scalar(w_group + '/Gradient', 
-					data=w, step=epoch
+				tf.summary.scalar(weight_group + '/Gradient', 
+					data=self.model.grad_condition_weight.value(), step=epoch
 				)
-				tf.summary.scalar(group + '/Regularizer (weighted)', 
+				tf.summary.scalar(w_loss_group + '/Regularizer', 
 					data=self.model.w_reg_loss_tracker.result(), step=epoch
 				)
-				
+				for gr in self.model.grad_regs:
+					tf.summary.scalar(loss_group + f'/Gradient/{gr.name}', 
+						data=gr.loss_tracker.result(), step=epoch
+					)
+					tf.summary.scalar(w_loss_group + f'/Gradient/{gr.name}', 
+						data=gr.w_loss_tracker.result(), step=epoch
+					)
+					tf.summary.scalar(weight_group + f'/Gradient/{gr.name}', 
+						data=gr.weight.value(), step=epoch
+					)
+			
 
-	tensorboard_callback = keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
+	# tensorboard_callback = keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1, profile_batch='10, 15')
+	# tensorboard_callback = keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
+	tensorboard_callback = keras.callbacks.TensorBoard(log_dir=log_dir)
 	logging_callbacks = [TimeLogger(), StressTestLogger(), LossLogger(), tensorboard_callback]
 
 	if "tensorboard" in configs.plots:
@@ -483,8 +534,8 @@ def train(configs: Configs):
 	else:
 		callbacks = []
 
-	if configs.loss_schedulerizer:
-		callbacks.append(LossSchedulerizer())
+	# Callback that handles scheduling gradient regularizer weights
+	callbacks.append(LossSchedulerizer())
 
 	model.fit(dataset, 
 			epochs=opt_num_its, 

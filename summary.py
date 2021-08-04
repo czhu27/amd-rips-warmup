@@ -1,13 +1,7 @@
 import os
 import sys
 import yaml
-
-def find(name, path):
-    res = []
-    for root, dirs, files in os.walk(path):
-        if name in files:
-            res.append(os.path.join(root, name))
-    return res
+from helpers import find
 
 def avg(lst):
     return sum(lst)/len(lst)

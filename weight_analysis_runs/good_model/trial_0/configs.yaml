@@ -1,0 +1,46 @@
+activation: swish
+batch_size: 256
+corners: false
+dataset:
+- 2500
+- 7500
+- 0
+- 1.0
+- 0.0
+debug: false
+device: cpu
+dropout_rates: 0.0
+epochs: 5000
+gd_noise: 0.0
+grad_reg_const: 1
+gradient_loss: const
+layers:
+- 2
+- 30
+- 30
+- 30
+- 30
+- 1
+lr: 0.0001
+lr_scheduler: false
+lr_scheduler_params:
+- 0.001
+- 1.0e-06
+- 2500
+- 1.0
+noise: 0.0
+output_dir: output/david_stuff/single/good_model/run_20210803-234500/trial_0
+output_root: output/david_stuff
+plots:
+- extrapolation
+reg_const: 0.1
+regularizer: none
+saves:
+- model
+seed: 0
+source: synthetic
+target: parabola
+target_coefficients:
+- 1.0
+- 1.0
+trials: 1

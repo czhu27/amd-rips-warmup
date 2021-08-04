@@ -544,7 +544,9 @@ def process_wave_data_sample(wave_data_dir, params):
 		int_label = int_label, int_unlabel = int_unlabel, int_bound_l = int_bound_l, 
 		int_bound_ul = int_bound_ul , int_test = int_test, 
 		ext_label = ext_label, ext_unlabel = ext_unlabel, ext_bound_l = ext_bound_l,
-		ext_bound_ul = ext_bound_ul, ext_test = ext_test
+		ext_bound_ul = ext_bound_ul, ext_test = ext_test,
+		src_gauss = np.array(params['src_gauss']),
+		params = params
 	)
 
 	toc = time.time()

@@ -74,8 +74,88 @@ def general_error(model, X, Y):
 	mse = np.sqrt(np.mean(np.square(Y_diff)))
 	return mse
 
+def load_wave_data(new_data_run, configs):
+	# Get the latest timestamp
+	subpaths = os.listdir(new_data_run)
+	assert len(subpaths) == 1, "Must have exactly one data timestamp"
+	new_data_run = new_data_run + "/" + subpaths[-1]
+	fpath = new_data_run + '/' + 'processed_data.npz'
+	assert os.path.exists(fpath)
+	data = np.load(fpath, allow_pickle=True)
+	int_label, int_unlabel, int_bound_l, int_bound_ul = data['int_label'], data['int_unlabel'], data['int_bound_l'], data['int_bound_ul']
+	ext_label, ext_unlabel, ext_bound_l, ext_bound_ul = data['ext_label'], data['ext_unlabel'], data['ext_bound_l'], data['ext_bound_ul']
+	X_l = np.float32(np.concatenate((int_bound_l[:,0:3], ext_bound_l[:,0:3], int_label[:,0:3], ext_label[:,0:3])))
+	X_ul = np.float32(np.concatenate((int_bound_ul[:,0:3], ext_bound_ul[:,0:3], int_unlabel[:,0:3],ext_unlabel[:,0:3])))
+	
+	total_size = X_l.shape[0] + X_ul.shape[0]
+	if configs.model_outputs == "all":
+		Y_l = np.float32(np.concatenate((int_bound_l[:,3:], ext_bound_l[:,3:], int_label[:,3:], ext_label[:,3:])))	
+	elif configs.model_outputs == "pressure":
+		Y_l = np.float32(np.concatenate((int_bound_l[:,3], ext_bound_l[:,3], int_label[:,3], ext_label[:,3])))
+		Y_l = Y_l[:, None]
+
+	return X_l, X_ul, Y_l, data
+
+def load_many_wave_data(data_dir, configs):
+	tot_X_l = np.zeros((0,configs.layers[0]), dtype = np.float32)
+	tot_X_ul = np.zeros((0,configs.layers[0]), dtype = np.float32)
+	tot_Y_l = np.zeros((0,configs.layers[-1]), dtype = np.float32)
+
+	# Data run could be a list of runs, or just one
+	data_run = configs.data_run if isinstance(configs.data_run, list) else [configs.data_run]
+	for i, data_run_name in enumerate(data_run):
+		new_data_run = data_dir + "/" + data_run_name
+		
+		X_l, X_ul, Y_l, data = load_wave_data(new_data_run, configs)
+
+		if configs.source == "wave_with_source":
+			# Load source location from data
+			sources = data['params'].item()['src_gauss']
+			assert len(sources) == 1, "Data must be from a single source"
+			source_x = sources[0][0]
+			source_y = sources[0][1]
+
+			source_x_col = np.full((X_l.shape[0],1), source_x)
+			source_y_col = np.full((X_l.shape[0],1), source_y)
+			X_l = np.concatenate((source_x_col, source_y_col, X_l), axis=1)
+			source_x_col = np.full((X_ul.shape[0],1), source_x)
+			source_y_col = np.full((X_ul.shape[0],1), source_y)
+			X_ul = np.concatenate((source_x_col, source_y_col, X_ul), axis=1)
+	
+		tot_X_l = np.concatenate((tot_X_l, X_l), axis=0)
+		tot_X_ul = np.concatenate((tot_X_l, X_ul), axis=0)
+		tot_Y_l = np.concatenate([tot_Y_l, Y_l], axis=0)
+
+	return tot_X_l, tot_X_ul, tot_Y_l
+
+def load_wave_test_data(data_dir, configs):
+	### Concat inputs, outputs, and bools
+	if hasattr(configs, "test_data_dir"):
+		test_data_dir = data_dir + "/" + configs.test_data_dir
+	else:
+		test_data_dir = data_dir + "/" + configs.data_run
+	# Get the latest timestamp
+	subpaths = os.listdir(test_data_dir)
+	assert len(subpaths) == 1, "Must have exactly one data timestamp"
+	test_data_dir = test_data_dir + "/" + subpaths[-1]
+	fpath = test_data_dir + '/' + 'processed_data.npz'
+	assert os.path.exists(fpath)
+	test_data = np.load(fpath, allow_pickle=True)
+	int_test = test_data['int_test']
+	ext_test = test_data['ext_test']
+
+	# Only specify test_source if multisource
+	if configs.source == "wave_with_source":
+		sources = test_data['params'].item()['src_gauss']
+		assert len(sources) == 1, "Data must be from a single source"
+		test_source = sources[0]
+	else:
+		test_source = None
+
+	return int_test, ext_test, test_source
+
 def get_data(configs, figs_folder):
-	grad_bools = None #Placeholder
+
 	if configs.source == "synthetic":
 		# Data for training NN based on L_f loss function
 		X_l, X_ul = data_creation(configs.dataset, configs.corners)
@@ -99,105 +179,18 @@ def get_data(configs, figs_folder):
 
 		if configs.model_outputs == "all":
 			# (p, u, v)
-			assert configs.layers[-1] == 3
+			assert configs.layers[-1] == 3, "Wrong output layer size"
 			tot_Y_all = tf.zeros((0,3))	
 		elif configs.model_outputs == "pressure":
 			# (p)
-			assert configs.layers[-1] == 1
+			assert configs.layers[-1] == 1, "Wrong output layer size"
 			tot_Y_all = tf.zeros((0,1))
 		else:
 			raise ValueError("Unknown model_outputs ", configs.model_outputs)
 		
-		tot_X_all = np.zeros((0,configs.layers[0]), dtype = np.float32)
-		tot_label_bools = tf.Variable(np.array([], dtype=bool))
-		# tot_grad_bools = tf.Variable(np.array([], dtype=bool))
-		# tot_bound_horizontal = tf.Variable(np.array([], dtype=bool))
-		# tot_bound_vertical = tf.Variable(np.array([], dtype=bool))
-		if isinstance(configs.data_run, list):
-			data_run = configs.data_run
-		else:
-			data_run = [configs.data_run]
-		for i, data_run_name in enumerate(data_run):
-			new_data_run = data_dir + "/" + data_run_name
-			# Get the latest timestamp
-			subpaths = os.listdir(new_data_run)
-			assert len(subpaths) == 1, "Must have exactly one data timestamp"
-			new_data_run = new_data_run + "/" + subpaths[-1]
-			fpath = new_data_run + '/' + 'processed_data.npz'
-			assert os.path.exists(fpath)
-			data = np.load(fpath)
-			int_label, int_unlabel, int_bound_l, int_bound_ul = data['int_label'], data['int_unlabel'], data['int_bound_l'], data['int_bound_ul']
-			ext_label, ext_unlabel, ext_bound_l, ext_bound_ul = data['ext_label'], data['ext_unlabel'], data['ext_bound_l'], data['ext_bound_ul']
-			X_l = np.float32(np.concatenate((int_bound_l[:,0:3], ext_bound_l[:,0:3], int_label[:,0:3], ext_label[:,0:3])))
-			X_ul = np.float32(np.concatenate((int_bound_ul[:,0:3], ext_bound_ul[:,0:3], int_unlabel[:,0:3],ext_unlabel[:,0:3])))
-			
-			total_size = X_l.shape[0] + X_ul.shape[0]
-			if configs.model_outputs == "all":
-				Y_l = np.float32(np.concatenate((int_bound_l[:,3:], ext_bound_l[:,3:], int_label[:,3:], ext_label[:,3:])))	
-			elif configs.model_outputs == "pressure":
-				Y_l = np.float32(np.concatenate((int_bound_l[:,3], ext_bound_l[:,3], int_label[:,3], ext_label[:,3])))
-				Y_l = Y_l[:, None]
-			# int_bound = np.concatenate((int_bound_l, int_bound_ul))
-			# ext_bound = np.concatenate((ext_bound_l, ext_bound_ul))
-			# bound_horizontal, bound_vertical = get_boundary(int_bound, ext_bound, total_size)
-			# grad_reg = get_wave_reg(configs.gradient_loss, configs)
-			# if grad_reg is None:
-			# 	grad_bools = tf.fill(X_l.shape[0] + X_ul.shape[0], True)
-			# # TODO: Should be handled in get_wave_reg?
-			# grad_bools_bound = tf.fill(int_bound.shape[0] + ext_bound.shape[0], False)
-			# grad_bools_pts = tf.fill(int_label.shape[0] + ext_label.shape[0] + int_unlabel.shape[0] + ext_unlabel.shape[0], True)
-			# grad_bools = tf.concat([grad_bools_bound, grad_bools_pts], axis = 0)
+		X_l, X_ul, Y_l = load_many_wave_data(data_dir, configs)
 
-			#Creates labels to pass through network
-			is_labeled_l = tf.fill(X_l.shape[0], True)
-			is_labeled_ul = tf.fill(X_ul.shape[0], False)
-			label_bools = tf.concat([is_labeled_l, is_labeled_ul], axis=0)
-			Y_ul = tf.zeros((X_ul.shape[0], Y_l.shape[1]))
-			# Add noise to y-values
-			if configs.noise > 0:
-				Y_l += tf.random.normal(Y_l.shape, stddev=configs.noise)
-				Y_l += np.reshape(configs.noise*np.random.randn((len(Y_l))),(len(Y_l),1))
-			
-			X_all = tf.concat([X_l, X_ul], axis=0)
-			Y_all = tf.concat([Y_l, Y_ul], axis=0)
-
-			if configs.source == "wave_with_source":
-				source_x = configs.data_sources[i][0]
-				source_y = configs.data_sources[i][1]
-
-				source_x_col = np.full((X_all.shape[0],1), source_x)
-				source_y_col = np.full((X_all.shape[0],1), source_y)
-				X_all = np.concatenate((source_x_col, source_y_col, X_all), axis=1)
-		
-			tot_X_all = np.concatenate((tot_X_all, X_all), axis=0)
-			tot_Y_all = tf.concat([tot_Y_all, Y_all], axis=0)
-			tot_label_bools = tf.concat([tot_label_bools, label_bools], axis=0)
-			# tot_grad_bools = tf.concat([tot_grad_bools, grad_bools], axis=0)
-			# tot_bound_horizontal = tf.concat([tot_bound_horizontal, bound_horizontal], axis=0)
-			# tot_bound_vertical = tf.concat([tot_bound_vertical, bound_vertical], axis=0)
-
-		X_all = tot_X_all
-		Y_all = tot_Y_all
-		label_bools = tot_label_bools
-
-		### Concat inputs, outputs, and bools
-		if hasattr(configs, "test_data_dir"):
-			test_data_dir = data_dir + "/" + configs.test_data_dir
-		else:
-			test_data_dir = data_dir + "/" + configs.data_run
-		# Get the latest timestamp
-		subpaths = os.listdir(test_data_dir)
-		assert len(subpaths) == 1, "Must have exactly one data timestamp"
-		test_data_dir = test_data_dir + "/" + subpaths[-1]
-		fpath = test_data_dir + '/' + 'processed_data.npz'
-		assert os.path.exists(fpath)
-		test_data = np.load(fpath)
-		int_test = test_data['int_test']
-		ext_test = test_data['ext_test']
-
-		test_source = None
-		if configs.source == "wave_with_source":
-			test_source = configs.test_source
+		int_test, ext_test, test_source = load_wave_test_data(data_dir, configs)
 
 		# Remove the other outputs in the model (hack)
 		if configs.model_outputs == "all":
@@ -215,10 +208,23 @@ def get_data(configs, figs_folder):
 	else:
 		raise ValueError("Unknown source: ", configs.source)
 
+	#Creates labels to pass through network
+	is_labeled_l = tf.fill(X_l.shape[0], True)
+	is_labeled_ul = tf.fill(X_ul.shape[0], False)
+	label_bools = tf.concat([is_labeled_l, is_labeled_ul], axis=0)
+	Y_ul = tf.zeros((X_ul.shape[0], Y_l.shape[1]))
+	# Add noise to y-values
+	if configs.noise > 0:
+		Y_l += tf.random.normal(Y_l.shape, stddev=configs.noise)
+		Y_l += np.reshape(configs.noise*np.random.randn((len(Y_l))),(len(Y_l),1))
+	
+	X_all = tf.concat([X_l, X_ul], axis=0)
+	Y_all = tf.concat([Y_l, Y_ul], axis=0)
+
 	### Create the gradient regularizers
 	if configs.source == "synthetic":
 		pass
-	if configs.source == "wave" or configs.source == "wave_with_source":
+	elif configs.source == "wave" or configs.source == "wave_with_source":
 		is_boundary_lr = (X_all[:,-3] == 0) | (X_all[:,-3] == 1)
 		is_boundary_ud = (X_all[:,-2] == 0) | (X_all[:,-2] == 1)
 		is_boundary = is_boundary_lr | is_boundary_ud
@@ -439,7 +445,7 @@ def train(configs: Configs):
 	class StressTestLogger(keras.callbacks.Callback):
 		def on_epoch_end(self, epoch, logs):
 			self.test_every = configs.tb_error_timestep
-			if epoch % self.test_every == self.test_every - 10:
+			if epoch % self.test_every == self.test_every:
 				for error_name, error_func in error_metrics.items():
 					error_val = error_func(model)
 					tf.summary.scalar('Error/' + error_name, data=error_val, step=epoch)

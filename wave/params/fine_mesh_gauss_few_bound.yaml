@@ -20,6 +20,7 @@ int_diag: 3 # integration used for diagnostics (num 1D Gauss)
 
 # Initialization function
 initializer: gaussian
+src_gauss: [[0.5, 0.5]]
 
 # Source characteristics (locations given as [[x0, y0], [x1, y1], ...)
 src_loc: [[0.5, 0.5]]
@@ -42,4 +43,4 @@ data_plot: True
 int_ext_time: 1
 
 # Where to save this run
-data_dir: data/wave/fine_mesh_gauss_few_bound
+data_dir: data/wave

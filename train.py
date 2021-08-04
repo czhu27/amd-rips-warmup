@@ -353,14 +353,15 @@ def train(configs: Configs):
 	X_all, Y_all, label_bools, grad_bools, grad_regs, error_metrics, error_plots = get_data(configs, figs_folder)#, error_metrics = get_data(configs)
 
 	# Create TensorFlow dataset for passing to 'fit' function (below)
-	if configs.from_tensor_slices:
-		dataset = tf.data.Dataset.from_tensor_slices((X_all, Y_all, label_bools, grad_bools))
-		dataset = dataset.shuffle(len(dataset))
-	elif hasattr(configs, 'i_know_what_im_doing') and configs.i_know_what_im_doing:
-		mat_list = shuffle_in_parallel([X_all, Y_all, label_bools, grad_bools])
-		dataset = tf.data.Dataset.from_tensors(tuple(mat_list))
-	else:
-		raise ValueError("You really shouldn't use from_tensor_slices=False")
+	if configs.shuffle:
+		if configs.from_tensor_slices:
+			dataset = tf.data.Dataset.from_tensor_slices((X_all, Y_all, label_bools, grad_bools))
+			dataset = dataset.shuffle(len(dataset))
+		elif hasattr(configs, 'i_know_what_im_doing') and configs.i_know_what_im_doing:
+			mat_list = shuffle_in_parallel([X_all, Y_all, label_bools, grad_bools])
+			dataset = tf.data.Dataset.from_tensors(tuple(mat_list))
+		else:
+			raise ValueError("You really shouldn't use from_tensor_slice=False")
 	# ------------------------------------------------------------------------------
 	# Create neural network (physics-inspired)
 	# ------------------------------------------------------------------------------

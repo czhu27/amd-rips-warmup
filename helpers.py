@@ -1,5 +1,6 @@
 import numpy as np
 import tensorflow as tf
+import os
 
 def stack_unstack(X_f):
     # Needed for gradient calculations (per-column)
@@ -133,3 +134,10 @@ def get_p_mat_list(p_all, x_all, y_all, every_n_frames=1):
 # 		p_mat_list[t,:,:] = p_mat
     
 # 	return p_mat_list
+
+def find(name, path):
+    res = []
+    for root, dirs, files in os.walk(path):
+        if name in files:
+            res.append(os.path.join(root, name))
+    return res

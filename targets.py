@@ -190,7 +190,7 @@ name_to_reg_sin_cosh = {
 }
 
 def get_synth_grs(target_name, gr_dicts):
-    if gr_dicts == "none":
+    if (gr_dicts == "none") or (gr_dicts is None):
         return []
     else:
         grs = []

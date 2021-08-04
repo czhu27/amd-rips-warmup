@@ -264,14 +264,11 @@ def plot_data(X_l, X_ul, figs_folder, configs):
 
 def comparison_plots(model, figs_folder, configs):
 
-	if configs.model_outputs == "all":
-		model = FakeModel(model)
-
 	if configs.source == "synthetic":
 		# 2D Plotting
 
 		# Set target function
-		f, grad_reg = get_target(configs.target, configs.gradient_loss, configs)
+		f = get_target(configs.target, configs)
 
 		print("Saving extrapolation plots")
 		buf = plot_gridded_functions(model, f, -1.0, 1.0, "100", folder=figs_folder)
@@ -279,6 +276,8 @@ def comparison_plots(model, figs_folder, configs):
 		buf = plot_gridded_functions(model, f, -3.0, 3.0, "300", folder=figs_folder)
 
 	elif configs.source == "wave" or configs.source == "wave_with_source":
+		if configs.model_outputs == "all":
+			model = FakeModel(model)
 		if configs.source == "wave":
 			test_source = None
 		if configs.source == "wave_with_source":
@@ -444,12 +443,17 @@ def train(configs: Configs):
 			tf.summary.scalar('Time/Epoch', data=epoch_dur, step=epoch)
 
 	class StressTestLogger(keras.callbacks.Callback):
-		def on_epoch_end(self, epoch, logs):
+		def __init__(self):
 			self.test_every = configs.tb_error_timestep
-			if epoch % self.test_every == self.test_every:
-				for error_name, error_func in error_metrics.items():
-					error_val = error_func(model)
-					tf.summary.scalar('Error/' + error_name, data=error_val, step=epoch)
+		def stress_test(self, epoch):
+			for error_name, error_func in error_metrics.items():
+				error_val = error_func(model)
+				tf.summary.scalar('Error/' + error_name, data=error_val, step=epoch)
+		def on_epoch_end(self, epoch, logs):
+			if epoch % self.test_every == 0:
+				self.stress_test(epoch)
+		def on_train_end(self, logs):
+			self.stress_test(configs.epochs)
 					
 	class LossSchedulerizer(keras.callbacks.Callback):
 		# def on_train_begin(self, logs):

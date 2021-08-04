@@ -1,6 +1,14 @@
+epochs: 500
+
 lr_scheduler: true
 lr_scheduler_type: piecewise_linear
-lr_scheduler_params: [1.0e-3, 1.0e-4, 700, 1000] #[initial, final, decay_steps, power]
+lr_scheduler_params: [1.0e-3, 1.0e-5, 100, 200] #[initial, final, decay_steps, power]
 
-loss_schedulerizer: false
-loss_schedulerizer_params: [400, 700] #[Begin adding grad, fully added]
+# loss_schedulerizer: false
+# loss_schedulerizer_params: [400, 700] #[Begin adding grad, fully added]
+
+# epochs: 10
+# tb_error_timestep: 2
+
+tb_error_timestep: 20
+seed: 2

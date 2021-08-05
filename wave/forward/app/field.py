@@ -289,6 +289,7 @@ class Field:
 		ax = fig.add_subplot(111, projection='3d')
 		ax.plot_surface(xg, yg, pg, cmap=cm.coolwarm)
 		ax.set_title("Simulation (t = {:.2F})".format(self.dt*index))
+		ax.set_zlim(-.35, .75)
 		#plt.show()
 		#plt.tight_layout(pad=0.75)
 		#str_name = "wave/forward/figs/fig_sim_{:03d}.png".format(index)

@@ -147,7 +147,8 @@ class Simulator:
 				self.__kernel.dump()
 
 			# Display pressure field at end of time step
-			if (step_number%100 == 0):
+			display_img = 100 if "display_img" not in self.__params else self.__params["display_img"]
+			if (step_number%display_img == 0):
 				self.__field.display_p(step_number)
 
 		# while	

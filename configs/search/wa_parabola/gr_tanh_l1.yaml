@@ -1,8 +1,13 @@
 trials: 5
 
+activation: tanh
+
 gradient_loss:
   - region: all             # which data to apply to
     name: second            # id of gradient regularizer
     weight: 1               # start_weight, end_weight
 grad_reg_const: 1
 loss_schedulerizer: false
+
+regularizer: l1
+reg_const: 1.0e-5

@@ -1,5 +1,7 @@
 trials: 5
 
+activation: tanh
+
 gradient_loss: none
 grad_reg_const: 1
 loss_schedulerizer: false

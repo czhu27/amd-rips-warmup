@@ -1,13 +1,6 @@
-epochs: 500
+trials: 5
 
-lr_scheduler: true
-lr_scheduler_type: piecewise_linear
-lr_scheduler_params: [1.0e-3, 1.0e-6, 100, 200] #[initial, final, decay_steps, power]
-
-tb_error_timestep: 20
-
-target: cubic
-target_coefficients: [1.0, 1.0]
+activation: tanh
 
 gradient_loss:
   - region: all             # which data to apply to
